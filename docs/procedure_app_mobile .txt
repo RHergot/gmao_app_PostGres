@@ -1,0 +1,368 @@
+Absolument ! Votre procédure est déjà très bien structurée et technique. Pour la "soumettre" en vue de créer l'application, en particulier avec l'objectif d'une interface web en premier, on peut la reformater légèrement pour la rendre plus digeste comme un plan d'action ou une proposition de développement.
+
+Voici une version réorganisée et légèrement étoffée, axée sur la création de l'API puis de l'interface web :
+
+---
+
+**Proposition de Développement : API REST pour GMAO et Interface Web Initiale**
+
+**Objectif :** Développer une API REST robuste pour l'application GMAO existante, afin de permettre la communication avec de nouvelles interfaces, en commençant par une application web. Cette API exposera les fonctionnalités clés telles que la consultation des ordres de travail (OT), la réservation de pièces et la saisie des rapports d'intervention.
+
+## Phase 1 – Développement de l'API REST (Django REST Framework)
+
+Cette phase se concentre sur la création d'un backend solide et réutilisable.
+
+**Étape 0 – Analyse et Préparation des Actifs Existants**
+
+*   **Compréhension du Schéma de Données :**
+    *   Localisation : `app/data/schemas.py`
+    *   Tables critiques identifiées : `ORDRE_TRAVAIL`, `MAINTENANCE`, `INTERVENTION_PIECE`, `TECHNICIEN`, `PIECE`, etc.
+*   **Identification de la Logique Métier à Réutiliser :**
+    *   Services principaux : `app/core/services/maintenance_service.py` (gestion des rapports, stock).
+    *   Autres services et repositories : `app/core/services/`, `app/data/repositories/`.
+    *   Utilitaires : `app/utils/pdf_maintenance.py` (génération PDF).
+*   **Principe directeur :** La nouvelle API Django s'appuiera sur cette logique métier existante pour assurer la cohérence et éviter la duplication de code. Les services existants pourraient nécessiter des adaptations mineures pour découpler toute dépendance à une interface graphique spécifique (ex: PySide/Qt).
+
+**Étape 1 – Initialisation du Projet API Django**
+
+1.  **Installation des dépendances :**
+    ```bash
+    # À la racine du projet global (ex: gmao_project)
+    python -m venv venv
+    source venv/bin/activate # ou venv\Scripts\activate sur Windows
+    pip install django djangorestframework psycopg[binary] djangorestframework-simplejwt drf-spectacular
+    ```
+2.  **Création du projet Django et de l'application API :**
+    ```bash
+    # Toujours à la racine du projet global
+    django-admin startproject gmao_backend . # Crée le projet Django dans le répertoire courant
+    python manage.py startapp api           # Crée une application dédiée pour l'API
+    ```
+3.  **Configuration Initiale (`gmao_backend/settings.py`) :**
+    *   Ajouter `rest_framework`, `rest_framework_simplejwt`, `drf_spectacular`, et `api` à `INSTALLED_APPS`.
+    *   Configurer la connexion à la base de données PostgreSQL existante (partagée avec l'application de bureau).
+    *   Configurer `REST_FRAMEWORK` pour l'authentification (JWT) et les permissions par défaut.
+
+**Étape 2 – Définition des Modèles Django (`api/models.py`)**
+
+*   **Option 1 (Recommandée pour la synchronisation) : `inspectdb`**
+    ```bash
+    python manage.py inspectdb ORDRE_TRAVAIL MAINTENANCE INTERVENTION_PIECE TECHNICIEN PIECE > api/models_temp.py
+    ```
+    *   Copier les modèles générés dans `api/models.py`.
+    *   Nettoyer :
+        *   Définir `managed = False` dans la classe `Meta` de chaque modèle pour indiquer à Django de ne pas gérer le schéma de ces tables (puisqu'il existe déjà).
+        *   Vérifier/corriger les `db_table` pour correspondre exactement aux noms de tables existants.
+        *   Ajuster les types de champs et relations si `inspectdb` n'a pas tout déduit correctement.
+*   **Option 2 (Manuelle - si une évolution du schéma est envisagée indépendamment de la BDD existante) :**
+    *   Réécrire manuellement les modèles Django en se basant sur `app/data/schemas.py`.
+    *   Définir les relations (`ForeignKey`, `ManyToManyField`, `OneToOneField`) explicitement.
+    *   S'assurer que `db_table` correspond aux tables existantes. `managed = False` reste pertinent.
+
+**Étape 3 – Intégration de la Logique Métier Existante (`api/services.py`)**
+
+*   Créer un module `api/services.py` (ou un nom similaire) au sein de l'application Django `api`.
+*   Importer les fonctions de service de l'application existante :
+    ```python
+    # api/services.py
+    # Assurez-vous que le chemin d'import est correct (peut nécessiter ajustement de PYTHONPATH ou structure)
+    from app.core.services.maintenance_service import create_maintenance_report, update_maintenance_report # etc.
+    from app.core.services.stock_service import reserve_piece_logic # Exemple
+    # ... autres importations nécessaires
+    ```
+*   Les vues Django appelleront ces services, centralisant la logique métier.
+
+**Étape 4 – Création des Serializers (`api/serializers.py`)**
+
+*   Définir les serializers DRF pour convertir les instances de modèles en JSON (et vice-versa).
+    ```python
+    # api/serializers.py
+    from rest_framework import serializers
+    from .models import OrdreTravail, Maintenance, Piece, Technicien # etc.
+
+    class TechnicienSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Technicien
+            fields = ['id', 'nom', 'prenom'] # Exposer uniquement les champs nécessaires
+
+    class PieceSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = Piece
+            fields = ['id', 'reference', 'designation', 'quantite_stock']
+
+    class OrdreTravailSerializer(serializers.ModelSerializer):
+        technicien = TechnicienSerializer(read_only=True) # Exemple de relation imbriquée en lecture
+        technicien_id = serializers.PrimaryKeyRelatedField(
+            queryset=Technicien.objects.all(), source='technicien', write_only=True
+        ) # Pour l'écriture
+
+        class Meta:
+            model = OrdreTravail
+            fields = "__all__" # À affiner pour n'exposer que les champs utiles
+
+    class MaintenanceReportSerializer(serializers.ModelSerializer):
+        # ... champs pour le rapport ...
+        class Meta:
+            model = Maintenance # ou un modèle dédié si le rapport est complexe
+            fields = "__all__"
+
+    class ReservePieceSerializer(serializers.Serializer): # Non lié à un modèle, pour l'action
+        piece_id = serializers.IntegerField()
+        quantite = serializers.IntegerField()
+    ```
+
+**Étape 5 – Développement des Vues (Endpoints API) (`api/views.py`)**
+
+*   Utiliser des `ModelViewSet` pour les opérations CRUD standard et des `@action` pour les logiques spécifiques.
+    ```python
+    # api/views.py
+    from rest_framework import viewsets, status
+    from rest_framework.decorators import action
+    from rest_framework.response import Response
+    from rest_framework.permissions import IsAuthenticated
+    from .models import OrdreTravail, Maintenance, Piece
+    from .serializers import (
+        OrdreTravailSerializer, MaintenanceReportSerializer, PieceSerializer, ReservePieceSerializer
+    )
+    # Предполагается, что 'app.core.services.stock_service.reserve_piece_logic' импортирован как 'reserve_piece_in_gmao_service'
+    # from app.core.services.stock_service import reserve_piece_logic as reserve_piece_in_gmao_service
+    # from app.core.services.maintenance_service import create_maintenance_report as create_report_in_gmao_service
+
+    class OTViewSet(viewsets.ModelViewSet):
+        queryset = OrdreTravail.objects.all() # Sera filtré plus tard
+        serializer_class = OrdreTravailSerializer
+        permission_classes = [IsAuthenticated]
+
+        def get_queryset(self):
+            user = self.request.user
+            # Supposons que l'utilisateur est lié à un technicien, ou est admin
+            if user.is_staff: # ou user.is_superuser
+                return OrdreTravail.objects.all()
+            try:
+                technicien = user.technicien_profile # à adapter selon votre modèle User/Technicien
+                return OrdreTravail.objects.filter(technicien=technicien)
+            except AttributeError: # Pas de profil technicien
+                return OrdreTravail.objects.none()
+
+        # GET /api/ots/mine/ (ou filtrage direct dans get_queryset basé sur l'utilisateur)
+        # GET /api/techniciens/{tech_id}/ots/ - Si besoin d'un admin pour voir les OT d'un tech spécifique
+        @action(detail=False, methods=['get'], url_path='technicien/(?P<tech_id>[^/.]+)')
+        def by_technicien(self, request, tech_id=None):
+            # Ajouter une vérification de permission si seul un admin peut faire ça
+            qs = OrdreTravail.objects.filter(technicien_id=tech_id, statut__in=["Planifié", "En cours"])
+            serializer = self.get_serializer(qs, many=True)
+            return Response(serializer.data)
+
+        # POST /api/ots/{id}/reserve_piece/
+        @action(methods=["post"], detail=True, serializer_class=ReservePieceSerializer)
+        def reserve_piece(self, request, pk=None):
+            ot = self.get_object()
+            serializer = ReservePieceSerializer(data=request.data)
+            if serializer.is_valid():
+                piece_id = serializer.validated_data["piece_id"]
+                qt = serializer.validated_data["quantite"]
+                try:
+                    # reserve_piece_in_gmao_service(ot_id=ot.id, piece_id=piece_id, quantite=qt) # Appeler le service métier
+                    pass # Logique à implémenter avec le service existant
+                    return Response({"status": "pièce réservée"}, status=status.HTTP_200_OK)
+                except Exception as e: # Capturer les exceptions métier spécifiques
+                    return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    class MaintenanceViewSet(viewsets.ModelViewSet):
+        queryset = Maintenance.objects.all()
+        serializer_class = MaintenanceReportSerializer
+        permission_classes = [IsAuthenticated]
+
+        def perform_create(self, serializer):
+            # create_report_in_gmao_service(user=self.request.user, data=serializer.validated_data)
+            # Ou, si le serializer gère la création via le service :
+            serializer.save(technicien=self.request.user.technicien_profile) # Exemple
+
+    class PieceViewSet(viewsets.ReadOnlyModelViewSet): # Souvent en lecture seule pour la consultation
+        queryset = Piece.objects.all()
+        serializer_class = PieceSerializer
+        permission_classes = [IsAuthenticated]
+    ```
+
+**Étape 6 – Configuration du Routage (`api/urls.py` et `gmao_backend/urls.py`)**
+
+*   `api/urls.py`:
+    ```python
+    from django.urls import path, include
+    from rest_framework.routers import DefaultRouter
+    from .views import OTViewSet, MaintenanceViewSet, PieceViewSet
+
+    router = DefaultRouter()
+    router.register(r"ots", OTViewSet, basename="ot")
+    router.register(r"maintenances", MaintenanceViewSet, basename="maintenance")
+    router.register(r"pieces", PieceViewSet, basename="piece")
+
+    urlpatterns = [
+        path("", include(router.urls)),
+    ]
+    ```
+*   `gmao_backend/urls.py`:
+    ```python
+    from django.contrib import admin
+    from django.urls import path, include
+    from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+
+    urlpatterns = [
+        path("admin/", admin.site.urls),
+        path("api/", include("api.urls")), # Inclure les URLs de l'application API
+        # Authentification JWT (si simplejwt est utilisé)
+        path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+        path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+        # Documentation API
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+        path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    ]
+    ```
+    *(N'oubliez pas d'importer `TokenObtainPairView` et `TokenRefreshView` de `rest_framework_simplejwt.views` si vous utilisez SimpleJWT)*
+
+**Étape 7 – Sécurité et Authentification (Approfondissement)**
+
+1.  **Configuration JWT (`gmao_backend/settings.py`):**
+    ```python
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': (
+            'rest_framework_simplejwt.authentication.JWTAuthentication',
+        ),
+        'DEFAULT_PERMISSION_CLASSES': [
+            'rest_framework.permissions.IsAuthenticated',
+        ],
+        'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    }
+
+    SPECTACULAR_SETTINGS = {
+        'TITLE': 'GMAO API',
+        'DESCRIPTION': 'API pour la gestion de maintenance assistée par ordinateur',
+        'VERSION': '1.0.0',
+    }
+    # Configurer la durée de vie des tokens JWT si besoin
+    ```
+2.  **Permissions Personnalisées (si nécessaire) :** Créer des classes de permission pour des logiques plus fines (ex: seul le technicien assigné peut modifier son OT).
+
+**Étape 8 – Tests Unitaires et d'Intégration**
+
+*   Utiliser `pytest` et `pytest-django`.
+*   Tester les serializers, les vues (avec `APIClient`), et l'intégration avec les services métier.
+*   Exemple de test (`api/tests.py`):
+    ```python
+    from django.urls import reverse
+    from rest_framework import status
+    from rest_framework.test import APITestCase
+    # ... importez vos modèles, User ...
+
+    class OTAPITests(APITestCase):
+        def setUp(self):
+            # Créez des utilisateurs, techniciens, OT de test
+            pass
+
+        def test_list_ots_for_authenticated_technician(self):
+            # Authentifiez un utilisateur technicien
+            # self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
+            url = reverse('ot-list') # Assurez-vous que basename est défini dans le router
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            # Vérifiez le contenu
+    ```
+
+**Étape 9 – Documentation de l'API**
+
+*   `drf-spectacular` générera une spécification OpenAPI.
+*   L'interface Swagger UI sera accessible via `/api/schema/swagger-ui/`.
+*   Cette documentation sera cruciale pour le développement de l'interface web et, plus tard, de l'application mobile.
+
+**Étape 10 – Déploiement Initial et CI/CD**
+
+1.  **Configuration d'un environnement de Staging/Production :** (Heroku, Dokku, VPS avec Gunicorn/Nginx).
+2.  **Mise en place d'une CI/CD simple (ex: GitHub Actions) :**
+    *   Créer `requirements.txt` (`pip freeze > requirements.txt`).
+    *   Workflow pour :
+        *   Installer les dépendances.
+        *   Lancer les linters (`flake8`, `black`).
+        *   Exécuter les tests (`python manage.py test`).
+        *   Déployer sur succès de la branche `main` ou `develop`.
+
+---
+
+## Phase 2 – Interface Web Responsive (consommant l’API)
+
+Une fois l'API fonctionnelle et documentée, le développement de l'interface web peut commencer.
+
+**Étape 11 – Choix Technologique pour le Frontend Web**
+
+*   **Option A : Templates Django + JavaScript léger (Alpine.js, htmx, ou vanilla JS)**
+    *   Avantages : Intégration simple avec le backend Django existant, moins de complexité pour des besoins modérés.
+    *   Inconvénients : Peut devenir lourd pour des interfaces très dynamiques.
+*   **Option B : Framework JavaScript dédié (Vue.js, React, Svelte)**
+    *   Avantages : Idéal pour des Single Page Applications (SPA) riches et interactives.
+    *   Inconvénients : Nécessite une stack de développement frontend séparée, courbe d'apprentissage.
+*   **Pour un démarrage rapide, l'Option A est souvent privilégiée, surtout si l'équipe est à l'aise avec Django.**
+
+**Étape 12 – Structure de l'Application Web**
+
+*   Créer une nouvelle application Django (ex: `webapp`) ou utiliser des templates globaux.
+*   Définir les vues Django qui rendront les templates HTML.
+*   Ces vues ne contiendront pas de logique métier (elle est dans l'API), mais appelleront l'API (soit côté serveur avant rendu, soit côté client via JavaScript).
+
+**Étape 13 – Développement des Interfaces Utilisateur**
+
+1.  **Liste des Ordres de Travail :**
+    *   Page affichant les OT pour le technicien connecté.
+    *   Appel à l'endpoint `GET /api/ots/` (ou l'endpoint filtré pour le technicien).
+    *   Affichage des détails de chaque OT.
+2.  **Réservation de Pièces :**
+    *   Interface pour rechercher des pièces (`GET /api/pieces/`).
+    *   Formulaire pour soumettre une réservation (`POST /api/ots/{id}/reserve_piece/`).
+3.  **Rapport d'Intervention :**
+    *   Formulaire pour saisir les informations du rapport.
+    *   Soumission du rapport (`POST /api/maintenances/`).
+    *   Possibilité de joindre des fichiers/photos (nécessitera un endpoint API adapté).
+4.  **Authentification :**
+    *   Page de connexion qui interagit avec les endpoints `/api/token/` pour obtenir un JWT.
+    *   Stockage sécurisé du token (localStorage ou sessionStorage avec précautions, ou cookie HttpOnly).
+    *   Gestion de la déconnexion.
+
+**Étape 14 – Styling et Expérience Utilisateur**
+
+*   Utiliser un framework CSS (Bootstrap, Tailwind CSS, Bulma) pour un design responsive et agréable.
+*   Soigner l'ergonomie pour une utilisation facile sur mobile (design "mobile-first" même pour l'interface web).
+
+**Étape 15 – Tests et Déploiement de l'Interface Web**
+
+*   Tester l'interaction entre le frontend et l'API.
+*   Déployer l'application web avec l'API.
+
+## Phase 3 – Application Mobile Native (Kivy)
+
+1. **Choisir le stack Kivy/KivyMD** afin de profiter des composants Material Design et d’un packaging Android/iOS unifié.
+2. **Consommation de l’API REST** : utiliser `requests` (ou `httpx`) pour appeler les endpoints sécurisés par JWT.
+3. **Persistance hors-ligne** : intégrer SQLite (via `plyer` ou `kivy.storage.jsonstore`) pour mettre en cache les OT, pièces et rapports lorsque l’appareil est déconnecté.
+4. **Synchronisation** :
+   * Pull automatique au démarrage ou sur action utilisateur pour récupérer les OT assignés.
+   * Push différé des réservations et rapports créés hors-ligne dès que la connexion revient.
+5. **Gestion de l’authentification** :
+   * Stocker le token JWT dans le Keystore Android (via `plyer.keychain`) afin d’éviter l’exposition dans le stockage classique.
+6. **Packaging Android** :
+   * Utiliser Buildozer (`buildozer android package`) ou un pipeline GitHub Actions avec image Docker officielle.
+7. **Tests** :
+   * Tests unitaires Python classiques + tests d’interface avec `pytest` et `pytest-desktop`/`pytest kivy`.
+
+En suivant ces étapes, l’API REST reste la source unique de vérité ; l’interface web et l’application mobile partagent le même backend, ce qui simplifie la maintenance et l’évolution future.
+
+---
+
+**Livrables Clés :**
+
+1.  Une API REST documentée, sécurisée et testée.
+2.  Une interface web fonctionnelle permettant aux techniciens de :
+    *   Consulter leurs ordres de travail.
+    *   Réserver des pièces pour un OT.
+    *   Soumettre leurs rapports d'intervention.
+3.  Un pipeline CI/CD pour l'API et potentiellement pour le frontend web.
+
+Ce plan détaillé devrait fournir une bonne base pour démarrer le développement. L'accent mis sur la réutilisation de la logique métier existante via une API bien définie est une excellente approche pour la maintenabilité et l'évolutivité future (vers une application mobile native par exemple).
