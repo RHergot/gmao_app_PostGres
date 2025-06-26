@@ -209,19 +209,26 @@ TABLES: Dict[str, str] = {
     # --- Table Mouvement Stock ---
     "MOUVEMENT_STOCK": """
         CREATE TABLE IF NOT EXISTS MOUVEMENT_STOCK (
-            id_mouvement SERIAL PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             piece_id INTEGER NOT NULL,
-            type_mouvement TEXT NOT NULL CHECK(type_mouvement IN ('ENTREE', 'SORTIE', 'AJUSTEMENT', 'INVENTAIRE')),
-            quantite INTEGER NOT NULL, -- Peut être négatif pour sorties/ajustements
-            date_mouvement TEXT DEFAULT CURRENT_TIMESTAMP,
-            raison TEXT,
-            ot_id INTEGER,  -- FK vers ORDRE_TRAVAIL (pour consommations liées à OT)
-            user_id INTEGER, -- Qui a fait l'ajustement manuel / inventaire
-            stock_avant INTEGER, -- Stock avant ce mouvement (informatif)
-            stock_apres INTEGER, -- Stock après ce mouvement (informatif)
+            type_mouvement_id INTEGER NOT NULL,
+            quantite INTEGER NOT NULL,
+            emplacement_source_id INTEGER,
+            emplacement_destination_id INTEGER,
+            utilisateur_id INTEGER,
+            date_mouvement TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            reference_document TEXT,
+            commentaire TEXT,
+            cout_unitaire DECIMAL(10,2),
+            cout_total DECIMAL(10,2),
+            stock_avant INTEGER,
+            stock_apres INTEGER,
+            valide BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            statut_mouvement TEXT DEFAULT 'CONFIRME',
             FOREIGN KEY (piece_id) REFERENCES PIECE(id_piece) ON DELETE RESTRICT,
-            FOREIGN KEY (ot_id) REFERENCES ORDRE_TRAVAIL(id_ot) ON DELETE SET NULL,
-            FOREIGN KEY (user_id) REFERENCES UTILISATEUR(id_utilisateur) ON DELETE SET NULL
+            FOREIGN KEY (utilisateur_id) REFERENCES UTILISATEUR(id_utilisateur) ON DELETE SET NULL
         );
     """,
 
