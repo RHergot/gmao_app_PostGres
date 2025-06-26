@@ -1,0 +1,589 @@
+{% extends 'gmao_web/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Maintenance Report" %} - {{ work_order.numero_ot }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cost-summary {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-left: 4px solid #28a745;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .cost-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .cost-item:last-child {
+        border-bottom: none;
+        font-weight: bold;
+        font-size: 1.1em;
+        color: #28a745;
+    }
+    
+    .pieces-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-add-piece {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        color: white;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-add-piece:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    }
+    
+    .form-section {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .spinner-border-lg {
+        width: 3rem;
+        height: 3rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="bi bi-tools me-2"></i>
+                        {% trans "Maintenance Report" %}
+                    </h2>
+                    <p class="text-muted mb-0" id="work-order-info">
+                        {% trans "Loading work order information..." %}
+                    </p>
+                </div>
+                <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                    <i class="bi bi-arrow-left me-2"></i>{% trans "Back" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Résumé des coûts -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="cost-summary">
+                <h5 class="mb-3">
+                    <i class="bi bi-calculator me-2"></i>
+                    {% trans "Cost Summary" %}
+                </h5>
+                <div id="cost-breakdown">
+                    <div class="cost-item">
+                        <span>{% trans "Parts Cost:" %}</span>
+                        <span id="cost-parts">€0.00</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>{% trans "Labor Cost:" %}</span>
+                        <span id="cost-labor">€0.00</span>
+                    </div>
+                    <div class="cost-item">
+                        <span>{% trans "Total Cost:" %}</span>
+                        <span id="cost-total">€0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire principal -->
+    <form id="maintenance-form">
+        <div class="row">
+            <!-- Colonne gauche - Informations générales -->
+            <div class="col-md-6">
+                <!-- Section Intervention -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="bi bi-person-gear me-2"></i>
+                        {% trans "Intervention Details" %}
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="technicien" class="form-label">{% trans "Technician" %} *</label>
+                            <select class="form-select" id="technicien" name="technicien_id" required>
+                                <option value="">{% trans "Select technician..." %}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="type_reel" class="form-label">{% trans "Actual Type" %}</label>
+                            <select class="form-select" id="type_reel" name="type_reel">
+                                <option value="">{% trans "Select type..." %}</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="date_debut" class="form-label">{% trans "Start Date/Time" %} *</label>
+                            <input type="datetime-local" class="form-control" id="date_debut" name="date_debut" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="date_fin" class="form-label">{% trans "End Date/Time" %} *</label>
+                            <input type="datetime-local" class="form-control" id="date_fin" name="date_fin" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="travaux_realises" class="form-label">{% trans "Work Performed" %} *</label>
+                        <textarea class="form-control" id="travaux_realises" name="travaux_realises" rows="4" 
+                                  placeholder="{% trans 'Describe the work performed...' %}" required></textarea>
+                    </div>
+                </div>
+
+                <!-- Section Résultats -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="bi bi-check-circle me-2"></i>
+                        {% trans "Results & Evaluation" %}
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="resultat" class="form-label">{% trans "Result" %}</label>
+                            <select class="form-select" id="resultat" name="resultat">
+                                <option value="">{% trans "Select result..." %}</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evaluation_qualite" class="form-label">{% trans "Quality Rating" %}</label>
+                            <select class="form-select" id="evaluation_qualite" name="evaluation_qualite">
+                                <option value="">{% trans "Select rating..." %}</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="impact_production" class="form-label">{% trans "Production Impact" %}</label>
+                            <select class="form-select" id="impact_production" name="impact_production">
+                                <option value="">{% trans "Select impact..." %}</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">{% trans "Additional Notes" %}</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="{% trans 'Additional observations, recommendations...' %}"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colonne droite - Pièces utilisées -->
+            <div class="col-md-6">
+                <div class="form-section">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="section-title mb-0">
+                            <i class="bi bi-gear me-2"></i>
+                            {% trans "Parts Used" %}
+                        </h5>
+                        <button type="button" class="btn btn-add-piece btn-sm" onclick="showAddPieceModal()">
+                            <i class="bi bi-plus-circle me-1"></i>{% trans "Add Part" %}
+                        </button>
+                    </div>
+                    
+                    <div class="pieces-table">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="pieces-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Reference" %}</th>
+                                        <th>{% trans "Name" %}</th>
+                                        <th>{% trans "Qty" %}</th>
+                                        <th>{% trans "Unit Price" %}</th>
+                                        <th>{% trans "Total" %}</th>
+                                        <th width="50"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pieces-tbody">
+                                    <tr id="no-pieces-row">
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            {% trans "No parts added yet" %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary" onclick="window.history.back()">
+                        {% trans "Cancel" %}
+                    </button>
+                    <button type="submit" class="btn btn-success" id="submit-btn">
+                        <i class="bi bi-check-lg me-2"></i>{% trans "Save Maintenance Report" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Overlay de chargement -->
+<div class="loading-overlay d-none" id="loading-overlay">
+    <div class="text-center text-white">
+        <div class="spinner-border spinner-border-lg mb-3" role="status"></div>
+        <div>{% trans "Processing..." %}</div>
+    </div>
+</div>
+
+<!-- Données Django pour JavaScript -->
+{{ ot_id|json_script:"ot-id" }}
+
+<script>
+// Variables globales
+let formData = {};
+let piecesUtilisees = [];
+const otId = JSON.parse(document.getElementById('ot-id').textContent);
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', function() {
+    loadFormData();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    // Calcul automatique des coûts quand les dates changent
+    document.getElementById('date_debut').addEventListener('change', calculateCosts);
+    document.getElementById('date_fin').addEventListener('change', calculateCosts);
+    document.getElementById('technicien').addEventListener('change', calculateCosts);
+    
+    // Soumission du formulaire
+    document.getElementById('maintenance-form').addEventListener('submit', submitMaintenanceReport);
+}
+
+async function loadFormData() {
+    try {
+        showLoading(true);
+        const response = await fetch(`/api/maintenance/form-data/${otId}/`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to load form data');
+        }
+        
+        formData = await response.json();
+        populateForm();
+        
+    } catch (error) {
+        console.error('Error loading form data:', error);
+        showError('Failed to load form data. Please refresh the page.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function populateForm() {
+    // Informations OT
+    const otInfo = formData.ordre_travail;
+    document.getElementById('work-order-info').innerHTML = `
+        <strong>${otInfo.numero_ot}</strong> - ${otInfo.description}<br>
+        <small class="text-muted">${otInfo.machine_nom} @ ${otInfo.site_nom}</small>
+    `;
+    
+    // Techniciens
+    const technicienSelect = document.getElementById('technicien');
+    formData.techniciens.forEach(tech => {
+        const option = document.createElement('option');
+        option.value = tech.id_technicien;
+        option.textContent = tech.nom_complet;
+        technicienSelect.appendChild(option);
+    });
+    
+    // Options de formulaire
+    populateSelect('type_reel', formData.options.types);
+    populateSelect('resultat', formData.options.resultats);
+    populateSelect('evaluation_qualite', formData.options.evaluations, 'value', 'label');
+    populateSelect('impact_production', formData.options.impacts);
+    
+    // Pièces pour le modal
+    const pieceSelect = document.getElementById('piece-select');
+    formData.pieces.forEach(piece => {
+        const option = document.createElement('option');
+        option.value = piece.id_piece;
+        option.textContent = `${piece.reference} - ${piece.nom} (Stock: ${piece.stock_disponible})`;
+        option.dataset.prix = piece.prix_unitaire || 0;
+        option.dataset.reference = piece.reference;
+        option.dataset.nom = piece.nom;
+        pieceSelect.appendChild(option);
+    });
+    
+    // Dates par défaut
+    const now = new Date();
+    document.getElementById('date_debut').value = formatDateTimeLocal(now);
+    document.getElementById('date_fin').value = formatDateTimeLocal(new Date(now.getTime() + 60*60*1000)); // +1h
+}
+
+function populateSelect(selectId, options, valueKey = null, textKey = null) {
+    const select = document.getElementById(selectId);
+    options.forEach(option => {
+        const optionElement = document.createElement('option');
+        if (valueKey && textKey) {
+            optionElement.value = option[valueKey];
+            optionElement.textContent = option[textKey];
+        } else {
+            optionElement.value = option;
+            optionElement.textContent = option;
+        }
+        select.appendChild(optionElement);
+    });
+}
+
+function showAddPieceModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addPieceModal'));
+    modal.show();
+}
+
+function addPiece() {
+    const pieceSelect = document.getElementById('piece-select');
+    const quantity = parseInt(document.getElementById('piece-quantity').value);
+    const lot = document.getElementById('piece-lot').value;
+    
+    if (!pieceSelect.value || !quantity) {
+        showError('Please select a part and enter quantity');
+        return;
+    }
+    
+    const selectedOption = pieceSelect.selectedOptions[0];
+    const piece = {
+        piece_id: parseInt(pieceSelect.value),
+        reference: selectedOption.dataset.reference,
+        nom: selectedOption.dataset.nom,
+        quantite: quantity,
+        prix_unitaire: parseFloat(selectedOption.dataset.prix),
+        lot_numero: lot,
+        cout_total: quantity * parseFloat(selectedOption.dataset.prix)
+    };
+    
+    piecesUtilisees.push(piece);
+    updatePiecesTable();
+    calculateCosts();
+    
+    // Fermer le modal et réinitialiser
+    bootstrap.Modal.getInstance(document.getElementById('addPieceModal')).hide();
+    document.getElementById('add-piece-form').reset();
+}
+
+function removePiece(index) {
+    piecesUtilisees.splice(index, 1);
+    updatePiecesTable();
+    calculateCosts();
+}
+
+function updatePiecesTable() {
+    const tbody = document.getElementById('pieces-tbody');
+    const noPartsRow = document.getElementById('no-pieces-row');
+    
+    if (piecesUtilisees.length === 0) {
+        noPartsRow.style.display = '';
+        return;
+    }
+    
+    noPartsRow.style.display = 'none';
+    
+    // Supprimer les lignes existantes (sauf la ligne "no parts")
+    const existingRows = tbody.querySelectorAll('tr:not(#no-pieces-row)');
+    existingRows.forEach(function(row) { 
+        row.remove(); 
+    });
+    
+    // Ajouter les nouvelles lignes
+    piecesUtilisees.forEach(function(piece, index) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${piece.reference}</td>
+            <td>${piece.nom}</td>
+            <td>${piece.quantite}</td>
+            <td>€${piece.prix_unitaire.toFixed(2)}</td>
+            <td>€${piece.cout_total.toFixed(2)}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePiece(${index})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function calculateCosts() {
+    const dateDebut = document.getElementById('date_debut').value;
+    const dateFin = document.getElementById('date_fin').value;
+    const technicienId = document.getElementById('technicien').value;
+    
+    let dureeMinutes = 0;
+    if (dateDebut && dateFin) {
+        const debut = new Date(dateDebut);
+        const fin = new Date(dateFin);
+        dureeMinutes = Math.max(0, (fin - debut) / (1000 * 60));
+    }
+    
+    try {
+        const response = await fetch('/api/maintenance/calculate-cost/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                pieces: piecesUtilisees,
+                duree_minutes: dureeMinutes,
+                technicien_id: technicienId
+            })
+        });
+        
+        if (response.ok) {
+            const costData = await response.json();
+            updateCostDisplay(costData);
+        }
+    } catch (error) {
+        console.error('Error calculating costs:', error);
+    }
+}
+
+function updateCostDisplay(costData) {
+    document.getElementById('cost-parts').textContent = `€${costData.detail.pieces.cout_total.toFixed(2)}`;
+    document.getElementById('cost-labor').textContent = `€${costData.detail.main_oeuvre.cout_total.toFixed(2)}`;
+    document.getElementById('cost-total').textContent = `€${costData.cout_total.toFixed(2)}`;
+}
+
+async function submitMaintenanceReport(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const maintenanceData = Object.fromEntries(formData.entries());
+    
+    try {
+        showLoading(true);
+        
+        const response = await fetch(`/api/maintenance/create/${otId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                maintenance: maintenanceData,
+                pieces: piecesUtilisees
+            })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showSuccess('Maintenance report created successfully!');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        } else {
+            const error = await response.json();
+            showError(error.error || 'Failed to create maintenance report');
+        }
+        
+    } catch (error) {
+        console.error('Error submitting report:', error);
+        showError('Failed to submit maintenance report');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// Fonctions utilitaires
+function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function showLoading(show) {
+    const overlay = document.getElementById('loading-overlay');
+    if (show) {
+        overlay.classList.remove('d-none');
+    } else {
+        overlay.classList.add('d-none');
+    }
+}
+
+function showError(message) {
+    // Utiliser Bootstrap toast ou alert
+    alert('Error: ' + message);
+}
+
+function showSuccess(message) {
+    // Utiliser Bootstrap toast ou alert
+    alert('Success: ' + message);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
