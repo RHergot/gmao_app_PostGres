@@ -176,10 +176,11 @@ class FinanceService:
                     'details': [
                         {
                             'id_intervenant': i.id_intervenant,
-                            'nom': f"{i.technicien_id or i.nom_intervenant_externe}",
+                            'nom': i.nom_intervenant_externe if i.nom_intervenant_externe else f"Technicien {i.technicien_id}",
+                            'technicien_id': i.technicien_id,  # Pour identifier si interne/externe
                             'heures': i.heures_travaillees,
-                            'taux': i.cout_horaire,
-                            'cout': i.cout_total
+                            'cout_horaire': i.cout_horaire,
+                            'cout_total': i.cout_total
                         } for i in intervenants
                     ]
                 },
@@ -192,10 +193,12 @@ class FinanceService:
                         'total': maintenance.cout_pieces_externes or 0.0,
                         'details': [
                             {
+                                'frais_id': f.id_frais,
                                 'description': f.description,
                                 'montant': f.montant,
                                 'quantite': f.quantite,
-                                'total': f.montant_total
+                                'montant_total': f.montant_total,
+                                'fournisseur': getattr(f, 'fournisseur', '') if hasattr(f, 'fournisseur') else ''
                             } for f in frais_externes if f.type_frais == 'PIECE_EXTERNE'
                         ]
                     },
@@ -203,11 +206,13 @@ class FinanceService:
                         'total': maintenance.cout_autres_frais or 0.0,
                         'details': [
                             {
+                                'frais_id': f.id_frais,
                                 'type': f.type_frais,
                                 'description': f.description,
                                 'montant': f.montant,
                                 'quantite': f.quantite,
-                                'total': f.montant_total
+                                'montant_total': f.montant_total,
+                                'fournisseur': getattr(f, 'fournisseur', '') if hasattr(f, 'fournisseur') else ''
                             } for f in frais_externes if f.type_frais != 'PIECE_EXTERNE'
                         ]
                     }

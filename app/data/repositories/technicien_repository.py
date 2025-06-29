@@ -52,6 +52,10 @@ class TechnicienRepository:
             logger.error(f"Erreur DB get all techniciens: {e}")
             raise
 
+    def get_all_active(self) -> List[Technicien]:
+        """Retourne la liste des techniciens actifs uniquement."""
+        return self.get_all(include_inactive=False)
+
     def update(self, tech: Technicien) -> bool:
         if tech.id_technicien is None: return False
         sql = """UPDATE TECHNICIEN SET nom=%s, prenom=%s, qualification=%s, contact=%s, cout_horaire=%s, equipe_id=%s, actif=%s

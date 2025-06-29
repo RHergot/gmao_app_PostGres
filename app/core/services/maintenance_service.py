@@ -433,11 +433,13 @@ class MaintenanceService:
 
             # === Fin de la transaction (Commit implicite par db_cursor) ===
 
-            # 4. Récupérer l'objet Maintenance complet créé (en dehors de la transaction)
+            # 4. Recalculer et mettre à jour les coûts financiers
+            self.recalculer_et_maj_couts(new_maint_id)
+
+            # 5. Récupérer l'objet Maintenance complet créé (en dehors de la transaction)
             created_maintenance = self.get_maintenance_by_id(new_maint_id)
             logger.debug(f"[record_maintenance] created_maintenance récupéré : {created_maintenance}")
             if not created_maintenance: raise BusinessLogicError("Maintenance créée mais non retrouvée après transaction.")
-
             logger.info(f"Enregistrement maintenance {new_maint_id} and MàJ stock/OT terminés avec succès.")
             return created_maintenance
 
@@ -618,6 +620,51 @@ class MaintenanceService:
          logger.debug("Injection de PreventiveMaintenanceService dans MaintenanceService.")
          self._preventive_service = preventive_service
 
+    def set_finance_service(self, finance_service):
+        """Injection du service financier (pour éviter les cycles d'import)."""
+        self._finance_service = finance_service
+
+    def calculate_maintenance_cost(self, maintenance_id: int) -> dict:
+        """Calcule et retourne le détail des coûts pour une maintenance donnée (lecture seule, ne modifie pas la DB)."""
+        if not hasattr(self, '_finance_service') or self._finance_service is None:
+            raise RuntimeError("FinanceService non injecté dans MaintenanceService. Utilisez set_finance_service().")
+        
+        # Utiliser get_resume_couts_maintenance pour obtenir la structure complète avec détails
+        resume = self._finance_service.get_resume_couts_maintenance(maintenance_id)
+        
+        # Adapter la structure pour MaintenanceCoutsWidget qui attend une structure spécifique
+        if resume:
+            adapted_result = {
+                'cout_total': resume.get('cout_total', 0.0),
+                'cout_main_oeuvre': resume.get('ventilation', {}).get('main_oeuvre', {}).get('total', 0.0),
+                'cout_pieces_internes': resume.get('ventilation', {}).get('pieces_internes', {}).get('total', 0.0),
+                'cout_pieces_externes': resume.get('ventilation', {}).get('frais_externes', {}).get('pieces_externes', {}).get('total', 0.0),
+                'cout_autres_frais': resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('total', 0.0),
+                'detail': {
+                    'main_oeuvre': {
+                        'cout_total': resume.get('ventilation', {}).get('main_oeuvre', {}).get('total', 0.0),
+                        'items': resume.get('ventilation', {}).get('main_oeuvre', {}).get('details', [])
+                    },
+                    'pieces_internes': {
+                        'cout_total': resume.get('ventilation', {}).get('pieces_internes', {}).get('total', 0.0),
+                        'items': resume.get('ventilation', {}).get('pieces_internes', {}).get('details', [])
+                    },
+                    'frais_externes': {
+                        'cout_total': resume.get('ventilation', {}).get('frais_externes', {}).get('pieces_externes', {}).get('total', 0.0) + resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('total', 0.0),
+                        'par_type': {
+                            'PIECE_EXTERNE': resume.get('ventilation', {}).get('frais_externes', {}).get('pieces_externes', {}).get('details', []),
+                            'DEPLACEMENT': [f for f in resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('details', []) if f.get('type') == 'DEPLACEMENT'],
+                            'SOUS_TRAITANCE': [f for f in resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('details', []) if f.get('type') == 'SOUS_TRAITANCE'],
+                            'AUTRE': [f for f in resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('details', []) if f.get('type') == 'AUTRE']
+                        }
+                    }
+                }
+            }
+            return adapted_result
+        else:
+            # Fallback si le résumé n'est pas disponible, utiliser l'ancienne méthode
+            return self._finance_service.calculer_couts_maintenance(maintenance_id)
+
     def get_intervention_pieces_by_maintenance_id(self, maintenance_id: int) -> List[InterventionPiece]:
         """Récupère toutes les pièces utilisées pour une intervention de maintenance spécifique."""
         logger.debug(f"Récupération des pièces utilisées pour la maintenance ID: {maintenance_id}")
@@ -762,10 +809,9 @@ class MaintenanceService:
             
             # Récupérer l'objet Maintenance mis à jour
             updated_maintenance = self.get_maintenance_by_id(maint_id)
-            if not updated_maintenance:
-                raise BusinessLogicError("Maintenance mise à jour mais non retrouvée après transaction.")
-                
-            logger.info(f"Mise à jour maintenance {maint_id} and ajustements de stock terminés avec succès.")
+            logger.debug(f"[update_maintenance] updated_maintenance récupéré : {updated_maintenance}")
+            if not updated_maintenance: raise BusinessLogicError("Maintenance mise à jour mais non retrouvée après transaction.")
+            logger.info(f"Mise à jour maintenance {maint_id} terminée avec succès.")
             return updated_maintenance
             
         except Exception as e:
@@ -773,508 +819,237 @@ class MaintenanceService:
             logger.error(f"Erreur lors de update_maintenance pour ID {maint_id}: {e}", exc_info=True)
             raise BusinessLogicError(f"Échec mise à jour maintenance ID {maint_id}: {e}") from e
 
-    # --- Nouvelles méthodes pour la gestion des coûts ---
+    def recalculer_et_maj_couts(self, maintenance_id: int):
+        """Recalcule tous les coûts (main d'oeuvre, pièces, frais) et met à jour la table MAINTENANCE."""
+        # Récupérer tous les intervenants
+        intervenants = self._mi_repo.get_by_maintenance_id(maintenance_id)
+        frais_externes = self._mfe_repo.get_by_maintenance_id(maintenance_id)
+        interventions_pieces = self._ip_repo.get_by_maintenance_id(maintenance_id)
+        # Main d'oeuvre
+        cout_main_oeuvre = sum(i.cout_total or 0.0 for i in intervenants)
+        # Pièces internes
+        cout_pieces_internes = 0.0
+        for ip in interventions_pieces:
+            # Utiliser le stock_service pour récupérer les informations de la pièce
+            piece = self._stock_service.get_piece_by_id(ip.piece_id)
+            if piece:
+                cout_pieces_internes += (piece.prix_unitaire or 0.0) * (ip.quantite or 0.0)
+        # Pièces externes
+        cout_pieces_externes = sum(f.montant_total or 0.0 for f in frais_externes if f.type_frais == 'PIECE_EXTERNE')
+        # Autres frais
+        cout_autres_frais = sum(f.montant_total or 0.0 for f in frais_externes if f.type_frais != 'PIECE_EXTERNE')
+        # Total
+        cout_total = cout_main_oeuvre + cout_pieces_internes + cout_pieces_externes + cout_autres_frais
+        # Mettre à jour la table MAINTENANCE
+        maint = self.get_maintenance_by_id(maintenance_id)
+        if maint:
+            maint.cout_main_oeuvre = cout_main_oeuvre
+            maint.cout_pieces_internes = cout_pieces_internes
+            maint.cout_pieces_externes = cout_pieces_externes
+            maint.cout_autres_frais = cout_autres_frais
+            maint.cout_total = cout_total
+            self._maint_repo.update(maint)
 
-    # --- Gestion des intervenants ---
-    
-    def add_intervenant(self, intervenant_data: Dict[str, Any]) -> MaintenanceIntervenant:
-        """Ajoute un nouvel intervenant à une maintenance."""
-        logger.info(f"Ajout d'un intervenant pour maintenance ID: {intervenant_data.get('maintenance_id')}")
-        
-        # Validation des données
-        if not intervenant_data.get('maintenance_id'):
-            raise BusinessLogicError("ID de maintenance obligatoire.")
-        
-        maintenance_id = intervenant_data.get('maintenance_id')
-        maintenance = self.get_maintenance_by_id(maintenance_id)
-        if not maintenance:
-            raise NotFoundError(f"Maintenance ID {maintenance_id} non trouvée.")
-        
-        # Validation du technicien si présent
-        technicien_id = intervenant_data.get('technicien_id')
-        if technicien_id and not self.get_technicien_by_id(technicien_id):
-            raise NotFoundError(f"Technicien ID {technicien_id} non trouvé.")
-        
-        # Validation de l'intervenant externe si pas de technicien
-        if not technicien_id and not intervenant_data.get('nom_intervenant_externe'):
-            raise BusinessLogicError("Nom d'intervenant externe obligatoire si pas de technicien interne.")
-        
-        # Validation des heures and du coût
-        if not intervenant_data.get('heures_travaillees') or float(intervenant_data['heures_travaillees']) <= 0:
-            raise BusinessLogicError("Heures travaillées doivent être positives.")
-        
-        # Si technicien interne and pas de coût fourni, récupérer son coût horaire
-        if technicien_id and 'cout_horaire' not in intervenant_data:
-            technicien = self.get_technicien_by_id(technicien_id)
-            intervenant_data['cout_horaire'] = technicien.cout_horaire
-        
-        # S'assurer que le coût horaire est fourni pour un intervenant externe
-        if not technicien_id and not intervenant_data.get('cout_horaire'):
-            raise BusinessLogicError("Coût horaire obligatoire pour un intervenant externe.")
-        
+    def add_intervenant(self, data: Dict[str, Any]) -> 'MaintenanceIntervenant':
+        """Ajoute un intervenant à une maintenance."""
         try:
-            # Création de l'objet
+            # Créer l'objet MaintenanceIntervenant à partir des données
             intervenant = MaintenanceIntervenant(
-                maintenance_id=maintenance_id,
-                technicien_id=technicien_id,
-                nom_intervenant_externe=intervenant_data.get('nom_intervenant_externe'),
-                heures_travaillees=float(intervenant_data.get('heures_travaillees')),
-                cout_horaire=float(intervenant_data.get('cout_horaire', 0)),
-                notes=intervenant_data.get('notes')
+                maintenance_id=data.get('maintenance_id'),
+                technicien_id=data.get('technicien_id'),
+                heures_travaillees=data.get('heures_travaillees', 0),
+                cout_horaire=data.get('cout_horaire', 0),
+                nom_intervenant_externe=data.get('nom_intervenant_externe'),
+                notes=data.get('notes')
             )
             
-            # Enregistrement en base
+            # Utiliser le repository des intervenants pour ajouter l'entrée
             new_id = self._mi_repo.add(intervenant)
-            if not new_id:
-                raise BusinessLogicError("Échec de l'ajout de l'intervenant.")
+            if new_id:
+                intervenant.id_intervenant = new_id
             
-            # Récupération de l'objet créé
-            created = self.get_intervenant_by_id(new_id)
-            if not created:
-                raise BusinessLogicError("Intervenant créé mais non retrouvé.")
-                
-            logger.info(f"Intervenant ID {new_id} ajouté pour maintenance {maintenance_id}.")
-            return created
+            # Recalculer les coûts de maintenance après ajout
+            if data.get('maintenance_id'):
+                self.recalculer_et_maj_couts(data['maintenance_id'])
             
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données lors de l'ajout d'intervenant: {e}")
+            logger.debug(f"Intervenant ajouté avec succès: ID {intervenant.id_intervenant}")
+            return intervenant
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ajout d'un intervenant: {e}")
             raise BusinessLogicError(f"Impossible d'ajouter l'intervenant: {e}") from e
     
-    def get_intervenant_by_id(self, intervenant_id: int) -> Optional[MaintenanceIntervenant]:
+    def add_frais_externe(self, data: Dict[str, Any]) -> 'MaintenanceFraisExterne':
+        """Ajoute un frais externe à une maintenance."""
+        try:
+            # Créer l'objet MaintenanceFraisExterne à partir des données
+            frais = MaintenanceFraisExterne(
+                maintenance_id=data.get('maintenance_id'),
+                type_frais=data.get('type_frais'),
+                description=data.get('description'),
+                montant=data.get('montant', 0),
+                quantite=data.get('quantite', 1),
+                reference_piece=data.get('reference_piece'),
+                fournisseur=data.get('fournisseur'),
+                facture_reference=data.get('facture_reference')
+            )
+            
+            # Utiliser le repository des frais externes pour ajouter l'entrée
+            new_id = self._mfe_repo.add(frais)
+            if new_id:
+                frais.id_frais = new_id
+            
+            # Recalculer les coûts de maintenance après ajout
+            if data.get('maintenance_id'):
+                self.recalculer_et_maj_couts(data['maintenance_id'])
+            
+            logger.debug(f"Frais externe ajouté avec succès: ID {frais.id_frais}")
+            return frais
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ajout d'un frais externe: {e}")
+            raise BusinessLogicError(f"Impossible d'ajouter le frais externe: {e}") from e
+
+    def get_intervenant_by_id(self, intervenant_id: int) -> Optional['MaintenanceIntervenant']:
         """Récupère un intervenant par son ID."""
-        logger.debug(f"Récupération intervenant ID: {intervenant_id}")
         try:
             return self._mi_repo.get_by_id(intervenant_id)
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données: {e}")
-            raise BusinessLogicError(f"Erreur lors de la récupération de l'intervenant: {e}") from e
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération de l'intervenant {intervenant_id}: {e}")
+            raise BusinessLogicError(f"Impossible de récupérer l'intervenant: {e}") from e
     
-    def get_intervenants_by_maintenance_id(self, maintenance_id: int) -> List[MaintenanceIntervenant]:
-        """Récupère tous les intervenants d'une maintenance."""
-        logger.debug(f"Récupération des intervenants pour maintenance ID: {maintenance_id}")
+    def update_intervenant(self, intervenant_id: int, data: Dict[str, Any]) -> 'MaintenanceIntervenant':
+        """Met à jour un intervenant."""
         try:
-            return self._mi_repo.get_by_maintenance_id(maintenance_id)
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données: {e}")
-            raise BusinessLogicError(f"Erreur lors de la récupération des intervenants: {e}") from e
-    
-    def update_intervenant(self, intervenant_id: int, data: Dict[str, Any]) -> MaintenanceIntervenant:
-        """Met à jour un intervenant existant."""
-        logger.info(f"Mise à jour intervenant ID: {intervenant_id}")
-        
-        # Récupérer l'intervenant existant
-        intervenant = self.get_intervenant_by_id(intervenant_id)
-        if not intervenant:
-            raise NotFoundError(f"Intervenant ID {intervenant_id} non trouvé.")
-        
-        # Validation des données mises à jour
-        if 'technicien_id' in data and data['technicien_id'] and not self.get_technicien_by_id(data['technicien_id']):
-            raise NotFoundError(f"Technicien ID {data['technicien_id']} non trouvé.")
-        
-        # Si on change pour un intervenant externe, vérifier qu'un nom est fourni
-        if 'technicien_id' in data and not data['technicien_id'] and not data.get('nom_intervenant_externe') and not intervenant.nom_intervenant_externe:
-            raise BusinessLogicError("Nom d'intervenant externe obligatoire si pas de technicien interne.")
-        
-        # Validation des heures and du coût
-        if 'heures_travaillees' in data and (not data['heures_travaillees'] or float(data['heures_travaillees']) <= 0):
-            raise BusinessLogicError("Heures travaillées doivent être positives.")
-        
-        # Appliquer les modifications
-        has_changed = False
-        for key, value in data.items():
-            # Ignorer maintenance_id car il ne doit pas être modifié
-            if key == 'maintenance_id':
-                continue
-                
-            if hasattr(intervenant, key) and getattr(intervenant, key) != value:
-                # Conversion des types si nécessaire
-                if key in ['heures_travaillees', 'cout_horaire']:
-                    value = float(value)
-                
-                setattr(intervenant, key, value)
-                has_changed = True
-        
-        if not has_changed:
-            return intervenant
-        
-        try:
-            # Mise à jour en base
+            # Récupérer l'intervenant existant
+            intervenant = self._mi_repo.get_by_id(intervenant_id)
+            if not intervenant:
+                raise NotFoundError(f"Intervenant {intervenant_id} non trouvé")
+            
+            # Mettre à jour les champs
+            if 'technicien_id' in data:
+                intervenant.technicien_id = data['technicien_id']
+            if 'heures_travaillees' in data:
+                intervenant.heures_travaillees = data['heures_travaillees']
+            if 'cout_horaire' in data:
+                intervenant.cout_horaire = data['cout_horaire']
+            if 'nom_intervenant_externe' in data:
+                intervenant.nom_intervenant_externe = data['nom_intervenant_externe']
+            if 'notes' in data:
+                intervenant.notes = data['notes']
+            
+            # Sauvegarder les modifications
             success = self._mi_repo.update(intervenant)
             if not success:
-                raise BusinessLogicError("Échec de la mise à jour de l'intervenant.")
+                raise BusinessLogicError("Échec de la mise à jour de l'intervenant")
             
-            # Récupération de l'objet mis à jour
-            updated = self.get_intervenant_by_id(intervenant_id)
-            if not updated:
-                raise BusinessLogicError("Intervenant mis à jour mais non retrouvé.")
-                
-            logger.info(f"Intervenant ID {intervenant_id} mis à jour.")
-            return updated
+            # Recalculer les coûts de maintenance après modification
+            if intervenant.maintenance_id:
+                self.recalculer_et_maj_couts(intervenant.maintenance_id)
             
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données lors de la mise à jour d'intervenant: {e}")
+            logger.debug(f"Intervenant {intervenant_id} mis à jour avec succès")
+            return intervenant
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour de l'intervenant {intervenant_id}: {e}")
             raise BusinessLogicError(f"Impossible de mettre à jour l'intervenant: {e}") from e
     
     def delete_intervenant(self, intervenant_id: int) -> bool:
         """Supprime un intervenant."""
-        logger.warning(f"Suppression intervenant ID: {intervenant_id}")
-        
-        # Vérifier que l'intervenant existe
-        if not self.get_intervenant_by_id(intervenant_id):
-            raise NotFoundError(f"Intervenant ID {intervenant_id} non trouvé.")
-        
         try:
+            # Récupérer l'intervenant pour obtenir l'ID de maintenance
+            intervenant = self._mi_repo.get_by_id(intervenant_id)
+            if not intervenant:
+                raise NotFoundError(f"Intervenant {intervenant_id} non trouvé")
+            
+            maintenance_id = intervenant.maintenance_id
+            
+            # Supprimer l'intervenant
             success = self._mi_repo.delete(intervenant_id)
-            if success:
-                logger.info(f"Intervenant ID {intervenant_id} supprimé.")
-            return success
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données lors de la suppression d'intervenant: {e}")
+            if not success:
+                raise BusinessLogicError("Échec de la suppression de l'intervenant")
+            
+            # Recalculer les coûts de maintenance après suppression
+            if maintenance_id:
+                self.recalculer_et_maj_couts(maintenance_id)
+            
+            logger.debug(f"Intervenant {intervenant_id} supprimé avec succès")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la suppression de l'intervenant {intervenant_id}: {e}")
             raise BusinessLogicError(f"Impossible de supprimer l'intervenant: {e}") from e
     
-    # --- Gestion des frais externes ---
-    
-    def add_frais_externe(self, frais_data: Dict[str, Any]) -> MaintenanceFraisExterne:
-        """Ajoute un nouveau frais externe à une maintenance."""
-        logger.info(f"Ajout d'un frais externe pour maintenance ID: {frais_data.get('maintenance_id')}")
-        
-        # Validation des données
-        if not frais_data.get('maintenance_id'):
-            raise BusinessLogicError("ID de maintenance obligatoire.")
-        
-        maintenance_id = frais_data.get('maintenance_id')
-        maintenance = self.get_maintenance_by_id(maintenance_id)
-        if not maintenance:
-            raise NotFoundError(f"Maintenance ID {maintenance_id} non trouvée.")
-        
-        # Validation du type de frais
-        type_frais = frais_data.get('type_frais')
-        if not type_frais or type_frais not in VALID_TYPES_FRAIS:
-            raise BusinessLogicError(f"Type de frais invalide. Valeurs autorisées: {', '.join(VALID_TYPES_FRAIS)}")
-        
-        # Validation du montant and de la quantité
-        if not frais_data.get('montant') or float(frais_data['montant']) < 0:
-            raise BusinessLogicError("Montant doit être fourni and non négatif.")
-        
-        if 'quantite' in frais_data and (not frais_data['quantite'] or int(frais_data['quantite']) <= 0):
-            raise BusinessLogicError("Quantité doit être positive.")
-        
-        # Validation de la description
-        if not frais_data.get('description'):
-            raise BusinessLogicError("Description du frais obligatoire.")
-        
-        try:
-            # Création de l'objet
-            frais = MaintenanceFraisExterne(
-                maintenance_id=maintenance_id,
-                type_frais=type_frais,
-                description=frais_data.get('description'),
-                montant=float(frais_data.get('montant')),
-                quantite=int(frais_data.get('quantite', 1)),
-                reference_piece=frais_data.get('reference_piece'),
-                fournisseur=frais_data.get('fournisseur'),
-                facture_reference=frais_data.get('facture_reference')
-            )
-            
-            # Enregistrement en base
-            new_id = self._mfe_repo.add(frais)
-            if not new_id:
-                raise BusinessLogicError("Échec de l'ajout du frais externe.")
-            
-            # Récupération de l'objet créé
-            created = self.get_frais_externe_by_id(new_id)
-            if not created:
-                raise BusinessLogicError("Frais externe créé mais non retrouvé.")
-                
-            logger.info(f"Frais externe ID {new_id} ajouté pour maintenance {maintenance_id}.")
-            return created
-            
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données lors de l'ajout de frais externe: {e}")
-            raise BusinessLogicError(f"Impossible d'ajouter le frais externe: {e}") from e
-    
-    def get_frais_externe_by_id(self, frais_id: int) -> Optional[MaintenanceFraisExterne]:
+    def get_frais_externe_by_id(self, frais_id: int) -> Optional['MaintenanceFraisExterne']:
         """Récupère un frais externe par son ID."""
-        logger.debug(f"Récupération frais externe ID: {frais_id}")
         try:
             return self._mfe_repo.get_by_id(frais_id)
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données: {e}")
-            raise BusinessLogicError(f"Erreur lors de la récupération du frais externe: {e}") from e
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération du frais externe {frais_id}: {e}")
+            raise BusinessLogicError(f"Impossible de récupérer le frais externe: {e}") from e
     
-    def get_frais_externes_by_maintenance_id(self, maintenance_id: int) -> List[MaintenanceFraisExterne]:
-        """Récupère tous les frais externes d'une maintenance."""
-        logger.debug(f"Récupération des frais externes pour maintenance ID: {maintenance_id}")
+    def update_frais_externe(self, frais_id: int, data: Dict[str, Any]) -> 'MaintenanceFraisExterne':
+        """Met à jour un frais externe."""
         try:
-            return self._mfe_repo.get_by_maintenance_id(maintenance_id)
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données: {e}")
-            raise BusinessLogicError(f"Erreur lors de la récupération des frais externes: {e}") from e
-    
-    def update_frais_externe(self, frais_id: int, data: Dict[str, Any]) -> MaintenanceFraisExterne:
-        """Met à jour un frais externe existant."""
-        logger.info(f"Mise à jour frais externe ID: {frais_id}")
-        
-        # Récupérer le frais existant
-        frais = self.get_frais_externe_by_id(frais_id)
-        if not frais:
-            raise NotFoundError(f"Frais externe ID {frais_id} non trouvé.")
-        
-        # Validation des données mises à jour
-        if 'type_frais' in data and data['type_frais'] not in VALID_TYPES_FRAIS:
-            raise BusinessLogicError(f"Type de frais invalide. Valeurs autorisées: {', '.join(VALID_TYPES_FRAIS)}")
-        
-        if 'montant' in data and (not data['montant'] or float(data['montant']) < 0):
-            raise BusinessLogicError("Montant doit être non négatif.")
-        
-        if 'quantite' in data  and  (not data['quantite'] or int(data['quantite']) <= 0):
-            raise BusinessLogicError("Quantité doit être positive.")
-        
-        if 'description' in data  and  not data['description']:
-            raise BusinessLogicError("Description du frais obligatoire.")
-        
-        # Appliquer les modifications
-        has_changed = False
-        for key, value in data.items():
-            if hasattr(frais, key) and getattr(frais, key) != value:
-                # Conversion des types si nécessaire
-                if key == 'montant':
-                    value = float(value)
-                elif key == 'quantite':
-                    value = int(value)
-                
-                setattr(frais, key, value)
-                has_changed = True
-        
-        if not has_changed:
-            return frais
-        
-        try:
-            # Mise à jour en base
+            # Récupérer le frais externe existant
+            frais = self._mfe_repo.get_by_id(frais_id)
+            if not frais:
+                raise NotFoundError(f"Frais externe {frais_id} non trouvé")
+            
+            # Mettre à jour les champs
+            if 'type_frais' in data:
+                frais.type_frais = data['type_frais']
+            if 'description' in data:
+                frais.description = data['description']
+            if 'montant' in data:
+                frais.montant = data['montant']
+            if 'quantite' in data:
+                frais.quantite = data['quantite']
+            if 'reference_piece' in data:
+                frais.reference_piece = data['reference_piece']
+            if 'fournisseur' in data:
+                frais.fournisseur = data['fournisseur']
+            if 'facture_reference' in data:
+                frais.facture_reference = data['facture_reference']
+            
+            # Sauvegarder les modifications
             success = self._mfe_repo.update(frais)
             if not success:
-                raise BusinessLogicError("Échec de la mise à jour du frais externe.")
+                raise BusinessLogicError("Échec de la mise à jour du frais externe")
             
-            # Récupération de l'objet mis à jour
-            updated = self.get_frais_externe_by_id(frais_id)
-            if not updated:
-                raise BusinessLogicError("Frais externe mis à jour mais non retrouvé.")
-                
-            logger.info(f"Frais externe ID {frais_id} mis à jour.")
-            return updated
+            # Recalculer les coûts de maintenance après modification
+            if frais.maintenance_id:
+                self.recalculer_et_maj_couts(frais.maintenance_id)
             
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données lors de la mise à jour de frais externe: {e}")
+            logger.debug(f"Frais externe {frais_id} mis à jour avec succès")
+            return frais
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour du frais externe {frais_id}: {e}")
             raise BusinessLogicError(f"Impossible de mettre à jour le frais externe: {e}") from e
     
     def delete_frais_externe(self, frais_id: int) -> bool:
         """Supprime un frais externe."""
-        logger.warning(f"Suppression frais externe ID: {frais_id}")
-        
-        # Vérifier que le frais existe
-        if not self.get_frais_externe_by_id(frais_id):
-            raise NotFoundError(f"Frais externe ID {frais_id} non trouvé.")
-        
         try:
+            # Récupérer le frais externe pour obtenir l'ID de maintenance
+            frais = self._mfe_repo.get_by_id(frais_id)
+            if not frais:
+                raise NotFoundError(f"Frais externe {frais_id} non trouvé")
+            
+            maintenance_id = frais.maintenance_id
+            
+            # Supprimer le frais externe
             success = self._mfe_repo.delete(frais_id)
-            if success:
-                logger.info(f"Frais externe ID {frais_id} supprimé.")
-            return success
-        except DatabaseError as e:
-            logger.error(f"Erreur base de données lors de la suppression de frais externe: {e}")
+            if not success:
+                raise BusinessLogicError("Échec de la suppression du frais externe")
+            
+            # Recalculer les coûts de maintenance après suppression
+            if maintenance_id:
+                self.recalculer_et_maj_couts(maintenance_id)
+            
+            logger.debug(f"Frais externe {frais_id} supprimé avec succès")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la suppression du frais externe {frais_id}: {e}")
             raise BusinessLogicError(f"Impossible de supprimer le frais externe: {e}") from e
-    
-    # --- Calcul des coûts ---
-    
-    def calculate_maintenance_cost(self, maintenance_id: int) -> dict:
-        """
-        Calcule le coût total d'une maintenance selon la structure métier attendue :
-        - Main d'œuvre (tous intervenants)
-        - Pièces internes (stock)
-        - Pièces externes (frais externes de type 'PIECE_EXTERNE')
-        - Autres frais (autres frais externes)
-        Retourne un dict détaillé et loggue chaque étape.
-        """
-        logger.info(f"Calcul du coût pour la maintenance ID: {maintenance_id}")
-        if not self._mi_repo or not self._mfe_repo:
-            logger.error("Repositories pour intervenants ou frais externes non initialisés.")
-            raise RuntimeError("MaintenanceService non configuré pour le calcul des coûts.")
-
-        maintenance = self._maint_repo.get_by_id(maintenance_id)
-        if not maintenance:
-            raise MaintenanceNotFoundError(f"Maintenance ID {maintenance_id} non trouvée pour calcul coût.")
-
-        # Récupérer l'OT lié pour obtenir le technicien principal
-        ot = self._ot_repo.get_by_id(maintenance.ot_id)
-        technicien_ot_id = ot.technicien_assigne_id if ot else None
-        technicien_ot = self._tech_repo.get_by_id(technicien_ot_id) if technicien_ot_id else None
-
-        # Récupérer tous les intervenants de la maintenance
-        intervenants = self._mi_repo.get_by_maintenance_id(maintenance_id)
-        intervenant_ids = set()
-        cout_main_oeuvre = 0.0
-
-        # 1. Ajouter le technicien OT s'il existe et n'est pas déjà dans les intervenants
-        if technicien_ot_id:
-            deja_intervenant = any(i.technicien_id == technicien_ot_id for i in intervenants)
-            if not deja_intervenant:
-                heures = maintenance.duree_intervention_h or 0.0
-                taux = technicien_ot.cout_horaire if technicien_ot and technicien_ot.cout_horaire else 0.0
-                cout = heures * taux
-                cout_main_oeuvre += cout
-                intervenant_ids.add(technicien_ot_id)
-                logger.info(f"  - MO (Technicien OT): {technicien_ot.nom_complet} | {heures:.2f}h * {taux:.2f}€/h = {cout:.2f}€")
-
-        # 2. Ajouter tous les intervenants (internes/externes), sans doublon
-        for intervenant in intervenants:
-            heures = intervenant.heures_travaillees or 0.0
-            if intervenant.technicien_id:
-                if intervenant.technicien_id in intervenant_ids:
-                    continue  # déjà compté (évite doublon)
-                technicien = self._tech_repo.get_by_id(intervenant.technicien_id)
-                taux = technicien.cout_horaire if technicien and technicien.cout_horaire else intervenant.cout_horaire or 0.0
-                nom = technicien.nom_complet if technicien else f"Tech {intervenant.technicien_id}"
-                intervenant_ids.add(intervenant.technicien_id)
-            else:
-                taux = intervenant.cout_horaire or 0.0
-                nom = intervenant.nom_intervenant_externe or 'Externe'
-            cout = heures * taux
-            cout_main_oeuvre += cout
-            logger.info(f"  - MO: {nom} | {heures:.2f}h * {taux:.2f}€/h = {cout:.2f}€")
-
-        # 3. Pièces internes (stock)
-        cout_pieces_internes = 0.0
-        try:
-            pieces = self._ip_repo.get_by_maintenance_id(maintenance_id)
-            for ip in pieces:
-                piece_ref = "Réf inconnue"
-                try:
-                    piece = self._stock_service.get_piece_by_id(ip.piece_id) if self._stock_service else None
-                    if piece:
-                        piece_ref = piece.reference
-                        cout_unitaire = piece.prix_unitaire or 0.0
-                    else:
-                        cout_unitaire = ip.cout_unitaire_enregistre or 0.0
-                except Exception:
-                    cout_unitaire = ip.cout_unitaire_enregistre or 0.0
-                cout = ip.quantite * cout_unitaire
-                cout_pieces_internes += cout
-                logger.info(f"  - Pièce interne: {piece_ref} | {ip.quantite} x {cout_unitaire:.2f}€ = {cout:.2f}€")
-        except Exception as e:
-            logger.error(f"Erreur calcul pièces internes: {e}")
-
-        # 4. Pièces externes & autres frais (frais externes)
-        cout_pieces_externes = 0.0
-        cout_autres_frais = 0.0
-        try:
-            frais_externes = self._mfe_repo.get_by_maintenance_id(maintenance_id)
-            for frais in frais_externes:
-                montant = (frais.montant or 0.0) * (frais.quantite or 1)
-                if getattr(frais, 'type_frais', None) == 'PIECE_EXTERNE':
-                    cout_pieces_externes += montant
-                    logger.info(f"  - Pièce externe: {frais.description or frais.reference_piece or ''} | {montant:.2f}€")
-                else:
-                    cout_autres_frais += montant
-                    logger.info(f"  - Autre frais: {frais.type_frais} | {frais.description or ''} | {montant:.2f}€")
-        except Exception as e:
-            logger.error(f"Erreur calcul frais externes: {e}")
-
-        cout_total = cout_main_oeuvre + cout_pieces_internes + cout_pieces_externes + cout_autres_frais
-        logger.info(f"Coût total maintenance {maintenance_id}: {cout_total:.2f}€ (MO: {cout_main_oeuvre:.2f}€, Pièces internes: {cout_pieces_internes:.2f}€, Pièces externes: {cout_pieces_externes:.2f}€, Autres frais: {cout_autres_frais:.2f}€)")
-
-        # --- Détail intervenants ---
-        intervenants_items = []
-        intervenant_ids = set()
-        # Ajout du technicien principal OT si pas déjà dans la liste
-        if technicien_ot_id and technicien_ot:
-            deja_intervenant = any(i.technicien_id == technicien_ot_id for i in intervenants)
-            if not deja_intervenant:
-                heures = maintenance.duree_intervention_h or 0.0
-                taux = technicien_ot.cout_horaire or 0.0
-                intervenants_items.append({
-                    'intervenant_id': f"tech_ot_{technicien_ot_id}",
-                    'nom': technicien_ot.nom_complet,
-                    'technicien_id': technicien_ot_id,
-                    'heures': heures,
-                    'cout_horaire': taux,
-                    'cout_total': heures * taux
-                })
-                intervenant_ids.add(technicien_ot_id)
-        # Ajout des autres intervenants
-        for intervenant in intervenants:
-            heures = intervenant.heures_travaillees or 0.0
-            if intervenant.technicien_id:
-                if intervenant.technicien_id in intervenant_ids:
-                    continue
-                technicien = self._tech_repo.get_by_id(intervenant.technicien_id)
-                taux = technicien.cout_horaire if technicien and technicien.cout_horaire else intervenant.cout_horaire or 0.0
-                nom = technicien.nom_complet if technicien else f"Tech {intervenant.technicien_id}"
-                intervenant_ids.add(intervenant.technicien_id)
-            else:
-                taux = intervenant.cout_horaire or 0.0
-                nom = intervenant.nom_intervenant_externe or 'Externe'
-            intervenants_items.append({
-                'intervenant_id': getattr(intervenant, 'id_intervenant', None),
-                'nom': nom,
-                'technicien_id': getattr(intervenant, 'technicien_id', None),
-                'heures': heures,
-                'cout_horaire': taux,
-                'cout_total': heures * taux
-            })
-        # --- Détail frais externes ---
-        frais_par_type = {}
-        for frais in frais_externes:
-            type_frais = getattr(frais, 'type_frais', 'AUTRE')
-            if type_frais not in frais_par_type:
-                frais_par_type[type_frais] = []
-            montant_unitaire = frais.montant or 0.0
-            quantite = frais.quantite or 1
-            total = montant_unitaire * quantite
-            frais_par_type[type_frais].append({
-                'frais_id': getattr(frais, 'id_frais', None),
-                'type_frais': type_frais,
-                'description': getattr(frais, 'description', ''),
-                'montant': montant_unitaire,
-                'quantite': quantite,
-                'total': total,
-                'fournisseur': getattr(frais, 'fournisseur', ''),
-                'reference_piece': getattr(frais, 'reference_piece', None)
-            })
-        # --- Ventilation des coûts par centre de frais (type de frais) ---
-        couts_par_type = {}
-        try:
-            if self._mfe_repo:
-                couts_par_type = self._mfe_repo.get_summary_by_maintenance(maintenance_id) or {}
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération du résumé par type de frais : {e}")
-            couts_par_type = {}
-
-        # Calcul des totaux pour le résumé UI
-        pieces_internes_total = cout_pieces_internes
-        main_oeuvre_total = cout_main_oeuvre
-        frais_externes_total = cout_pieces_externes + cout_autres_frais
-
-        return {
-            'maintenance_id': maintenance_id,
-            'cout_main_oeuvre': cout_main_oeuvre,
-            'cout_pieces_internes': cout_pieces_internes,
-            'cout_pieces_externes': cout_pieces_externes,
-            'cout_autres_frais': cout_autres_frais,
-            'cout_total': cout_total,
-            'detail': {
-                'main_oeuvre': {
-                    'items': intervenants_items,
-                    'cout_total': main_oeuvre_total
-                },
-                'pieces_internes': {
-                    'cout_total': pieces_internes_total
-                },
-                'frais_externes': {
-                    'par_type': frais_par_type,
-                    'cout_total': frais_externes_total,
-                    'ventilation_centre_frais': couts_par_type
-                }
-            }
-        }
-
-    # ... (reste du service) ...

@@ -361,10 +361,8 @@ class StockService:
 
         # (Optionnel) Vérifier si stock suffisant pour une sortie
         if type_mouvement == 'SORTIE' and stock_apres < 0:
-             # Que faire ? Lever une erreur ? Autoriser stock négatif ?
-             # Pour l'instant, on logge un warning mais on continue.
-             logger.warning(f"Stock insuffisant pour sortie Pièce ID {piece_id}. Stock avant: {stock_avant}, Demande: {-delta_stock}, Stock après: {stock_apres}")
-             # raise ValueError(f"Stock insuffisant pour la pièce ID {piece_id}") # Décommenter pour bloquer
+            logger.error(f"Stock insuffisant pour sortie Pièce ID {piece_id}. Stock avant: {stock_avant}, Demande: {-delta_stock}, Stock après: {stock_apres}")
+            raise ValueError(f"Stock insuffisant pour la pièce ID {piece_id} (stock actuel: {stock_avant}, demande: {-delta_stock})")
 
         # 3. Créer l'objet MouvementStock
         mvt = MouvementStock(

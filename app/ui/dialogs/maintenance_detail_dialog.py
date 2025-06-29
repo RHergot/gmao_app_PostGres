@@ -33,7 +33,10 @@ class MaintenanceDetailDialog(QDialog):
         
         self.maintenance_id = maintenance_id
         self.ot_id = ot_id
-        self.maintenance_service = maintenance_service or MaintenanceService()
+        
+        if maintenance_service is None:
+            raise RuntimeError("L'instance de MaintenanceService doit être fournie par l'application principale (avec FinanceService injecté).")
+        self.maintenance_service = maintenance_service
         
         # Récupérer les données
         self.maintenance = None

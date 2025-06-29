@@ -118,7 +118,7 @@ class MaintenanceReportDialog(QDialog):
 
         group_details = QGroupBox(self.tr("Détails de l'Intervention Réelle"))
         form_details = QFormLayout(group_details)
-        form_details.addRow(self.tr("Réalisé par (*):"), self.technicien_combo)
+        form_details.addRow(self.tr("Responsable Intervention (*):"), self.technicien_combo)
         form_details.addRow(self.tr("Date/Heure Début (*):"), self.date_debut_edit)
         form_details.addRow(self.tr("Date/Heure Fin (*):"), self.date_fin_edit)
         form_details.addRow(self.tr("Type Réel Travaux (*):"), self.type_reel_combo)
@@ -185,6 +185,10 @@ class MaintenanceReportDialog(QDialog):
         if not self.maintenance_to_edit: # Set default dates only for new reports
             self.date_debut_edit.setDateTime(QDateTime.currentDateTime())
             self.date_fin_edit.setDateTime(QDateTime.currentDateTime())
+
+        # Vérification stricte : le service financier doit être injecté
+        if not hasattr(self.maintenance_service, '_finance_service') or self.maintenance_service._finance_service is None:
+            raise RuntimeError("L'instance de MaintenanceService fournie n'a pas reçu de FinanceService (set_finance_service non appelé). Vérifiez l'initialisation dans main.py.")
 
     def _on_couts_modifies(self):
         """Callback pour mettre à jour l'affichage ou la validation après modification des coûts."""
@@ -478,8 +482,9 @@ class MaintenanceReportDialog(QDialog):
                     maintenance_id = maintenance.id_maintenance if hasattr(maintenance, "id_maintenance") else None
                 else:
                     # Création
-                    maintenance_id = self.maintenance_service.add_maintenance(data)
-                    self.maintenance_to_edit = self.maintenance_service.get_maintenance_by_id(maintenance_id)
+                    maintenance = self.maintenance_service.record_maintenance(data)
+                    maintenance_id = maintenance.id_maintenance if hasattr(maintenance, "id_maintenance") else None
+                    self.maintenance_to_edit = maintenance
             except Exception as e:
                 logger.error(f"Erreur lors de la sauvegarde du rapport: {e}")
                 QMessageBox.critical(self, self.tr("Erreur"), self.tr("Impossible de sauvegarder le rapport : %1").replace("%1", str(e)))

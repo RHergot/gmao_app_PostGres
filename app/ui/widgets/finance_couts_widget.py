@@ -41,10 +41,9 @@ class IntervenantDialog(QDialog):
         self.init_ui()
         
     def init_ui(self):
+        layout = QVBoxLayout()
         self.setWindowTitle(self.tr("Intervenant") if not self.intervenant else self.tr("Modifier Intervenant"))
         self.setMinimumWidth(450)
-        
-        layout = QVBoxLayout()
         
         # Type d'intervenant (interne ou externe)
         type_group = QGroupBox(self.tr("Type d'intervenant"))
@@ -244,10 +243,9 @@ class FraisExterneDialog(QDialog):
         self.init_ui()
         
     def init_ui(self):
+        layout = QVBoxLayout()
         self.setWindowTitle(self.tr("Frais externe") if not self.frais else self.tr("Modifier frais externe"))
         self.setMinimumWidth(450)
-        
-        layout = QVBoxLayout()
         
         # Description
         self.description = QLineEdit()
@@ -382,19 +380,23 @@ class FinanceCoutsWidget(QWidget):
     def __init__(self, maintenance_id: int, parent=None):
         super().__init__(parent)
         self.maintenance_id = maintenance_id
-        
+        # Initialisation explicite des labels à None pour éviter les erreurs d'attribut
+        self.cout_main_oeuvre_label = None
+        self.cout_pieces_internes_label = None
+        self.cout_pieces_externes_label = None
+        self.cout_autres_frais_label = None
+        self.cout_total_label = None
+        self.cout_total_detail_label = None
         # Repositories
         self.technicien_repo = TechnicienRepository()
         self.intervenant_repo = MaintenanceIntervenantRepository()
         self.frais_repo = MaintenanceFraisExterneRepository()
-        
         # Service financier
         self.finance_service = FinanceService()
-        
         # Liste des techniciens (pour les combos)
         self.techniciens = []
-        
         self.init_ui()
+        # Appeler load_data APRÈS l'initialisation complète de l'UI
         self.load_data()
     
     def init_ui(self):
@@ -443,33 +445,10 @@ class FinanceCoutsWidget(QWidget):
         self.frais_table.horizontalHeader().setStretchLastSection(True)
         self.frais_table.setSelectionBehavior(QTableWidget.SelectRows)
         frais_layout.addWidget(self.frais_table)
-        
-        # Boutons frais
-        frais_buttons = QHBoxLayout()
-        self.add_frais_button = QPushButton(self.tr("Ajouter frais"))
-        self.add_frais_button.clicked.connect(self.add_frais)
-        frais_buttons.addWidget(self.add_frais_button)
-        frais_buttons.addStretch()
-        frais_layout.addLayout(frais_buttons)
-        
+        # Pas de bouton "Ajouter frais" en mode consultation
         self.frais_tab.setLayout(frais_layout)
         self.tab_widget.addTab(self.frais_tab, self.tr("Frais externes"))
 
-    def add_frais(self):
-        """Ajoute un nouveau frais externe"""
-        dialog = FraisExterneDialog(self.maintenance_id, parent=self)
-        if dialog.exec():
-            try:
-                data = dialog.get_frais_data()
-                frais = MaintenanceFraisExterne(**data)
-                self.frais_repo.add(frais)
-                self.refresh_frais()
-                self.recalculer_couts()
-                QMessageBox.information(self, self.tr("Frais externe ajouté"), self.tr("Le frais externe a été ajouté avec succès."))
-            except Exception as e:
-                logger.error(f"Erreur lors de l'ajout d'un frais externe: {e}")
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible d'ajouter le frais externe : %1").replace("%1", str(e)))
-        
         # Onglet Résumé financier
         self.resume_tab = QWidget()
         resume_layout = QVBoxLayout()
@@ -674,6 +653,16 @@ class FinanceCoutsWidget(QWidget):
     
     def refresh_resume(self):
         """Rafraîchit le résumé financier"""
+        # Vérification explicite de l'initialisation des labels
+        if not all([
+            self.cout_main_oeuvre_label,
+            self.cout_pieces_internes_label,
+            self.cout_pieces_externes_label,
+            self.cout_autres_frais_label,
+            self.cout_total_label,
+            self.cout_total_detail_label
+        ]):
+            raise RuntimeError("FinanceCoutsWidget: Un ou plusieurs labels ne sont pas initialisés avant refresh_resume() !")
         # Récupérer les données financières actuelles depuis la base de données
         resume = self.finance_service.get_resume_couts_maintenance(self.maintenance_id)
         if not resume:
@@ -728,14 +717,10 @@ class FinanceCoutsWidget(QWidget):
             except Exception as e:
                 logger.error(f"Erreur lors de la modification d'un intervenant: {e}")
                 QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible de modifier l'intervenant : %1").replace("%1", str(e)))
-        self.cout_main_oeuvre_label.setText(self.tr("%1 €").replace("%1", f"{resume['ventilation']['main_oeuvre']['total']:.2f}"))
-        self.cout_pieces_internes_label.setText(self.tr("%1 €").replace("%1", f"{resume['ventilation']['pieces_internes']['total']:.2f}"))
-        self.cout_pieces_externes_label.setText(self.tr("%1 €").replace("%1", f"{resume['ventilation']['frais_externes']['pieces_externes']['total']:.2f}"))
-        self.cout_autres_frais_label.setText(self.tr("%1 €").replace("%1", f"{resume['ventilation']['frais_externes']['autres_frais']['total']:.2f}"))
-        cout_total = resume['cout_total']
-        self.cout_total_label.setText(self.tr("Coût total : %1 €").replace("%1", f"{cout_total:.2f}"))
-        self.cout_total_detail_label.setText(self.tr("%1 €").replace("%1", f"{cout_total:.2f}"))
-
+        # Rafraîchir l'affichage et les coûts
+        self.refresh_intervenants()
+        self.recalculer_couts()
+    
     def add_intervenant(self):
         """Ajoute un nouvel intervenant"""
         dialog = IntervenantDialog(self.maintenance_id, self.techniciens, parent=self)

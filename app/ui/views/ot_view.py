@@ -31,6 +31,7 @@ from app.utils.i18n import translate_type, translate_priority, translate_status,
 from app.ui.dialogs.ot_dialog import OTDialog
 from app.ui.dialogs.maintenance_report_dialog import MaintenanceReportDialog
 from app.ui.views.maintenance_detail_view import MaintenanceDetailView
+from app.ui.dialogs.maintenance_detail_dialog import MaintenanceDetailDialog
 
 # Importer les constantes depuis le service de maintenance
 from app.core.services.maintenance_service import (
@@ -734,6 +735,7 @@ class OTView(QWidget):
         action_view_report = QAction(self.tr("👁 Voir Rapport..."), self)
         action_cancel = QAction(self.tr("❌ Annuler OT"), self)
         action_delete = QAction(self.tr("🗑️ Supprimer OT"), self)
+        action_details = QAction(self.tr("🔍 Détails Maintenance..."), self)
 
         # --- Connexion des Actions ---
         action_edit.triggered.connect(self.edit_ot)
@@ -745,6 +747,7 @@ class OTView(QWidget):
         action_view_report.triggered.connect(lambda checked=False, otid=ot_id: self.view_maintenance_report(otid))
         action_cancel.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, "Annule"))
         action_delete.triggered.connect(self.delete_ot)
+        action_details.triggered.connect(lambda checked=False, otid=ot_id: self.open_maintenance_details_dialog(otid))
 
         # --- Activation/Désactivation des Actions ---
         action_edit.setEnabled(current_status in OT_STATUTS_OUVERT)
@@ -770,6 +773,7 @@ class OTView(QWidget):
         menu.addSeparator()
         menu.addAction(action_cancel)
         menu.addAction(action_delete)
+        menu.addAction(action_details)
 
         menu.exec(self.table_widget.mapToGlobal(pos))
 
@@ -1305,3 +1309,22 @@ class OTView(QWidget):
         except Exception as e:
             QMessageBox.critical(self, self.tr("Erreur Inattendue"), self.tr("Erreur lors de la duplication:\n%1").replace('%1', str(e)))
             logger.exception(f"Erreur inattendue duplication OT {original_ot_id}.")
+
+    @Slot(int)
+    def open_maintenance_details_dialog(self, ot_id: int):
+        """Ouvre le dialogue de détails de maintenance pour l'OT donné."""
+        try:
+            maintenance = self.maintenance_service.get_maintenance_for_ot(ot_id)
+            if not maintenance:
+                QMessageBox.information(self, self.tr("Aucun Rapport"), self.tr("Aucun rapport de maintenance pour l'OT %1.").replace('%1', str(ot_id)))
+                return
+            dialog = MaintenanceDetailDialog(
+                maintenance_id=maintenance.id_maintenance,
+                ot_id=ot_id,
+                maintenance_service=self.maintenance_service,
+                parent=self
+            )
+            dialog.exec()
+        except Exception as e:
+            QMessageBox.critical(self, self.tr("Erreur"), self.tr("Erreur lors de l'ouverture des détails de maintenance : %1").replace('%1', str(e)))
+            logger.error(f"Erreur ouverture détails maintenance OT {ot_id}: {e}", exc_info=True)

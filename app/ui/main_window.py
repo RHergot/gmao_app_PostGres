@@ -588,7 +588,6 @@ class MainWindow(QMainWindow):
         # --- Ajout de la page d'accueil WelcomeView (déjà instanciée avec maintenance_service) ---
         self.stacked_widget.insertWidget(self.VIEW_INDEX_WELCOME, self.welcome_view)
 
-        self.ot_view = OTView(self.machine_service, self.maintenance_service, self.stock_service, self.user_service, self) # Passer aussi user_service
         # Mise à jour barre de statut pour afficher l'utilisateur?
         self.update_status_bar(self.tr(f"Prêt. Connecté en tant que: {self.current_user.login} ({self.current_user.role})"))
         # 1. Vue Utilisateurs (Phase 1)
@@ -672,7 +671,7 @@ class MainWindow(QMainWindow):
         # 8. Vue Ordres de Travail (Phase 3b)
         try:
             # OTView a besoin des deux services pour listes machines/tech et actions OT/Maint
-            self.ot_view = OTView(self.machine_service, self.maintenance_service, self.stock_service, self)
+            self.ot_view = OTView(self.machine_service, self.maintenance_service, self.stock_service, self.user_service, self)
             self.stacked_widget.addWidget(self.ot_view)
             logger.debug("OTView ajoutée.")
         except Exception as e:

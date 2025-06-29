@@ -212,7 +212,7 @@ TABLES: Dict[str, str] = {
             id SERIAL PRIMARY KEY,
             piece_id INTEGER NOT NULL,
             type_mouvement_id INTEGER NOT NULL,
-            quantite INTEGER NOT NULL,
+            quantite INTEGER NOT NULL, -- Peut être négatif pour les sorties/ajustements
             emplacement_source_id INTEGER,
             emplacement_destination_id INTEGER,
             utilisateur_id INTEGER,

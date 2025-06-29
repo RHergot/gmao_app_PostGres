@@ -357,6 +357,10 @@ def main():
             piece_repo=piece_repo                         # Repository des pièces
         )
 
+        # Injection du service financier dans MaintenanceService (pour calculs de coûts)
+        # CRITIQUE: Cette injection doit être faite AVANT toute utilisation de maintenance_service
+        maintenance_service.set_finance_service(finance_service)
+
         # ---- Résolution de la dépendance circulaire ----
         # Utilisation du pattern d'injection par setter pour résoudre une dépendance circulaire
         # maintenance_service a besoin de preventive_service et vice-versa
