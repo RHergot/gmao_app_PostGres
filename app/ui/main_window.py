@@ -42,6 +42,10 @@ from PySide6.QtCore import Slot  # Décorateur pour les gestionnaires de signaux
 # Modules standard pour la gestion des fichiers et données
 import json  # Pour sérialiser/désérialiser les préférences utilisateur
 import os  # Pour les opérations sur le système de fichiers
+import traceback  # Pour l'affichage des traces d'erreur
+
+# Imports liés à la base de données
+from app.data.database import close_connection
 
 # Chemin du fichier de configuration utilisateur
 # Utilise le répertoire utilisateur pour persister les préférences entre les sessions
@@ -1159,16 +1163,11 @@ class MainWindow(QMainWindow):
         dialog.show()
         QApplication.processEvents()
         try:
-            # 2. Effectuer le backup
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            db_path = os.path.join(project_root, 'gmao_data.db')
-            if os.path.exists(db_path):
-                backup_database(db_path)
-                logger.info(f"Sauvegarde automatique terminée ({db_path})")
-            else:
-                logger.info("Utilisation de PostgreSQL : pas de fichier local à sauvegarder.")
+            # 2. PostgreSQL: pas de backup local nécessaire
+            # Pour PostgreSQL, la sauvegarde doit être gérée au niveau serveur
+            logger.info("Utilisation de PostgreSQL : pas de fichier local à sauvegarder.")
         except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde automatique: {e}\n{traceback.format_exc()}")
+            logger.error(f"Erreur lors de la fermeture: {e}\n{traceback.format_exc()}")
             QMessageBox.critical(self, "Erreur Backup", f"Erreur lors de la sauvegarde automatique de la base de données :\n{e}")
         finally:
             dialog.close()

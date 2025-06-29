@@ -247,6 +247,17 @@ class FraisExterneDialog(QDialog):
         self.setWindowTitle(self.tr("Frais externe") if not self.frais else self.tr("Modifier frais externe"))
         self.setMinimumWidth(450)
         
+        # Type de frais
+        self.type_combo = QComboBox()
+        for type_frais in VALID_TYPES_FRAIS:
+            type_label = self.tr(type_frais.replace('_', ' ').title())
+            self.type_combo.addItem(type_label, type_frais)
+        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        
+        # Formulaire principal
+        form_layout = QFormLayout()
+        form_layout.addRow(self.tr("Type de frais :"), self.type_combo)
+        
         # Description
         self.description = QLineEdit()
         form_layout.addRow(self.tr("Description :"), self.description)
@@ -721,35 +732,63 @@ class FinanceCoutsWidget(QWidget):
         self.refresh_intervenants()
         self.recalculer_couts()
     
-    def add_intervenant(self):
-        """Ajoute un nouvel intervenant"""
-        dialog = IntervenantDialog(self.maintenance_id, self.techniciens, parent=self)
-        if dialog.exec():
+    def delete_intervenant(self, intervenant: MaintenanceIntervenant):
+        """Supprime un intervenant"""
+        reply = QMessageBox.question(self, self.tr("Confirmer suppression"),
+                                    self.tr("Êtes-vous sûr de vouloir supprimer cet intervenant ?"),
+                                    QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
             try:
-                data = dialog.get_intervenant_data()
-                intervenant = MaintenanceIntervenant(**data)
-                self.intervenant_repo.add(intervenant)
-                self.refresh_intervenants()
-                self.recalculer_couts()
-                QMessageBox.information(self, self.tr("Intervenant ajouté"), 
-                                       self.tr("L'intervenant a été ajouté avec succès."))
-            except Exception as e:
-                logger.error(f"Erreur lors de l'ajout d'un intervenant: {e}")
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible d'ajouter l'intervenant : %1").replace("%1", str(e)))
-
-    def edit_intervenant(self, intervenant: MaintenanceIntervenant):
-        """Modifie un intervenant existant"""
-        dialog = IntervenantDialog(self.maintenance_id, self.techniciens, intervenant, parent=self)
-        if dialog.exec():
-            try:
-                data = dialog.get_intervenant_data()
-                updated_intervenant = MaintenanceIntervenant(**data)
-                self.intervenant_repo.update(updated_intervenant)
+                self.intervenant_repo.delete(intervenant.id_intervenant)
                 self.refresh_intervenants()
                 self.recalculer_couts()
             except Exception as e:
-                logger.error(f"Erreur lors de la modification d'un intervenant: {e}")
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible de modifier l'intervenant : %1").replace("%1", str(e)))
+                logger.error(f"Erreur lors de la suppression d'un intervenant: {e}")
+                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible de supprimer l'intervenant : %1").replace("%1", str(e)))
+    
+    def add_frais(self):
+        """Ajoute un nouveau frais externe"""
+        dialog = FraisExterneDialog(self.maintenance_id, parent=self)
+        if dialog.exec():
+            try:
+                data = dialog.get_frais_data()
+                frais = MaintenanceFraisExterne(**data)
+                self.frais_repo.add(frais)
+                self.refresh_frais()
+                self.recalculer_couts()
+                QMessageBox.information(self, self.tr("Frais ajouté"), 
+                                       self.tr("Le frais externe a été ajouté avec succès."))
+            except Exception as e:
+                logger.error(f"Erreur lors de l'ajout d'un frais externe: {e}")
+                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible d'ajouter le frais externe : %1").replace("%1", str(e)))
+    
+    def edit_frais(self, frais: MaintenanceFraisExterne):
+        """Modifie un frais externe existant"""
+        dialog = FraisExterneDialog(self.maintenance_id, frais, parent=self)
+        if dialog.exec():
+            try:
+                data = dialog.get_frais_data()
+                updated_frais = MaintenanceFraisExterne(**data)
+                self.frais_repo.update(updated_frais)
+                self.refresh_frais()
+                self.recalculer_couts()
+            except Exception as e:
+                logger.error(f"Erreur lors de la modification d'un frais externe: {e}")
+                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible de modifier le frais externe : %1").replace("%1", str(e)))
+    
+    def delete_frais(self, frais: MaintenanceFraisExterne):
+        """Supprime un frais externe"""
+        reply = QMessageBox.question(self, self.tr("Confirmer suppression"),
+                                    self.tr("Êtes-vous sûr de vouloir supprimer ce frais externe ?"),
+                                    QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                self.frais_repo.delete(frais.id_frais)
+                self.refresh_frais()
+                self.recalculer_couts()
+            except Exception as e:
+                logger.error(f"Erreur lors de la suppression d'un frais externe: {e}")
+                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible de supprimer le frais externe : %1").replace("%1", str(e)))
 
     def recalculer_couts(self):
         try:
