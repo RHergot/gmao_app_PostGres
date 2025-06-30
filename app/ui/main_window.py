@@ -42,6 +42,11 @@ from PySide6.QtCore import Slot  # Décorateur pour les gestionnaires de signaux
 # Modules standard pour la gestion des fichiers et données
 import json  # Pour sérialiser/désérialiser les préférences utilisateur
 import os  # Pour les opérations sur le système de fichiers
+import traceback  # Pour les traces d'erreur détaillées
+
+# Imports pour les fonctions de base de données et backup
+from app.data.database import close_connection
+from app.utils.backup_utils import backup_database
 
 # Chemin du fichier de configuration utilisateur
 # Utilise le répertoire utilisateur pour persister les préférences entre les sessions
@@ -922,6 +927,11 @@ class MainWindow(QMainWindow):
         self.demande_intervention_action = QAction(self.tr("Demande Intervention"), self)
         self.demande_intervention_action.setStatusTip(self.tr("Accéder au formulaire de demande d'intervention"))
 
+        # Action pour Dashboard KPI Financiers
+        self.kpi_dashboard_action = QAction(self.tr("📊 Dashboard KPI"), self)
+        self.kpi_dashboard_action.setStatusTip(self.tr("Accéder aux indicateurs de performance financiers"))
+        self.kpi_dashboard_action.triggered.connect(self.show_kpi_dashboard)
+
         # Dans MainWindow.create_actions
         if can_access("Gérer les OTs", self.user_role):
             self.manage_ots_action = QAction(self.tr("Gérer les OTs"), self)
@@ -1023,6 +1033,11 @@ class MainWindow(QMainWindow):
                 manage_menu.insertAction(actions[2], self.manage_ots_action)
             else:
                 manage_menu.addAction(self.manage_ots_action)
+        
+        # Ajout du Dashboard KPI (accessible à tous les rôles)
+        if hasattr(self, 'kpi_dashboard_action') and self.kpi_dashboard_action:
+            manage_menu.addSeparator()
+            manage_menu.addAction(self.kpi_dashboard_action)
             
         
         # Ajout des actions de gestion des gammes si autorisées
@@ -1196,6 +1211,31 @@ class MainWindow(QMainWindow):
             "<p>&copy; 2025 Windsurf Engineering</p>"
         )
         QMessageBox.about(self, title, message)
+
+    def show_kpi_dashboard(self):
+        """Affiche le dashboard des KPI financiers."""
+        try:
+            from app.ui.kpi.kpi_dashboard_clean import KPIDashboard
+            
+            # Créer et afficher le dashboard KPI dans une nouvelle fenêtre
+            kpi_window = KPIDashboard(parent=self)
+            kpi_window.setWindowTitle("📊 Dashboard KPI Financiers - GMAO")
+            kpi_window.resize(1920, 1080)
+            kpi_window.show()
+            
+            # Garder une référence pour éviter que la fenêtre soit détruite
+            if not hasattr(self, '_kpi_windows'):
+                self._kpi_windows = []
+            self._kpi_windows.append(kpi_window)
+            
+            logger.info("Dashboard KPI ouvert avec succès")
+            
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dashboard KPI: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir le dashboard KPI:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dashboard KPI: {e}")
+            self.show_popup("Erreur", f"Erreur lors de l'ouverture du dashboard KPI:\n{str(e)}", QMessageBox.Critical)
 
     def _connect_view_actions(self):
         """

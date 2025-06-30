@@ -99,8 +99,27 @@ class KPIDashboard(QWidget):
         # === BARRE DE STATUT ===
         self.create_status_bar()
         
+        # === RACCOURCIS CLAVIER ===
+        self.setup_shortcuts()
+        
         # Proportions du splitter (20% sidebar, 80% contenu)
         splitter.setSizes([300, 900])
+    
+    def setup_shortcuts(self):
+        """Configure les raccourcis clavier."""
+        from PySide6.QtGui import QShortcut, QKeySequence
+        
+        # Raccourci Escape pour fermer
+        escape_shortcut = QShortcut(QKeySequence(Qt.Key_Escape), self)
+        escape_shortcut.activated.connect(self.close_dashboard)
+        
+        # Raccourci Ctrl+W pour fermer (standard Windows/Mac)
+        close_shortcut = QShortcut(QKeySequence.StandardKey.Close, self)
+        close_shortcut.activated.connect(self.close_dashboard)
+        
+        # Raccourci F5 pour actualiser
+        refresh_shortcut = QShortcut(QKeySequence(Qt.Key_F5), self)
+        refresh_shortcut.activated.connect(self.refresh_data)
         
     def create_sidebar(self, parent):
         """Crée la sidebar de navigation et contrôles."""
@@ -228,13 +247,40 @@ class KPIDashboard(QWidget):
         
         # Bouton rafraîchir
         btn_refresh = QPushButton("🔄 Actualiser")
+        btn_refresh.setToolTip("Actualiser les données (F5)")
         btn_refresh.clicked.connect(self.refresh_data)
         actions_layout.addWidget(btn_refresh)
         
         # Bouton export
         btn_export = QPushButton("📊 Exporter")
+        btn_export.setToolTip("Exporter les données vers Excel")
         btn_export.clicked.connect(self.export_data)
         actions_layout.addWidget(btn_export)
+        
+        # Séparateur
+        actions_layout.addSpacing(10)
+        
+        # Bouton fermer
+        btn_close = QPushButton("❌ Fermer")
+        btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                padding: 8px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+            QPushButton:pressed {
+                background-color: #bd2130;
+            }
+        """)
+        btn_close.setToolTip("Fermer le dashboard KPI (Échap ou Ctrl+W)")
+        btn_close.clicked.connect(self.close_dashboard)
+        actions_layout.addWidget(btn_close)
         
         parent_layout.addWidget(actions_group)
     
@@ -483,6 +529,31 @@ class KPIDashboard(QWidget):
     def show_error_message(self, message: str):
         """Affiche un message d'erreur."""
         QMessageBox.critical(self, "Erreur", message)
+    
+    def close_dashboard(self):
+        """Ferme le dashboard KPI."""
+        try:
+            logger.info("Fermeture du dashboard KPI demandée par l'utilisateur")
+            
+            # Demander confirmation si des données sont en cours de traitement
+            if hasattr(self, 'progress_bar') and self.progress_bar.isVisible():
+                reply = QMessageBox.question(
+                    self, 
+                    "Confirmer la fermeture", 
+                    "Des opérations sont en cours. Voulez-vous vraiment fermer le dashboard ?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if reply != QMessageBox.Yes:
+                    return
+            
+            # Fermer la fenêtre
+            self.close()
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la fermeture du dashboard: {e}")
+            # Forcer la fermeture même en cas d'erreur
+            self.close()
     
     def export_data(self):
         """Exporte les données actuelles."""
