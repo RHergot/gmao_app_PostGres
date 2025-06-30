@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bon de Commande #{{ commande.numero_commande or commande.id_commande }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        h1, h2 { color: #2d3a4b; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+        th, td { border: 1px solid #bbb; padding: 6px 8px; }
+        th { background: #e8e8e8; }
+        .section { margin-bottom: 1.2em; }
+        .footer { font-size: 0.9em; color: #888; text-align: center; margin-top: 2em; }
+    </style>
+</head>
+<body>
+    <h1>Bon de Commande</h1>
+    <div class="section">
+        <strong>N° Commande :</strong> {{ commande.numero_commande or commande.id_commande }}<br>
+        <strong>Date de commande :</strong> {{ commande.date_commande.strftime('%d/%m/%Y') if commande.date_commande else '' }}<br>
+        <strong>Fournisseur :</strong> {{ fournisseur.nom if fournisseur else '' }}<br>
+        <strong>Statut :</strong> {{ commande.statut }}<br>
+    </div>
+    <div class="section">
+        <h2>Adresse de Livraison</h2>
+        <div>{{ commande.adresse_livraison or '' }}</div>
+    </div>
+    <div class="section">
+        <h2>Lignes de Commande</h2>
+        <table>
+            <tr>
+                <th>Référence</th>
+                <th>Désignation</th>
+                <th>Quantité</th>
+                <th>Prix Unitaire HT</th>
+                <th>Total HT</th>
+            </tr>
+            {% for ligne in lignes %}
+            <tr>
+                <td>{{ ligne.piece_reference }}</td>
+                <td>{{ ligne.piece_nom }}</td>
+                <td>{{ ligne.quantite_commandee }}</td>
+                <td>{{ '{:.2f}'.format(ligne.prix_unitaire_ht) }}</td>
+                <td>{{ '{:.2f}'.format(ligne.quantite_commandee * ligne.prix_unitaire_ht) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">Aucune ligne de commande</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="section">
+        {% set tva_rate = 0.21 %}
+        <strong>Total HT :</strong> {{ '%.2f' % commande.total_ht if commande.total_ht is defined and commande.total_ht is not none else '' }}<br>
+        <strong>Frais de port :</strong> {{ '%.2f' % commande.frais_port if commande.frais_port is defined and commande.frais_port is not none else '' }}<br>
+        <strong>TVA ({{ (tva_rate * 100)|round(0)|int }}%) :</strong> 
+            {% set base_ht = (commande.total_ht if commande.total_ht is defined and commande.total_ht is not none else 0) + (commande.frais_port if commande.frais_port is defined and commande.frais_port is not none else 0) %}
+            {{ '%.2f' % (base_ht * tva_rate) }}<br>
+        <strong>Total TTC :</strong> {{ '%.2f' % (base_ht * (1 + tva_rate)) }}<br>
+    </div>
+    <div class="footer">
+        GMAO Industrielle – Généré le {{ now.strftime('%d/%m/%Y %H:%M') }} – Page 1/1
+    </div>
+</body>
+</html>

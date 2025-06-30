@@ -19,6 +19,12 @@ Le flux de démarrage est le suivant :
 7. Démarrage de la boucle d'événements Qt
 """
 
+# Configuration du chemin pour permettre les imports depuis le répertoire parent
+import sys
+import os
+# Ajouter le répertoire parent au sys.path pour résoudre les imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Importation des modules nécessaires
 import sys  # Pour interagir avec le système (ex. : arguments, sortie)
 import logging  # Pour la gestion des logs et la traçabilité des actions
@@ -196,7 +202,7 @@ def main():
         # --- Préparation et initialisation de la base de données PostgreSQL ---
         
         # Nettoyage des fichiers .pyc et __pycache__ pour éviter les problèmes de cache Python
-        # Particulirement utile après des mises à jour de code
+        # Particulièrement utile après des mises à jour de code
         clean_project()
         
         # Établissement de la connexion PostgreSQL

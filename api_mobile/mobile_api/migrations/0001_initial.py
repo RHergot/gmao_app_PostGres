@@ -7,272 +7,438 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Emplacement',
+            name="Emplacement",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=100, unique=True)),
-                ('type', models.CharField(blank=True, max_length=50, null=True)),
-                ('allee', models.CharField(blank=True, max_length=50, null=True)),
-                ('etagere', models.CharField(blank=True, max_length=50, null=True)),
-                ('niveau', models.CharField(blank=True, max_length=50, null=True)),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=100, unique=True)),
+                ("type", models.CharField(blank=True, max_length=50, null=True)),
+                ("allee", models.CharField(blank=True, max_length=50, null=True)),
+                ("etagere", models.CharField(blank=True, max_length=50, null=True)),
+                ("niveau", models.CharField(blank=True, max_length=50, null=True)),
             ],
             options={
-                'db_table': 'emplacement',
-                'managed': False,
+                "db_table": "emplacement",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Equipe',
+            name="Equipe",
             fields=[
-                ('id_equipe', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255, unique=True)),
-                ('domaine_expertise', models.CharField(blank=True, max_length=255, null=True)),
+                ("id_equipe", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=255, unique=True)),
+                (
+                    "domaine_expertise",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
             ],
             options={
-                'db_table': 'equipe',
-                'managed': False,
+                "db_table": "equipe",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Fabricant',
+            name="Fabricant",
             fields=[
-                ('id_fabricant', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255, unique=True)),
-                ('contact', models.TextField(blank=True, null=True)),
-                ('site_web', models.URLField(blank=True, null=True)),
-                ('support_technique', models.TextField(blank=True, null=True)),
+                ("id_fabricant", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=255, unique=True)),
+                ("contact", models.TextField(blank=True, null=True)),
+                ("site_web", models.URLField(blank=True, null=True)),
+                ("support_technique", models.TextField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'fabricant',
-                'managed': False,
+                "db_table": "fabricant",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Fournisseur',
+            name="Fournisseur",
             fields=[
-                ('id_fournisseur', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255, unique=True)),
-                ('contact', models.TextField(blank=True, null=True)),
-                ('adresse', models.TextField(blank=True, null=True)),
-                ('telephone', models.CharField(blank=True, max_length=50, null=True)),
-                ('email', models.EmailField(blank=True, max_length=254, null=True)),
-                ('delai_livraison_moyen_j', models.IntegerField(blank=True, null=True)),
-                ('devise', models.CharField(blank=True, max_length=10, null=True)),
-                ('note_qualite', models.DecimalField(blank=True, decimal_places=1, max_digits=3, null=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id_fournisseur", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=255, unique=True)),
+                ("contact", models.TextField(blank=True, null=True)),
+                ("adresse", models.TextField(blank=True, null=True)),
+                ("telephone", models.CharField(blank=True, max_length=50, null=True)),
+                ("email", models.EmailField(blank=True, max_length=254, null=True)),
+                ("delai_livraison_moyen_j", models.IntegerField(blank=True, null=True)),
+                ("devise", models.CharField(blank=True, max_length=10, null=True)),
+                (
+                    "note_qualite",
+                    models.DecimalField(
+                        blank=True, decimal_places=1, max_digits=3, null=True
+                    ),
+                ),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'fournisseur',
-                'managed': False,
+                "db_table": "fournisseur",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='InterventionPiece',
+            name="InterventionPiece",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('quantite', models.IntegerField()),
-                ('lot', models.CharField(blank=True, max_length=100, null=True)),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("quantite", models.IntegerField()),
+                ("lot", models.CharField(blank=True, max_length=100, null=True)),
             ],
             options={
-                'db_table': 'intervention_piece',
-                'managed': False,
+                "db_table": "intervention_piece",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Machine',
+            name="Machine",
             fields=[
-                ('id_machine', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255)),
-                ('serial', models.CharField(blank=True, max_length=255, null=True, unique=True)),
-                ('modele', models.CharField(blank=True, max_length=255, null=True)),
-                ('date_installation', models.DateField(blank=True, null=True)),
-                ('localisation', models.CharField(blank=True, max_length=255, null=True)),
-                ('etat', models.CharField(blank=True, max_length=50, null=True)),
-                ('informations_techniques', models.TextField(blank=True, null=True)),
-                ('criticite', models.CharField(blank=True, max_length=50, null=True)),
-                ('garantie_fin', models.DateField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id_machine", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=255)),
+                (
+                    "serial",
+                    models.CharField(
+                        blank=True, max_length=255, null=True, unique=True
+                    ),
+                ),
+                ("modele", models.CharField(blank=True, max_length=255, null=True)),
+                ("date_installation", models.DateField(blank=True, null=True)),
+                (
+                    "localisation",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                ("etat", models.CharField(blank=True, max_length=50, null=True)),
+                ("informations_techniques", models.TextField(blank=True, null=True)),
+                ("criticite", models.CharField(blank=True, max_length=50, null=True)),
+                ("garantie_fin", models.DateField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'machine',
-                'managed': False,
+                "db_table": "machine",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Maintenance',
+            name="Maintenance",
             fields=[
-                ('id_maintenance', models.AutoField(primary_key=True, serialize=False)),
-                ('date_debut_reelle', models.DateTimeField()),
-                ('date_fin_reelle', models.DateTimeField()),
-                ('duree_intervention_h', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
-                ('type_reel', models.CharField(choices=[('PREVENTIF', 'Préventif'), ('CORRECTIF', 'Correctif'), ('AMELIORATION', 'Amélioration')], max_length=20)),
-                ('description_travaux', models.TextField()),
-                ('resultat', models.TextField()),
-                ('cout_manuel_v1', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('cout_main_oeuvre', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('cout_pieces_internes', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('cout_pieces_externes', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('cout_autres_frais', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('cout_total', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('evaluation_qualite', models.IntegerField(blank=True, null=True)),
-                ('impact_production', models.CharField(blank=True, max_length=255, null=True)),
-                ('notes_technicien', models.TextField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ("id_maintenance", models.AutoField(primary_key=True, serialize=False)),
+                ("date_debut_reelle", models.DateTimeField()),
+                ("date_fin_reelle", models.DateTimeField()),
+                (
+                    "duree_intervention_h",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=5, null=True
+                    ),
+                ),
+                (
+                    "type_reel",
+                    models.CharField(
+                        choices=[
+                            ("PREVENTIF", "Préventif"),
+                            ("CORRECTIF", "Correctif"),
+                            ("AMELIORATION", "Amélioration"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("description_travaux", models.TextField()),
+                ("resultat", models.TextField()),
+                (
+                    "cout_manuel_v1",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "cout_main_oeuvre",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "cout_pieces_internes",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "cout_pieces_externes",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "cout_autres_frais",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "cout_total",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                ("evaluation_qualite", models.IntegerField(blank=True, null=True)),
+                (
+                    "impact_production",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                ("notes_technicien", models.TextField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'db_table': 'maintenance',
-                'managed': False,
+                "db_table": "maintenance",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='MouvementStock',
+            name="MouvementStock",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('quantite', models.IntegerField()),
-                ('date_mouvement', models.DateTimeField(auto_now_add=True)),
-                ('reference_document', models.CharField(blank=True, max_length=100, null=True)),
-                ('commentaire', models.TextField(blank=True, null=True)),
-                ('cout_unitaire', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('cout_total', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('stock_avant', models.IntegerField()),
-                ('stock_apres', models.IntegerField()),
-                ('valide', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('statut_mouvement', models.CharField(choices=[('EN_ATTENTE', 'En attente'), ('CONFIRME', 'Confirmé'), ('ANNULE', 'Annulé')], default='CONFIRME', max_length=20)),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("quantite", models.IntegerField()),
+                ("date_mouvement", models.DateTimeField(auto_now_add=True)),
+                (
+                    "reference_document",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
+                ("commentaire", models.TextField(blank=True, null=True)),
+                (
+                    "cout_unitaire",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                (
+                    "cout_total",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                ("stock_avant", models.IntegerField()),
+                ("stock_apres", models.IntegerField()),
+                ("valide", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "statut_mouvement",
+                    models.CharField(
+                        choices=[
+                            ("EN_ATTENTE", "En attente"),
+                            ("CONFIRME", "Confirmé"),
+                            ("ANNULE", "Annulé"),
+                        ],
+                        default="CONFIRME",
+                        max_length=20,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'mouvement_stock',
-                'ordering': ['-date_mouvement'],
-                'managed': False,
+                "db_table": "mouvement_stock",
+                "ordering": ["-date_mouvement"],
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='OrdreTravail',
+            name="OrdreTravail",
             fields=[
-                ('id_ot', models.AutoField(primary_key=True, serialize=False)),
-                ('numero_ot', models.CharField(blank=True, max_length=50, null=True, unique=True)),
-                ('gamme_id', models.IntegerField(blank=True, null=True)),
-                ('type', models.CharField(choices=[('PREVENTIF', 'Préventif'), ('CORRECTIF', 'Correctif'), ('AMELIORATION', 'Amélioration')], max_length=20)),
-                ('description', models.TextField()),
-                ('date_creation', models.DateTimeField(auto_now_add=True)),
-                ('date_prevue', models.DateTimeField(blank=True, null=True)),
-                ('duree_prevue_min', models.IntegerField(blank=True, null=True)),
-                ('priorite', models.CharField(choices=[('BASSE', 'Basse'), ('NORMALE', 'Normale'), ('HAUTE', 'Haute'), ('CRITIQUE', 'Critique')], default='NORMALE', max_length=20)),
-                ('urgence', models.IntegerField(default=0)),
-                ('statut', models.CharField(choices=[('PLANIFIE', 'Planifié'), ('ASSIGNE', 'Assigné'), ('EN_COURS', 'En cours'), ('TERMINE', 'Terminé'), ('ANNULE', 'Annulé')], default='PLANIFIE', max_length=20)),
-                ('notes_planification', models.TextField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id_ot", models.AutoField(primary_key=True, serialize=False)),
+                (
+                    "numero_ot",
+                    models.CharField(blank=True, max_length=50, null=True, unique=True),
+                ),
+                ("gamme_id", models.IntegerField(blank=True, null=True)),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("PREVENTIF", "Préventif"),
+                            ("CORRECTIF", "Correctif"),
+                            ("AMELIORATION", "Amélioration"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("description", models.TextField()),
+                ("date_creation", models.DateTimeField(auto_now_add=True)),
+                ("date_prevue", models.DateTimeField(blank=True, null=True)),
+                ("duree_prevue_min", models.IntegerField(blank=True, null=True)),
+                (
+                    "priorite",
+                    models.CharField(
+                        choices=[
+                            ("BASSE", "Basse"),
+                            ("NORMALE", "Normale"),
+                            ("HAUTE", "Haute"),
+                            ("CRITIQUE", "Critique"),
+                        ],
+                        default="NORMALE",
+                        max_length=20,
+                    ),
+                ),
+                ("urgence", models.IntegerField(default=0)),
+                (
+                    "statut",
+                    models.CharField(
+                        choices=[
+                            ("PLANIFIE", "Planifié"),
+                            ("ASSIGNE", "Assigné"),
+                            ("EN_COURS", "En cours"),
+                            ("TERMINE", "Terminé"),
+                            ("ANNULE", "Annulé"),
+                        ],
+                        default="PLANIFIE",
+                        max_length=20,
+                    ),
+                ),
+                ("notes_planification", models.TextField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'ordre_travail',
-                'ordering': ['-date_creation'],
-                'managed': False,
+                "db_table": "ordre_travail",
+                "ordering": ["-date_creation"],
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Piece',
+            name="Piece",
             fields=[
-                ('id_piece', models.AutoField(primary_key=True, serialize=False)),
-                ('reference', models.CharField(max_length=255, unique=True)),
-                ('nom', models.CharField(max_length=255)),
-                ('prix_unitaire', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('stock_alerte', models.IntegerField(blank=True, null=True)),
-                ('stock_actuel', models.IntegerField(default=0)),
-                ('stock_reserve', models.IntegerField(default=0)),
-                ('unite', models.CharField(max_length=50)),
-                ('categorie', models.CharField(blank=True, max_length=100, null=True)),
-                ('emplacement_stockage', models.CharField(blank=True, max_length=255, null=True)),
-                ('statut', models.CharField(choices=[('ACTIF', 'Actif'), ('OBSOLETE', 'Obsolète'), ('DISCONTINUE', 'Discontinué')], default='ACTIF', max_length=20)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id_piece", models.AutoField(primary_key=True, serialize=False)),
+                ("reference", models.CharField(max_length=255, unique=True)),
+                ("nom", models.CharField(max_length=255)),
+                (
+                    "prix_unitaire",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                ("stock_alerte", models.IntegerField(blank=True, null=True)),
+                ("stock_actuel", models.IntegerField(default=0)),
+                ("stock_reserve", models.IntegerField(default=0)),
+                ("unite", models.CharField(max_length=50)),
+                ("categorie", models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "emplacement_stockage",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "statut",
+                    models.CharField(
+                        choices=[
+                            ("ACTIF", "Actif"),
+                            ("OBSOLETE", "Obsolète"),
+                            ("DISCONTINUE", "Discontinué"),
+                        ],
+                        default="ACTIF",
+                        max_length=20,
+                    ),
+                ),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'piece',
-                'managed': False,
+                "db_table": "piece",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Site',
+            name="Site",
             fields=[
-                ('id_site', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255, unique=True)),
-                ('adresse', models.TextField(blank=True, null=True)),
-                ('ville', models.CharField(blank=True, max_length=100, null=True)),
-                ('pays', models.CharField(blank=True, max_length=100, null=True)),
-                ('contact_principal', models.CharField(blank=True, max_length=255, null=True)),
+                ("id_site", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=255, unique=True)),
+                ("adresse", models.TextField(blank=True, null=True)),
+                ("ville", models.CharField(blank=True, max_length=100, null=True)),
+                ("pays", models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "contact_principal",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
             ],
             options={
-                'db_table': 'site',
-                'managed': False,
+                "db_table": "site",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Technicien',
+            name="Technicien",
             fields=[
-                ('id_technicien', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255)),
-                ('prenom', models.CharField(blank=True, max_length=255, null=True)),
-                ('qualification', models.CharField(blank=True, max_length=255, null=True)),
-                ('contact', models.CharField(blank=True, max_length=255, null=True)),
-                ('cout_horaire', models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True)),
-                ('actif', models.BooleanField(default=True)),
+                ("id_technicien", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=255)),
+                ("prenom", models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "qualification",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                ("contact", models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "cout_horaire",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=8, null=True
+                    ),
+                ),
+                ("actif", models.BooleanField(default=True)),
             ],
             options={
-                'db_table': 'technicien',
-                'managed': False,
+                "db_table": "technicien",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='TypeMachine',
+            name="TypeMachine",
             fields=[
-                ('id_type_machine', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=255, unique=True)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('categorie', models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "id_type_machine",
+                    models.AutoField(primary_key=True, serialize=False),
+                ),
+                ("nom", models.CharField(max_length=255, unique=True)),
+                ("description", models.TextField(blank=True, null=True)),
+                ("categorie", models.CharField(blank=True, max_length=100, null=True)),
             ],
             options={
-                'db_table': 'type_machine',
-                'managed': False,
+                "db_table": "type_machine",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='TypeMouvement',
+            name="TypeMouvement",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('nom', models.CharField(max_length=50, unique=True)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('impact_stock', models.IntegerField()),
-                ('actif', models.BooleanField(default=True)),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("nom", models.CharField(max_length=50, unique=True)),
+                ("description", models.TextField(blank=True, null=True)),
+                ("impact_stock", models.IntegerField()),
+                ("actif", models.BooleanField(default=True)),
             ],
             options={
-                'db_table': 'type_mouvement',
-                'managed': False,
+                "db_table": "type_mouvement",
+                "managed": False,
             },
         ),
         migrations.CreateModel(
-            name='Utilisateur',
+            name="Utilisateur",
             fields=[
-                ('id_utilisateur', models.AutoField(primary_key=True, serialize=False)),
-                ('login', models.CharField(max_length=255, unique=True)),
-                ('mot_de_passe_hash', models.CharField(max_length=255)),
-                ('nom_complet', models.CharField(blank=True, max_length=255, null=True)),
-                ('role', models.CharField(max_length=50)),
-                ('email', models.EmailField(blank=True, max_length=254, null=True, unique=True)),
-                ('actif', models.BooleanField(default=True)),
-                ('derniere_connexion', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id_utilisateur", models.AutoField(primary_key=True, serialize=False)),
+                ("login", models.CharField(max_length=255, unique=True)),
+                ("mot_de_passe_hash", models.CharField(max_length=255)),
+                (
+                    "nom_complet",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                ("role", models.CharField(max_length=50)),
+                (
+                    "email",
+                    models.EmailField(
+                        blank=True, max_length=254, null=True, unique=True
+                    ),
+                ),
+                ("actif", models.BooleanField(default=True)),
+                ("derniere_connexion", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'utilisateur',
-                'managed': False,
+                "db_table": "utilisateur",
+                "managed": False,
             },
         ),
     ]

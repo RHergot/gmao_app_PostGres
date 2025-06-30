@@ -4,7 +4,12 @@ Charge et fournit les paramètres de configuration de l'application.
 Utilise python-dotenv pour charger depuis un fichier .env.
 """
 
+# Configuration du chemin pour permettre les imports depuis le répertoire parent
+import sys
 import os
+# Ajouter le répertoire parent au sys.path pour résoudre les imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from dotenv import load_dotenv, find_dotenv
 
 # Utiliser find_dotenv() pour localiser le fichier .env de manière robuste.
@@ -53,3 +58,26 @@ if DATABASE_TYPE in ['postgres', 'postgresql']:
     print(f"Configuration finale : DB=PostgreSQL ({POSTGRES_DB}) sur {POSTGRES_HOST}:{POSTGRES_PORT}, LOG_LEVEL={LOG_LEVEL}")
 else:
     print(f"Configuration finale : DB={DATABASE_TYPE} à {DATABASE_PATH}, LOG_LEVEL={LOG_LEVEL}")
+
+# --- Énumération des langues supportées ---
+from enum import Enum
+
+class Language(Enum):
+    """Énumération des langues supportées par l'application."""
+    FRENCH = "fr"
+    ENGLISH = "en"
+    GERMAN = "de"
+    SPANISH = "es"
+    ITALIAN = "it"
+    PORTUGUESE = "pt"
+
+# --- Configuration globale de l'application ---
+class AppConfig:
+    """Configuration globale de l'application."""
+    def __init__(self):
+        self.language = Language.FRENCH  # Langue par défaut
+        self.version = APP_VERSION
+        self.name = APP_NAME
+
+# Instance globale de configuration
+app_config = AppConfig()

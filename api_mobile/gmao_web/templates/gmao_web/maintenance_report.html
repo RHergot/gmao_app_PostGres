@@ -267,12 +267,75 @@
                         {% trans "Cancel" %}
                     </button>
                     <button type="submit" class="btn btn-success" id="submit-btn">
-                        <i class="bi bi-check-lg me-2"></i>{% trans "Save Maintenance Report" %}
+                        <i class="bi bi-check-lg me-2"></i>
+                        <span id="submit-btn-text">
+                            {% if mode == 'edit' %}
+                                {% trans "Update Maintenance Report" %}
+                            {% else %}
+                                {% trans "Save Maintenance Report" %}
+                            {% endif %}
+                        </span>
                     </button>
                 </div>
             </div>
         </div>
     </form>
+</div>
+
+<!-- Modal d'ajout de pièce -->
+<div class="modal fade" id="addPieceModal" tabindex="-1" aria-labelledby="addPieceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPieceModalLabel">
+                    <i class="bi bi-plus-circle me-2"></i>{% trans "Add Part" %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-piece-form">
+                    <div class="mb-3">
+                        <label for="piece-select" class="form-label">{% trans "Part" %} *</label>
+                        <select class="form-select" id="piece-select" required>
+                            <option value="">{% trans "Select a part..." %}</option>
+                        </select>
+                        <div class="form-text">{% trans "Only parts with available stock are shown" %}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="piece-quantity" class="form-label">{% trans "Quantity" %} *</label>
+                                <input type="number" class="form-control" id="piece-quantity" min="1" max="999" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="piece-lot" class="form-label">{% trans "Lot/Serial Number" %}</label>
+                                <input type="text" class="form-control" id="piece-lot" maxlength="50">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="piece-info" style="display: none;">
+                        <div class="alert alert-info">
+                            <small>
+                                <strong>{% trans "Selected part:" %}</strong> <span id="selected-piece-info"></span><br>
+                                <strong>{% trans "Unit price:" %}</strong> €<span id="selected-piece-price">0.00</span><br>
+                                <strong>{% trans "Available stock:" %}</strong> <span id="selected-piece-stock">0</span>
+                            </small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    {% trans "Cancel" %}
+                </button>
+                <button type="button" class="btn btn-primary" onclick="addPiece()">
+                    <i class="bi bi-plus-lg me-2"></i>{% trans "Add Part" %}
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Overlay de chargement -->
@@ -285,12 +348,38 @@
 
 <!-- Données Django pour JavaScript -->
 {{ ot_id|json_script:"ot-id" }}
+{% if mode == 'edit' %}
+    {{ existing_maintenance|json_script:"existing-maintenance" }}
+    {{ maintenance_id|json_script:"maintenance-id" }}
+{% endif %}
 
 <script>
+console.log('JS maintenance_report.html chargé'); // LOG tout en haut
+
 // Variables globales
 let formData = {};
 let piecesUtilisees = [];
 const otId = JSON.parse(document.getElementById('ot-id').textContent);
+let isInitializing = false; // Flag pour éviter les boucles pendant l'initialisation
+let isCalculatingCosts = false; // Protection contre les appels concurrents
+
+// Mode édition
+const isEditMode = {% if mode == 'edit' %}true{% else %}false{% endif %};
+{% if mode == 'edit' %}
+const existingMaintenance = JSON.parse(document.getElementById('existing-maintenance').textContent);
+const maintenanceId = JSON.parse(document.getElementById('maintenance-id').textContent);
+{% else %}
+const existingMaintenance = null;
+const maintenanceId = null;
+{% endif %}
+
+// Logs de débogage
+console.log('=== INITIALIZATION DEBUG ===');
+console.log('isEditMode:', isEditMode);
+console.log('existingMaintenance:', existingMaintenance);
+console.log('maintenanceId:', maintenanceId);
+console.log('otId:', otId);
+console.log('=============================');
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
@@ -299,10 +388,63 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupEventListeners() {
-    // Calcul automatique des coûts quand les dates changent
-    document.getElementById('date_debut').addEventListener('change', calculateCosts);
-    document.getElementById('date_fin').addEventListener('change', calculateCosts);
-    document.getElementById('technicien').addEventListener('change', calculateCosts);
+    // Calcul automatique des coûts quand les dates changent (seulement après initialisation)
+    document.getElementById('date_debut').addEventListener('change', function() {
+        if (!isInitializing) calculateCosts();
+    });
+    document.getElementById('date_fin').addEventListener('change', function() {
+        if (!isInitializing) calculateCosts();
+    });
+    document.getElementById('technicien').addEventListener('change', function() {
+        if (!isInitializing) calculateCosts();
+    });
+    
+    // Affichage des infos de la pièce sélectionnée dans le modal
+    document.getElementById('piece-select').addEventListener('change', function() {
+        const selectedOption = this.selectedOptions[0];
+        const infoDiv = document.getElementById('piece-info');
+        
+        if (this.value) {
+            document.getElementById('selected-piece-info').textContent = 
+                `${selectedOption.dataset.reference} - ${selectedOption.dataset.nom}`;
+            document.getElementById('selected-piece-price').textContent = 
+                parseFloat(selectedOption.dataset.prix || 0).toFixed(2);
+            document.getElementById('selected-piece-stock').textContent = 
+                selectedOption.textContent.match(/Stock: (\d+)/)?.[1] || 'N/A';
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.style.display = 'none';
+        }
+    });
+    
+    // Validation de la quantité par rapport au stock disponible
+    document.getElementById('piece-quantity').addEventListener('input', function() {
+        const pieceSelect = document.getElementById('piece-select');
+        const selectedOption = pieceSelect.selectedOptions[0];
+        
+        if (pieceSelect.value && selectedOption) {
+            const stockText = selectedOption.textContent.match(/Stock: (\d+)/)?.[1];
+            const stockDisponible = parseInt(stockText) || 0;
+            const quantiteDemandee = parseInt(this.value) || 0;
+            
+            if (quantiteDemandee > stockDisponible) {
+                this.classList.add('is-invalid');
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.classList.add('invalid-feedback');
+                    this.parentNode.appendChild(feedback);
+                }
+                feedback.textContent = `Stock disponible: ${stockDisponible}`;
+            } else {
+                this.classList.remove('is-invalid');
+                const feedback = this.nextElementSibling;
+                if (feedback && feedback.classList.contains('invalid-feedback')) {
+                    feedback.remove();
+                }
+            }
+        }
+    });
     
     // Soumission du formulaire
     document.getElementById('maintenance-form').addEventListener('submit', submitMaintenanceReport);
@@ -311,24 +453,33 @@ function setupEventListeners() {
 async function loadFormData() {
     try {
         showLoading(true);
-        const response = await fetch(`/api/maintenance/form-data/${otId}/`);
+        console.log('Loading form data for OT ID:', otId);
+        
+        const response = await fetch(`/web-api/maintenance/form-data/${otId}/`);
         
         if (!response.ok) {
-            throw new Error('Failed to load form data');
+            const errorText = await response.text();
+            console.error('Server responded with:', response.status, errorText);
+            throw new Error(`Server error ${response.status}: ${errorText}`);
         }
         
         formData = await response.json();
+        console.log('Form data loaded successfully:', formData);
+        console.log('PIECES reçues:', formData.pieces); // <-- LOG DEBUG
         populateForm();
         
     } catch (error) {
         console.error('Error loading form data:', error);
-        showError('Failed to load form data. Please refresh the page.');
+        alert('Erreur JS loadFormData: ' + error); // LOG catch
+        showError(`Failed to load form data: ${error.message}. Please refresh the page.`);
     } finally {
         showLoading(false);
     }
 }
 
 function populateForm() {
+    isInitializing = true; // Désactiver les événements pendant l'initialisation
+    
     // Informations OT
     const otInfo = formData.ordre_travail;
     document.getElementById('work-order-info').innerHTML = `
@@ -336,14 +487,21 @@ function populateForm() {
         <small class="text-muted">${otInfo.machine_nom} @ ${otInfo.site_nom}</small>
     `;
     
-    // Techniciens
+    // Techniciens - vider d'abord puis ajouter
     const technicienSelect = document.getElementById('technicien');
+    const firstTechOption = technicienSelect.firstElementChild;
+    technicienSelect.innerHTML = '';
+    if (firstTechOption && firstTechOption.value === '') {
+        technicienSelect.appendChild(firstTechOption);
+    }
+    
     formData.techniciens.forEach(tech => {
         const option = document.createElement('option');
         option.value = tech.id_technicien;
         option.textContent = tech.nom_complet;
         technicienSelect.appendChild(option);
     });
+    technicienSelect.disabled = formData.techniciens.length === 0;
     
     // Options de formulaire
     populateSelect('type_reel', formData.options.types);
@@ -351,26 +509,118 @@ function populateForm() {
     populateSelect('evaluation_qualite', formData.options.evaluations, 'value', 'label');
     populateSelect('impact_production', formData.options.impacts);
     
-    // Pièces pour le modal
+    // Pièces pour le modal - vider d'abord puis ajouter
     const pieceSelect = document.getElementById('piece-select');
+    const firstPieceOption = pieceSelect.firstElementChild;
+    pieceSelect.innerHTML = '';
+    if (firstPieceOption && firstPieceOption.value === '') {
+        pieceSelect.appendChild(firstPieceOption);
+    }
+    
     formData.pieces.forEach(piece => {
         const option = document.createElement('option');
         option.value = piece.id_piece;
-        option.textContent = `${piece.reference} - ${piece.nom} (Stock: ${piece.stock_disponible})`;
+        option.textContent = `${piece.reference} - ${piece.nom} (Stock: ${piece.stock_actuel || 0})`;
         option.dataset.prix = piece.prix_unitaire || 0;
         option.dataset.reference = piece.reference;
         option.dataset.nom = piece.nom;
+        option.dataset.stock = piece.stock_actuel || 0;
         pieceSelect.appendChild(option);
     });
+    pieceSelect.disabled = formData.pieces.length === 0;
+    // Sécurité : forcer l'activation si des pièces sont présentes
+    if (formData.pieces.length > 0) {
+        pieceSelect.disabled = false;
+    }
+    console.log('pieceSelect.disabled:', pieceSelect.disabled, 'pieces:', formData.pieces.length);
     
-    // Dates par défaut
-    const now = new Date();
-    document.getElementById('date_debut').value = formatDateTimeLocal(now);
-    document.getElementById('date_fin').value = formatDateTimeLocal(new Date(now.getTime() + 60*60*1000)); // +1h
+    // Dates par défaut ou pré-remplissage en mode édition
+    if (isEditMode && existingMaintenance) {
+        // MODE ÉDITION : Pré-remplir avec les données existantes
+        console.log('MODE ÉDITION DÉTECTÉ');
+        console.log('Mode édition - pré-remplissage avec:', existingMaintenance);
+        console.log('Technicien ID à sélectionner:', existingMaintenance.technicien_id);
+        
+        // Sélectionner le technicien
+        technicienSelect.value = existingMaintenance.technicien_id;
+        console.log('Technicien sélectionné:', technicienSelect.value, technicienSelect.selectedOptions[0]?.textContent);
+        
+        // Dates (conversion ISO vers datetime-local)
+        const dateDebut = new Date(existingMaintenance.date_debut_reelle);
+        const dateFin = new Date(existingMaintenance.date_fin_reelle);
+        const dateDebutLocal = formatDateTimeLocal(dateDebut);
+        const dateFinLocal = formatDateTimeLocal(dateFin);
+        
+        console.log('Dates à remplir:', dateDebutLocal, dateFinLocal);
+        document.getElementById('date_debut').value = dateDebutLocal;
+        document.getElementById('date_fin').value = dateFinLocal;
+        console.log('Dates remplies:', document.getElementById('date_debut').value, document.getElementById('date_fin').value);
+        
+        // Champs texte
+        document.getElementById('travaux_realises').value = existingMaintenance.description_travaux || '';
+        document.getElementById('notes').value = existingMaintenance.notes_technicien || '';
+        document.getElementById('impact_production').value = existingMaintenance.impact_production || '';
+        
+        console.log('Champs texte remplis:', {
+            travaux: document.getElementById('travaux_realises').value,
+            notes: document.getElementById('notes').value,
+            impact: document.getElementById('impact_production').value
+        });
+        
+        // Sélects avec valeurs
+        document.getElementById('type_reel').value = existingMaintenance.type_reel || '';
+        document.getElementById('resultat').value = existingMaintenance.resultat || '';
+        document.getElementById('evaluation_qualite').value = existingMaintenance.evaluation_qualite || '';
+        
+        console.log('Selects remplis:', {
+            type: document.getElementById('type_reel').value,
+            resultat: document.getElementById('resultat').value,
+            eval: document.getElementById('evaluation_qualite').value
+        });
+        
+        // Pièces utilisées
+        if (existingMaintenance.pieces_utilisees && existingMaintenance.pieces_utilisees.length > 0) {
+            console.log('Ajout des pièces utilisées:', existingMaintenance.pieces_utilisees);
+            piecesUtilisees = existingMaintenance.pieces_utilisees.map(piece => ({
+                piece_id: piece.piece_id,
+                reference: piece.reference,
+                nom: piece.nom,
+                quantite: piece.quantite,
+                lot: piece.lot,
+                prix_unitaire: piece.prix_unitaire,
+                cout_total: piece.cout_total
+            }));
+            updatePiecesTable();
+        }
+        
+        // Mettre à jour le titre de la page
+        document.title = 'Modifier Rapport - ' + otInfo.numero_ot;
+        
+    } else {
+        // MODE CRÉATION : Dates par défaut
+        console.log('MODE CRÉATION - dates par défaut');
+        const now = new Date();
+        document.getElementById('date_debut').value = formatDateTimeLocal(now);
+        document.getElementById('date_fin').value = formatDateTimeLocal(new Date(now.getTime() + 60*60*1000)); // +1h
+    }
+    
+    isInitializing = false; // Réactiver les événements
+    
+    // Recalculer les coûts initiaux après avoir réactivé les événements
+    setTimeout(() => calculateCosts(), 100);
 }
 
 function populateSelect(selectId, options, valueKey = null, textKey = null) {
     const select = document.getElementById(selectId);
+    
+    // Vider les options existantes (sauf la première qui est le placeholder)
+    const firstOption = select.firstElementChild;
+    select.innerHTML = '';
+    if (firstOption && firstOption.value === '') {
+        select.appendChild(firstOption);
+    }
+    
+    // Ajouter les nouvelles options
     options.forEach(option => {
         const optionElement = document.createElement('option');
         if (valueKey && textKey) {
@@ -382,6 +632,9 @@ function populateSelect(selectId, options, valueKey = null, textKey = null) {
         }
         select.appendChild(optionElement);
     });
+    
+    // Activer le select si des options ont été ajoutées
+    select.disabled = options.length === 0;
 }
 
 function showAddPieceModal() {
@@ -391,32 +644,66 @@ function showAddPieceModal() {
 
 function addPiece() {
     const pieceSelect = document.getElementById('piece-select');
-    const quantity = parseInt(document.getElementById('piece-quantity').value);
-    const lot = document.getElementById('piece-lot').value;
+    const quantityInput = document.getElementById('piece-quantity');
+    const lotInput = document.getElementById('piece-lot');
     
-    if (!pieceSelect.value || !quantity) {
-        showError('Please select a part and enter quantity');
+    const quantity = parseInt(quantityInput.value);
+    const lot = lotInput.value.trim();
+    
+    // Validations
+    if (!pieceSelect.value) {
+        showError('{% trans "Please select a part" %}');
+        return;
+    }
+    
+    if (!quantity || quantity <= 0) {
+        showError('{% trans "Please enter a valid quantity" %}');
         return;
     }
     
     const selectedOption = pieceSelect.selectedOptions[0];
-    const piece = {
-        piece_id: parseInt(pieceSelect.value),
-        reference: selectedOption.dataset.reference,
-        nom: selectedOption.dataset.nom,
-        quantite: quantity,
-        prix_unitaire: parseFloat(selectedOption.dataset.prix),
-        lot_numero: lot,
-        cout_total: quantity * parseFloat(selectedOption.dataset.prix)
-    };
+    const stockDisponible = parseInt(selectedOption.dataset.stock) || 0;
     
-    piecesUtilisees.push(piece);
+    if (quantity > stockDisponible) {
+        showError(`{% trans "Insufficient stock. Available:" %} ${stockDisponible}`);
+        return;
+    }
+    
+    // Vérifier si la pièce n'est pas déjà dans la liste
+    const pieceId = parseInt(pieceSelect.value);
+    const existingPiece = piecesUtilisees.find(p => p.piece_id === pieceId);
+    
+    if (existingPiece) {
+        // Mettre à jour la quantité de la pièce existante
+        existingPiece.quantite += quantity;
+        existingPiece.cout_total = existingPiece.quantite * existingPiece.prix_unitaire;
+        showSuccess('{% trans "Quantity updated for existing part" %}');
+    } else {
+        // Ajouter nouvelle pièce
+        const piece = {
+            piece_id: pieceId,
+            reference: selectedOption.dataset.reference,
+            nom: selectedOption.dataset.nom,
+            quantite: quantity,
+            prix_unitaire: parseFloat(selectedOption.dataset.prix) || 0,
+            lot_numero: lot,
+            cout_total: quantity * (parseFloat(selectedOption.dataset.prix) || 0)
+        };
+        
+        piecesUtilisees.push(piece);
+        showSuccess('{% trans "Part added successfully" %}');
+    }
+    
     updatePiecesTable();
     calculateCosts();
     
     // Fermer le modal et réinitialiser
-    bootstrap.Modal.getInstance(document.getElementById('addPieceModal')).hide();
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addPieceModal'));
+    if (modal) {
+        modal.hide();
+    }
     document.getElementById('add-piece-form').reset();
+    document.getElementById('piece-info').style.display = 'none';
 }
 
 function removePiece(index) {
@@ -462,19 +749,27 @@ function updatePiecesTable() {
 }
 
 async function calculateCosts() {
-    const dateDebut = document.getElementById('date_debut').value;
-    const dateFin = document.getElementById('date_fin').value;
-    const technicienId = document.getElementById('technicien').value;
-    
-    let dureeMinutes = 0;
-    if (dateDebut && dateFin) {
-        const debut = new Date(dateDebut);
-        const fin = new Date(dateFin);
-        dureeMinutes = Math.max(0, (fin - debut) / (1000 * 60));
+    // Éviter les appels concurrents
+    if (isCalculatingCosts) {
+        console.log('Calculate costs already in progress, skipping...');
+        return;
     }
     
+    isCalculatingCosts = true;
+    
     try {
-        const response = await fetch('/api/maintenance/calculate-cost/', {
+        const dateDebut = document.getElementById('date_debut').value;
+        const dateFin = document.getElementById('date_fin').value;
+        const technicienId = document.getElementById('technicien').value;
+        
+        let dureeMinutes = 0;
+        if (dateDebut && dateFin) {
+            const debut = new Date(dateDebut);
+            const fin = new Date(dateFin);
+            dureeMinutes = Math.max(0, (fin - debut) / (1000 * 60));
+        }
+        
+        const response = await fetch('/web-api/maintenance/calculate-cost/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -490,9 +785,13 @@ async function calculateCosts() {
         if (response.ok) {
             const costData = await response.json();
             updateCostDisplay(costData);
+        } else {
+            console.warn('Cost calculation failed:', response.status, response.statusText);
         }
     } catch (error) {
         console.error('Error calculating costs:', error);
+    } finally {
+        isCalculatingCosts = false;
     }
 }
 
@@ -505,38 +804,119 @@ function updateCostDisplay(costData) {
 async function submitMaintenanceReport(event) {
     event.preventDefault();
     
+    // Validation du formulaire côté client
+    const form = event.target;
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        showError('{% trans "Please fill in all required fields" %}');
+        return;
+    }
+    
     const formData = new FormData(event.target);
     const maintenanceData = Object.fromEntries(formData.entries());
+    
+    // Validations supplémentaires
+    const dateDebut = new Date(maintenanceData.date_debut);
+    const dateFin = new Date(maintenanceData.date_fin);
+    
+    if (dateFin <= dateDebut) {
+        showError('{% trans "End date must be after start date" %}');
+        return;
+    }
+    
+    if (!maintenanceData.technicien_id) {
+        showError('{% trans "Please select a technician" %}');
+        return;
+    }
+    
+    if (!maintenanceData.travaux_realises.trim()) {
+        showError('{% trans "Please describe the work performed" %}');
+        return;
+    }
+    
+    // --- Validation stricte des champs obligatoires type_reel et resultat ---
+    const typeReel = maintenanceData.type_reel;
+    const resultat = maintenanceData.resultat;
+    // Ces listes doivent correspondre à celles du backend
+    const TYPE_CHOICES = ['Préventif', 'Correctif', 'Demande', 'Amélioration'];
+    const RESULTAT_CHOICES = ['Réparé', 'Remplacé', 'Ajusté', 'Nettoyé', 'Lubrifié', 'Inspecté'];
+
+    if (!typeReel || !TYPE_CHOICES.includes(typeReel)) {
+        showError('{% trans "Please select a valid maintenance type." %}');
+        document.getElementById('type_reel').focus();
+        return;
+    }
+    if (!resultat || !RESULTAT_CHOICES.includes(resultat)) {
+        showError('{% trans "Please select a valid result." %}');
+        document.getElementById('resultat').focus();
+        return;
+    }
     
     try {
         showLoading(true);
         
-        const response = await fetch(`/api/maintenance/create/${otId}/`, {
-            method: 'POST',
+        // Préparer les données pour l'API
+        const requestData = {
+            maintenance: {
+                ...maintenanceData,
+                date_debut: maintenanceData.date_debut,
+                date_fin: maintenanceData.date_fin
+            },
+            pieces: piecesUtilisees.map(piece => ({
+                piece_id: piece.piece_id,
+                quantite: piece.quantite,
+                lot_numero: piece.lot_numero || ''
+            }))
+        };
+        
+        console.log('Sending maintenance report data:', requestData);
+        
+        // Déterminer l'URL et la méthode selon le mode
+        const url = isEditMode 
+            ? `/web-api/maintenance/update/${maintenanceId}/`
+            : `/web-api/maintenance/create/${otId}/`;
+        const method = isEditMode ? 'PATCH' : 'POST';
+        
+        console.log(`Submitting ${method} to ${url}`);
+        
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({
-                maintenance: maintenanceData,
-                pieces: piecesUtilisees
-            })
+            body: JSON.stringify(requestData)
         });
         
         if (response.ok) {
             const result = await response.json();
-            showSuccess('Maintenance report created successfully!');
+            const successMessage = isEditMode 
+                ? '{% trans "Maintenance report updated successfully!" %}'
+                : '{% trans "Maintenance report created successfully!" %}';
+            showSuccess(successMessage);
+            
+            // Désactiver le formulaire pour éviter les doubles soumissions
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            const btnText = isEditMode ? '{% trans "Updated" %}' : '{% trans "Saved" %}';
+            submitBtn.innerHTML = `<i class="bi bi-check-lg me-2"></i>${btnText}`;
+            
+            // Rediriger après un délai
             setTimeout(() => {
                 window.location.href = '/';
             }, 2000);
         } else {
             const error = await response.json();
-            showError(error.error || 'Failed to create maintenance report');
+            console.error('Server error:', error);
+            const errorMessage = isEditMode 
+                ? '{% trans "Failed to update maintenance report" %}'
+                : '{% trans "Failed to create maintenance report" %}';
+            showError(error.error || error.message || errorMessage);
         }
         
     } catch (error) {
         console.error('Error submitting report:', error);
-        showError('Failed to submit maintenance report');
+        showError('{% trans "Failed to submit maintenance report. Please check your connection." %}');
     } finally {
         showLoading(false);
     }
@@ -562,13 +942,73 @@ function showLoading(show) {
 }
 
 function showError(message) {
-    // Utiliser Bootstrap toast ou alert
-    alert('Error: ' + message);
+    // Créer ou mettre à jour un toast d'erreur
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastHtml = `
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header text-bg-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong class="me-auto">{% trans "Error" %}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Auto-supprimer après 5 secondes
+    setTimeout(() => {
+        const toasts = toastContainer.querySelectorAll('.toast');
+        if (toasts.length > 0) {
+            toasts[0].remove();
+        }
+    }, 5000);
 }
 
 function showSuccess(message) {
-    // Utiliser Bootstrap toast ou alert
-    alert('Success: ' + message);
+    // Créer ou mettre à jour un toast de succès
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastHtml = `
+        <div class="toast show" role="alert" aria-live="polite" aria-atomic="true">
+            <div class="toast-header text-bg-success">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <strong class="me-auto">{% trans "Success" %}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    // Auto-supprimer après 3 secondes
+    setTimeout(() => {
+        const toasts = toastContainer.querySelectorAll('.toast');
+        if (toasts.length > 0) {
+            toasts[0].remove();
+        }
+    }, 3000);
 }
 
 function getCookie(name) {
