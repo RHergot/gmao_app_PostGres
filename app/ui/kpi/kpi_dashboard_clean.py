@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 try:
+    from config import APP_NAME, APP_VERSION, LOG_LEVEL  # Import de la configuration principale
     from app.core.services.kpi_service import KPIService
     from app.utils.logging_config import setup_logging
     # Import des widgets spécialisés
@@ -35,6 +36,10 @@ try:
     from app.ui.kpi.widgets.advanced_kpi_widget import AdvancedKPIWidget
 except ImportError as e:
     print(f"Erreur d'import KPIService: {e}")
+    # Valeurs par défaut si config.py n'est pas accessible
+    APP_NAME = "GMAO Industrielle"
+    APP_VERSION = "1.0"
+    LOG_LEVEL = "INFO"
     KPIService = None
     setup_logging = None
     # Widgets par défaut
@@ -68,7 +73,8 @@ class KPIDashboard(QWidget):
         # Configuration du logging
         if setup_logging:
             setup_logging()
-        logger.info("Initialisation du KPI Dashboard")
+        logger.info(f"Initialisation du KPI Dashboard - {APP_NAME} v{APP_VERSION}")
+        logger.debug(f"Niveau de log configuré: {LOG_LEVEL}")
         
         self.setup_ui()
         self.setup_connections()
@@ -78,7 +84,7 @@ class KPIDashboard(QWidget):
     
     def setup_ui(self):
         """Configure l'interface utilisateur."""
-        self.setWindowTitle("📊 Dashboard KPI Financiers")
+        self.setWindowTitle(f"📊 Dashboard KPI Financiers - {APP_NAME}")
         self.setMinimumSize(1200, 800)
         
         # Layout principal
@@ -132,7 +138,7 @@ class KPIDashboard(QWidget):
         sidebar_layout.setSpacing(15)
         
         # === TITRE SIDEBAR ===
-        title_label = QLabel("🎛️ Contrôles KPI")
+        title_label = QLabel(f"🎛️ Contrôles KPI\nv{APP_VERSION}")
         title_font = QFont()
         title_font.setPointSize(14)
         title_font.setBold(True)
