@@ -178,16 +178,16 @@ def main():
     from PySide6.QtCore import QTranslator
     import os
     
-    lang_code = app_config.language.value  # Sera "fr"
-    # Utilisation du chemin des traductions tel que défini originalement,
-    # en s'assurant que lang_code est bien "fr".
-    qm_path = os.path.abspath(os.path.join(f"{lang_code}_translations", f"{lang_code}.qm"))
+    lang_code = app_config.language.value  # ex: 'fr', 'en', etc.
+    # Construction du chemin absolu pour le dossier de traduction basé sur le dossier du script main.py
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # gmao_app_PostGres
+    qm_path = os.path.join(base_dir, f"{lang_code}_translations", f"{lang_code}.qm")
     translator = QTranslator()
     if translator.load(qm_path):
         app.installTranslator(translator)
-        logger.info(f"Traduction française chargée : {qm_path}")
+        logger.info(f"Traduction chargée : {qm_path}")
     else:
-        logger.warning(f"Impossible de charger la traduction française : {qm_path}")
+        logger.warning(f"Impossible de charger la traduction : {qm_path}")
     
     # Le log de la langue sélectionnée a été intégré au bloc de configuration de la langue par défaut.
     
@@ -375,7 +375,7 @@ def main():
 
         if app_config.language != Language.FRENCH:
             from PySide6.QtCore import QTranslator, QCoreApplication
-            translations_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f'{app_config.language.value}_translations'))
+            translations_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), f'{app_config.language.value}_translations')
             translators = []
             # Liste complète et unique de tous les fichiers .qm nécessaires
             translation_files = [

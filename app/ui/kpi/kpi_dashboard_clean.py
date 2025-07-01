@@ -2,6 +2,11 @@
 """
 Dashboard principal pour les KPI financiers de la GMAO.
 Permet de visualiser les coûts par centre de frais avec des graphiques interactifs.
+
+Note sur la traduction :
+Ce module utilise un système de dictionnaire de traductions (TRANSLATIONS + get_text())
+pour des raisons de simplicité et d'isolement. Le reste de l'application utilise
+QTranslator + self.tr() qui est la méthode standard Qt.
 """
 
 import sys
@@ -25,6 +30,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 try:
     from config import APP_NAME, APP_VERSION, LOG_LEVEL  # Import de la configuration principale
+    from app.config import app_config, Language  # Import de la configuration de langue
     from app.core.services.kpi_service import KPIService
     from app.utils.logging_config import setup_logging
     # Import des widgets spécialisés
@@ -52,6 +58,96 @@ except ImportError as e:
 
 import logging
 logger = logging.getLogger(__name__)
+
+# === TRADUCTIONS ===
+TRANSLATIONS = {
+    Language.FRENCH: {
+        "dashboard_title": "📊 Dashboard KPI Financiers",
+        "controls_title": "🎛️ Contrôles KPI",
+        "cost_center": "Centre de Frais",
+        "analysis_period": "Période d'Analyse",
+        "quick_summary": "📋 Résumé Rapide",
+        "actions": "Actions",
+        "refresh": "🔄 Actualiser",
+        "export": "📊 Exporter",
+        "close": "❌ Fermer",
+        "overview": "📊 Vue d'Ensemble",
+        "by_machine": "🏭 Par Machine",
+        "by_site": "🏢 Par Site", 
+        "by_team": "👥 Par Équipe",
+        "preventive_corrective": "🔧 Préventif vs Curatif",
+        "advanced_analysis": "🔬 Analyse Avancée",
+        "total_cost": "Coût Total",
+        "interventions": "Interventions",
+        "average_cost": "Coût Moyen",
+        "machines": "Machines",
+        "from": "Du:",
+        "to": "Au:",
+        "refresh_tooltip": "Actualiser les données (F5)",
+        "export_tooltip": "Exporter les données vers Excel",
+        "close_tooltip": "Fermer le dashboard KPI (Échap ou Ctrl+W)"
+    },
+    Language.ENGLISH: {
+        "dashboard_title": "📊 Financial KPI Dashboard",
+        "controls_title": "🎛️ KPI Controls",
+        "cost_center": "Cost Center",
+        "analysis_period": "Analysis Period",
+        "quick_summary": "📋 Quick Summary",
+        "actions": "Actions",
+        "refresh": "🔄 Refresh",
+        "export": "📊 Export",
+        "close": "❌ Close",
+        "overview": "📊 Overview",
+        "by_machine": "🏭 By Machine",
+        "by_site": "🏢 By Site",
+        "by_team": "👥 By Team",
+        "preventive_corrective": "🔧 Preventive vs Corrective",
+        "advanced_analysis": "🔬 Advanced Analysis",
+        "total_cost": "Total Cost",
+        "interventions": "Interventions",
+        "average_cost": "Average Cost",
+        "machines": "Machines",
+        "from": "From:",
+        "to": "To:",
+        "refresh_tooltip": "Refresh data (F5)",
+        "export_tooltip": "Export data to Excel",
+        "close_tooltip": "Close KPI dashboard (Esc or Ctrl+W)"
+    },
+    Language.GERMAN: {
+        "dashboard_title": "📊 Finanzkennzahlen Dashboard",
+        "controls_title": "🎛️ KPI Steuerung",
+        "cost_center": "Kostenstelle",
+        "analysis_period": "Analysezeitraum",
+        "quick_summary": "📋 Schnellübersicht",
+        "actions": "Aktionen",
+        "refresh": "🔄 Aktualisieren",
+        "export": "📊 Exportieren",
+        "close": "❌ Schließen",
+        "overview": "📊 Übersicht",
+        "by_machine": "🏭 Nach Maschine",
+        "by_site": "🏢 Nach Standort",
+        "by_team": "👥 Nach Team",
+        "preventive_corrective": "🔧 Präventiv vs Korrektiv",
+        "advanced_analysis": "🔬 Erweiterte Analyse",
+        "total_cost": "Gesamtkosten",
+        "interventions": "Interventionen",
+        "average_cost": "Durchschnittskosten",
+        "machines": "Maschinen",
+        "from": "Von:",
+        "to": "Bis:",
+        "refresh_tooltip": "Daten aktualisieren (F5)",
+        "export_tooltip": "Daten nach Excel exportieren",
+        "close_tooltip": "KPI Dashboard schließen (Esc oder Ctrl+W)"
+    }
+}
+
+def get_text(key: str) -> str:
+    """Récupère le texte traduit selon la langue configurée."""
+    try:
+        current_lang = app_config.language if 'app_config' in globals() else Language.FRENCH
+        return TRANSLATIONS.get(current_lang, TRANSLATIONS[Language.FRENCH]).get(key, key)
+    except:
+        return TRANSLATIONS[Language.FRENCH].get(key, key)
 
 
 class KPIDashboard(QWidget):
@@ -84,7 +180,7 @@ class KPIDashboard(QWidget):
     
     def setup_ui(self):
         """Configure l'interface utilisateur."""
-        self.setWindowTitle(f"📊 Dashboard KPI Financiers - {APP_NAME}")
+        self.setWindowTitle(f"{get_text('dashboard_title')} - {APP_NAME}")
         self.setMinimumSize(1200, 800)
         
         # Layout principal
@@ -138,7 +234,7 @@ class KPIDashboard(QWidget):
         sidebar_layout.setSpacing(15)
         
         # === TITRE SIDEBAR ===
-        title_label = QLabel(f"🎛️ Contrôles KPI\nv{APP_VERSION}")
+        title_label = QLabel(f"{get_text('controls_title')}\nv{APP_VERSION}")
         title_font = QFont()
         title_font.setPointSize(14)
         title_font.setBold(True)
@@ -166,17 +262,17 @@ class KPIDashboard(QWidget):
     
     def create_centre_selection(self, parent_layout):
         """Crée la zone de sélection du centre de frais."""
-        centre_group = QGroupBox("Centre de Frais")
+        centre_group = QGroupBox(get_text("cost_center"))
         centre_layout = QVBoxLayout(centre_group)
         
         self.centre_combo = QComboBox()
         self.centre_combo.addItems([
-            "📊 Vue d'Ensemble",
-            "🏭 Par Machine", 
-            "🏢 Par Site",
-            "👥 Par Équipe",
-            "🔧 Préventif vs Curatif",
-            "🔬 Analyse Avancée"
+            get_text("overview"),
+            get_text("by_machine"), 
+            get_text("by_site"),
+            get_text("by_team"),
+            get_text("preventive_corrective"),
+            get_text("advanced_analysis")
         ])
         self.centre_combo.setCurrentIndex(0)
         centre_layout.addWidget(self.centre_combo)
@@ -185,19 +281,19 @@ class KPIDashboard(QWidget):
     
     def create_periode_selection(self, parent_layout):
         """Crée la zone de sélection de période."""
-        periode_group = QGroupBox("Période d'Analyse")
+        periode_group = QGroupBox(get_text("analysis_period"))
         periode_layout = QVBoxLayout(periode_group)
         
         # Dates
         date_layout = QGridLayout()
         
-        date_layout.addWidget(QLabel("Du:"), 0, 0)
+        date_layout.addWidget(QLabel(get_text("from")), 0, 0)
         self.date_debut = QDateEdit()
         self.date_debut.setDate(QDate.currentDate().addMonths(-3))
         self.date_debut.setCalendarPopup(True)
         date_layout.addWidget(self.date_debut, 0, 1)
         
-        date_layout.addWidget(QLabel("Au:"), 1, 0)
+        date_layout.addWidget(QLabel(get_text("to")), 1, 0)
         self.date_fin = QDateEdit()
         self.date_fin.setDate(QDate.currentDate())
         self.date_fin.setCalendarPopup(True)
@@ -228,14 +324,14 @@ class KPIDashboard(QWidget):
     
     def create_quick_summary(self, parent_layout):
         """Crée le widget de résumé rapide."""
-        summary_group = QGroupBox("📋 Résumé Rapide")
+        summary_group = QGroupBox(get_text("quick_summary"))
         summary_layout = QVBoxLayout(summary_group)
         
         # Métriques clés
-        self.lbl_cout_total = QLabel("Coût Total: --")
-        self.lbl_nb_interventions = QLabel("Interventions: --")
-        self.lbl_cout_moyen = QLabel("Coût Moyen: --")
-        self.lbl_machines_actives = QLabel("Machines: --")
+        self.lbl_cout_total = QLabel(f"{get_text('total_cost')}: --")
+        self.lbl_nb_interventions = QLabel(f"{get_text('interventions')}: --")
+        self.lbl_cout_moyen = QLabel(f"{get_text('average_cost')}: --")
+        self.lbl_machines_actives = QLabel(f"{get_text('machines')}: --")
         
         # Style pour les métriques
         metric_style = "QLabel { font-size: 12px; margin: 2px; }"
@@ -248,18 +344,18 @@ class KPIDashboard(QWidget):
     
     def create_action_buttons(self, parent_layout):
         """Crée les boutons d'actions."""
-        actions_group = QGroupBox("Actions")
+        actions_group = QGroupBox(get_text("actions"))
         actions_layout = QVBoxLayout(actions_group)
         
         # Bouton rafraîchir
-        btn_refresh = QPushButton("🔄 Actualiser")
-        btn_refresh.setToolTip("Actualiser les données (F5)")
+        btn_refresh = QPushButton(get_text("refresh"))
+        btn_refresh.setToolTip(get_text("refresh_tooltip"))
         btn_refresh.clicked.connect(self.refresh_data)
         actions_layout.addWidget(btn_refresh)
         
         # Bouton export
-        btn_export = QPushButton("📊 Exporter")
-        btn_export.setToolTip("Exporter les données vers Excel")
+        btn_export = QPushButton(get_text("export"))
+        btn_export.setToolTip(get_text("export_tooltip"))
         btn_export.clicked.connect(self.export_data)
         actions_layout.addWidget(btn_export)
         
@@ -267,7 +363,7 @@ class KPIDashboard(QWidget):
         actions_layout.addSpacing(10)
         
         # Bouton fermer
-        btn_close = QPushButton("❌ Fermer")
+        btn_close = QPushButton(get_text("close"))
         btn_close.setStyleSheet("""
             QPushButton {
                 background-color: #dc3545;
@@ -284,7 +380,7 @@ class KPIDashboard(QWidget):
                 background-color: #bd2130;
             }
         """)
-        btn_close.setToolTip("Fermer le dashboard KPI (Échap ou Ctrl+W)")
+        btn_close.setToolTip(get_text("close_tooltip"))
         btn_close.clicked.connect(self.close_dashboard)
         actions_layout.addWidget(btn_close)
         
@@ -299,44 +395,44 @@ class KPIDashboard(QWidget):
         # === ONGLET VUE D'ENSEMBLE ===
         if GlobalSummaryWidget:
             self.global_widget = GlobalSummaryWidget()
-            self.tab_widget.addTab(self.global_widget, "🏠 Vue d'Ensemble")
+            self.tab_widget.addTab(self.global_widget, get_text("overview"))
         else:
-            self.tab_widget.addTab(QLabel("Widget Vue d'Ensemble non disponible"), "🏠 Vue d'Ensemble")
+            self.tab_widget.addTab(QLabel("Widget Vue d'Ensemble non disponible"), get_text("overview"))
         
         # === ONGLET MACHINES ===
         if MachineKPIWidget:
             self.machine_widget = MachineKPIWidget()
-            self.tab_widget.addTab(self.machine_widget, "🏭 Par Machine")
+            self.tab_widget.addTab(self.machine_widget, get_text("by_machine"))
         else:
-            self.tab_widget.addTab(QLabel("Widget Machine non disponible"), "🏭 Par Machine")
+            self.tab_widget.addTab(QLabel("Widget Machine non disponible"), get_text("by_machine"))
         
         # === ONGLET SITES ===
         if SiteKPIWidget:
             self.site_widget = SiteKPIWidget()
-            self.tab_widget.addTab(self.site_widget, "🏢 Par Site")
+            self.tab_widget.addTab(self.site_widget, get_text("by_site"))
         else:
-            self.tab_widget.addTab(QLabel("Widget Site non disponible"), "🏢 Par Site")
+            self.tab_widget.addTab(QLabel("Widget Site non disponible"), get_text("by_site"))
         
         # === ONGLET ÉQUIPES ===
         if EquipeKPIWidget:
             self.equipe_widget = EquipeKPIWidget()
-            self.tab_widget.addTab(self.equipe_widget, "👥 Par Équipe")
+            self.tab_widget.addTab(self.equipe_widget, get_text("by_team"))
         else:
-            self.tab_widget.addTab(QLabel("Widget Équipe non disponible"), "👥 Par Équipe")
+            self.tab_widget.addTab(QLabel("Widget Équipe non disponible"), get_text("by_team"))
         
         # === ONGLET PRÉVENTIF/CURATIF ===
         if PreventifCuratifWidget:
             self.preventif_widget = PreventifCuratifWidget()
-            self.tab_widget.addTab(self.preventif_widget, "🔧 Préventif/Curatif")
+            self.tab_widget.addTab(self.preventif_widget, get_text("preventive_corrective"))
         else:
-            self.tab_widget.addTab(QLabel("Widget Préventif/Curatif non disponible"), "🔧 Préventif/Curatif")
+            self.tab_widget.addTab(QLabel("Widget Préventif/Curatif non disponible"), get_text("preventive_corrective"))
         
         # === ONGLET ANALYSE AVANCÉE ===
         if AdvancedKPIWidget:
             self.advanced_widget = AdvancedKPIWidget()
-            self.tab_widget.addTab(self.advanced_widget, "🔬 Analyse Avancée")
+            self.tab_widget.addTab(self.advanced_widget, get_text("advanced_analysis"))
         else:
-            self.tab_widget.addTab(QLabel("Widget Analyse Avancée non disponible"), "🔬 Analyse Avancée")
+            self.tab_widget.addTab(QLabel("Widget Analyse Avancée non disponible"), get_text("advanced_analysis"))
         
         # Connecter le changement d'onglet
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
@@ -421,12 +517,12 @@ class KPIDashboard(QWidget):
         
         # Synchroniser l'onglet avec la sélection
         index_map = {
-            "📊 Vue d'Ensemble": 0,
-            "🏭 Par Machine": 1,
-            "🏢 Par Site": 2,
-            "👥 Par Équipe": 3,
-            "🔧 Préventif vs Curatif": 4,
-            "🔬 Analyse Avancée": 5
+            get_text("overview"): 0,
+            get_text("by_machine"): 1,
+            get_text("by_site"): 2,
+            get_text("by_team"): 3,
+            get_text("preventive_corrective"): 4,
+            get_text("advanced_analysis"): 5
         }
         
         if text in index_map:
@@ -519,15 +615,15 @@ class KPIDashboard(QWidget):
                     nb_interventions = sum(item.get('nb_interventions', 0) for item in data['machines'])
                     cout_moyen = total_cost / nb_machines if nb_machines > 0 else 0
                     
-                    self.lbl_cout_total.setText(f"Coût Total: {total_cost:,.0f} €")
-                    self.lbl_nb_interventions.setText(f"Interventions: {nb_interventions}")
-                    self.lbl_cout_moyen.setText(f"Coût Moyen: {cout_moyen:,.0f} €")
-                    self.lbl_machines_actives.setText(f"Machines: {nb_machines}")
+                    self.lbl_cout_total.setText(f"{get_text('total_cost')}: {total_cost:,.0f} €")
+                    self.lbl_nb_interventions.setText(f"{get_text('interventions')}: {nb_interventions}")
+                    self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: {cout_moyen:,.0f} €")
+                    self.lbl_machines_actives.setText(f"{get_text('machines')}: {nb_machines}")
                 else:
-                    self.lbl_cout_total.setText("Coût Total: --")
-                    self.lbl_nb_interventions.setText("Interventions: --")
-                    self.lbl_cout_moyen.setText("Coût Moyen: --")
-                    self.lbl_machines_actives.setText("Machines: --")
+                    self.lbl_cout_total.setText(f"{get_text('total_cost')}: --")
+                    self.lbl_nb_interventions.setText(f"{get_text('interventions')}: --")
+                    self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: --")
+                    self.lbl_machines_actives.setText(f"{get_text('machines')}: --")
                     
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour du résumé: {e}")
