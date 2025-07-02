@@ -136,7 +136,7 @@ def main():
     6. Démarrage de la boucle d'événements Qt
     """
     # Imports locaux pour éviter les dépendances circulaires et accélérer le démarrage
-    from config import APP_NAME, APP_VERSION  # Import des configurations de base
+    from app.config import APP_NAME, APP_VERSION  # Import des configurations de base
     from app.config import app_config, Language  # Import des configurations et de l'énumération des langues
     # Import de AccueilWindow supprimé car la sélection de langue n'est plus utilisée.
     from PySide6.QtWidgets import QApplication  # Import local de QApplication
@@ -496,7 +496,7 @@ def main():
 if __name__ == "__main__":
     # Importer la configuration pour afficher le nom et la version de l'application
     try:
-        from config import APP_NAME, APP_VERSION
+        from app.config import APP_NAME, APP_VERSION
     except ImportError:
         APP_NAME = "GMAO App"
         APP_VERSION = "1.0"

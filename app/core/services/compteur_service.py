@@ -286,7 +286,7 @@ class CompteurService:
                  raise DatabaseError(f"Incohérence DB: Historique enregistré, mais échec màj valeur actuelle compteur {compteur_id}.")
 
             # Déclenchement automatique d'OT si activé
-            from config import AUTO_OT_ENABLED
+            from app.config import AUTO_OT_ENABLED
             # Logique métier : après chaque ajout de relevé, si la valeur dépasse un seuil, on déclenche automatiquement un OT.
             if AUTO_OT_ENABLED:
                 seuil_prev = getattr(compteur, 'seuil_prev_ot', None)

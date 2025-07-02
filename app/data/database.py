@@ -7,8 +7,9 @@ import psycopg2.extras
 import logging
 import os
 from contextlib import contextmanager
-from config import (
+from app.config import (
     DATABASE_TYPE,
+    DATABASE_PATH,
     POSTGRES_DB,
     POSTGRES_USER,
     POSTGRES_PASSWORD,
@@ -172,3 +173,18 @@ def initialize_database():
             logger.warning(f"Trigger {trigger_name} : erreur création ou déjà existant : {e}")
 
     logger.info("Schéma de la base de données initialisé/vérifié avec succès.")
+
+def test_connection() -> bool:
+    """
+    Test de la connexion à la base de données.
+    
+    Returns:
+        bool: True si la connexion réussit, False sinon
+    """
+    try:
+        # Essayer une requête simple
+        result = fetch_one("SELECT 1 as test")
+        return result is not None and result.get('test') == 1
+    except Exception as e:
+        logger.error(f"Erreur lors du test de connexion: {e}")
+        return False

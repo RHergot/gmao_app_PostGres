@@ -128,7 +128,7 @@ class MachineView(QWidget):
         self.refresh_button = QPushButton(self.tr("Rafraîchir"))
         self.manage_counters_button = QPushButton(self.tr("Gérer Compteurs"))
         # Switch général pour OT auto
-        from config import AUTO_OT_ENABLED
+        from app.config import AUTO_OT_ENABLED
         from PySide6.QtWidgets import QCheckBox
         self.auto_ot_checkbox = QCheckBox(self.tr("OT Auto"))
         self.auto_ot_checkbox.setChecked(AUTO_OT_ENABLED)

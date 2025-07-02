@@ -159,7 +159,7 @@ from app.core.services.finance_service import FinanceService # <-- Ajouter cet i
 # from app.ui.views.machine_view import MachineView
 # ... etc ...
 # Importer la configuration pour le dialogue "À Propos"
-from config import APP_NAME, APP_VERSION
+from app.config import APP_NAME, APP_VERSION
 from app.access_control import can_access
 
 logger = logging.getLogger(__name__)
@@ -232,6 +232,8 @@ class MainWindow(QMainWindow):
         # 3. Configuration de la fenêtre principale
         # 4. Création des vues et des menus
         # 5. Connexion des signaux
+        # 6. Configuration des actions spécifiques (comme les KPI)
+        # 7. Affichage de la vue d'accueil par défaut
         # --- Étape 1: Chargement des préférences utilisateur ---
         # Charger les préférences utilisateur AVANT la création des widgets pour une application cohérente
         config = load_user_config()
@@ -283,7 +285,7 @@ class MainWindow(QMainWindow):
         else:
             # Construction de la chaîne de connexion à partir des paramètres de configuration
             # Cela permet une flexibilité dans la définition des paramètres PostgreSQL
-            from config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB
+            from app.config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB
             welcome_db_str = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
             self.db_connection_str = welcome_db_str
         
@@ -932,34 +934,26 @@ class MainWindow(QMainWindow):
         self.kpi_dashboard_action.setStatusTip(self.tr("Accéder aux indicateurs de performance financiers"))
         self.kpi_dashboard_action.triggered.connect(self.show_kpi_dashboard)
 
-        # Dans MainWindow.create_actions
-        if can_access("Gérer les OTs", self.user_role):
-            self.manage_ots_action = QAction(self.tr("Gérer les OTs"), self)
-            if self.manage_ots_action:
-                self.manage_ots_action.setStatusTip(self.tr("Accéder à la gestion des OT"))
-            if self.manage_ots_action is not None and hasattr(self, 'ot_view') and self.ot_view is not None:
-                # self.manage_ots_action.triggered.connect(lambda: self.switch_view(self.ot_view))
-                self.manage_ots_action.setEnabled(True)
-        elif self.manage_ots_action is not None:
-            self.manage_ots_action.setEnabled(False)
-        else:
-            self.manage_ots_action = None
+        # Actions pour les dialogs KPI spécialisés
+        self.kpi_machines_action = QAction(self.tr("🏭 KPI Machines"), self)
+        self.kpi_machines_action.setStatusTip(self.tr("Analyse détaillée des KPI par machine"))
+        self.kpi_machines_action.triggered.connect(self.show_kpi_machines)
 
-        if self.manage_commandes_action is not None:
-            if self.manage_commandes_action:
-                self.manage_commandes_action.setStatusTip(self.tr("Accéder à la gestion des commandes d'achat"))
-            if self.manage_commandes_action is not None and hasattr(self, 'commande_view') and self.commande_view is not None:
-                # self.manage_commandes_action.triggered.connect(lambda: self.switch_view(self.commande_view))
-                self.manage_commandes_action.setEnabled(True)
-            elif self.manage_commandes_action is not None:
-                self.manage_commandes_action.setEnabled(False)
-        
-        # --- Aide ---
+        self.kpi_sites_action = QAction(self.tr("🏢 KPI Sites"), self)
+        self.kpi_sites_action.setStatusTip(self.tr("Comparaison des performances entre sites"))
+        self.kpi_sites_action.triggered.connect(self.show_kpi_sites)
 
-        self.about_action = QAction(self.tr("&À Propos"), self)
-        self.about_action.setStatusTip(self.tr("Afficher les informations sur l'application"))
-        # self.about_action.triggered.connect(self.show_about_dialog)
+        self.kpi_teams_action = QAction(self.tr("👥 KPI Équipes"), self)
+        self.kpi_teams_action.setStatusTip(self.tr("Performance et charge de travail des équipes"))
+        self.kpi_teams_action.triggered.connect(self.show_kpi_teams)
 
+        self.kpi_preventive_action = QAction(self.tr("🔧 Préventif vs Curatif"), self)
+        self.kpi_preventive_action.setStatusTip(self.tr("Comparaison coûts/efficacité préventif/curatif"))
+        self.kpi_preventive_action.triggered.connect(self.show_kpi_preventive)
+
+        self.kpi_advanced_action = QAction(self.tr("🔬 Analyses Avancées"), self)
+        self.kpi_advanced_action.setStatusTip(self.tr("Statistiques avancées et prédictions"))
+        self.kpi_advanced_action.triggered.connect(self.show_kpi_advanced)
 
     def create_menu_bar(self):
         """
@@ -1034,10 +1028,30 @@ class MainWindow(QMainWindow):
             else:
                 manage_menu.addAction(self.manage_ots_action)
         
-        # Ajout du Dashboard KPI (accessible à tous les rôles)
+        # Ajout du Menu KPI (accessible à tous les rôles)
         if hasattr(self, 'kpi_dashboard_action') and self.kpi_dashboard_action:
             manage_menu.addSeparator()
-            manage_menu.addAction(self.kpi_dashboard_action)
+            
+            # Créer un sous-menu KPI
+            kpi_submenu = manage_menu.addMenu("📊 KPI & Analyses")
+            kpi_submenu.setStatusTip("Accéder aux tableaux de bord et analyses de performance")
+            
+            # Dashboard principal
+            kpi_submenu.addAction(self.kpi_dashboard_action)
+            kpi_submenu.addSeparator()
+            
+            # Analyses spécialisées
+            if hasattr(self, 'kpi_machines_action'):
+                kpi_submenu.addAction(self.kpi_machines_action)
+            if hasattr(self, 'kpi_sites_action'):
+                kpi_submenu.addAction(self.kpi_sites_action)
+            if hasattr(self, 'kpi_teams_action'):
+                kpi_submenu.addAction(self.kpi_teams_action)
+            kpi_submenu.addSeparator()
+            if hasattr(self, 'kpi_preventive_action'):
+                kpi_submenu.addAction(self.kpi_preventive_action)
+            if hasattr(self, 'kpi_advanced_action'):
+                kpi_submenu.addAction(self.kpi_advanced_action)
             
         
         # Ajout des actions de gestion des gammes si autorisées
@@ -1213,29 +1227,95 @@ class MainWindow(QMainWindow):
         QMessageBox.about(self, title, message)
 
     def show_kpi_dashboard(self):
-        """Affiche le dashboard des KPI financiers."""
+        """Affiche le dashboard des KPI financiers modularisé."""
         try:
             from app.ui.kpi.kpi_dashboard_clean import KPIDashboard
             
-            # Créer et afficher le dashboard KPI dans une nouvelle fenêtre
-            kpi_window = KPIDashboard(parent=self)
-            kpi_window.setWindowTitle("📊 Dashboard KPI Financiers - GMAO")
-            kpi_window.resize(1920, 1080)
-            kpi_window.show()
+            # Créer et afficher le dashboard KPI modal
+            kpi_dialog = KPIDashboard(parent=self)
             
-            # Garder une référence pour éviter que la fenêtre soit détruite
-            if not hasattr(self, '_kpi_windows'):
-                self._kpi_windows = []
-            self._kpi_windows.append(kpi_window)
+            # Le dashboard est maintenant modal - pas besoin de resize ni de show()
+            # La méthode exec() bloque jusqu'à ce que la fenêtre soit fermée
+            result = kpi_dialog.exec()
             
-            logger.info("Dashboard KPI ouvert avec succès")
+            logger.info("Dashboard KPI fermé")
             
         except ImportError as e:
             logger.error(f"Erreur d'import du dashboard KPI: {e}")
             self.show_popup("Erreur", f"Impossible d'ouvrir le dashboard KPI:\n{str(e)}", QMessageBox.Critical)
         except Exception as e:
             logger.error(f"Erreur lors de l'ouverture du dashboard KPI: {e}")
-            self.show_popup("Erreur", f"Erreur lors de l'ouverture du dashboard KPI:\n{str(e)}", QMessageBox.Critical)
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
+
+    def show_kpi_machines(self):
+        """Affiche le dialog d'analyse KPI par machine."""
+        try:
+            from app.ui.kpi.dialogs.machine_kpi_dialog import MachineKPIDialog
+            dialog = MachineKPIDialog(parent=self)
+            dialog.exec()
+            logger.info("Dialog KPI Machines fermé")
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dialog KPI Machines: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir l'analyse par machine:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dialog KPI Machines: {e}")
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
+
+    def show_kpi_sites(self):
+        """Affiche le dialog d'analyse KPI par site."""
+        try:
+            from app.ui.kpi.dialogs.site_kpi_dialog import SiteKPIDialog
+            dialog = SiteKPIDialog(parent=self)
+            dialog.exec()
+            logger.info("Dialog KPI Sites fermé")
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dialog KPI Sites: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir l'analyse par site:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dialog KPI Sites: {e}")
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
+
+    def show_kpi_teams(self):
+        """Affiche le dialog d'analyse KPI par équipe."""
+        try:
+            from app.ui.kpi.dialogs.team_kpi_dialog import TeamKPIDialog
+            dialog = TeamKPIDialog(parent=self)
+            dialog.exec()
+            logger.info("Dialog KPI Équipes fermé")
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dialog KPI Équipes: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir l'analyse par équipe:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dialog KPI Équipes: {e}")
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
+
+    def show_kpi_preventive(self):
+        """Affiche le dialog d'analyse préventif vs curatif."""
+        try:
+            from app.ui.kpi.dialogs.preventive_kpi_dialog import PreventiveKPIDialog
+            dialog = PreventiveKPIDialog(parent=self)
+            dialog.exec()
+            logger.info("Dialog KPI Préventif fermé")
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dialog KPI Préventif: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir l'analyse préventif/curatif:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dialog KPI Préventif: {e}")
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
+
+    def show_kpi_advanced(self):
+        """Affiche le dialog d'analyses KPI avancées."""
+        try:
+            from app.ui.kpi.dialogs.advanced_kpi_dialog import AdvancedKPIDialog
+            dialog = AdvancedKPIDialog(parent=self)
+            dialog.exec()
+            logger.info("Dialog KPI Avancées fermé")
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dialog KPI Avancées: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir les analyses avancées:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dialog KPI Avancées: {e}")
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
 
     def _connect_view_actions(self):
         """

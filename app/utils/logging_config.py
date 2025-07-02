@@ -4,7 +4,7 @@ Configuration centralisée du logging pour l'application.
 """
 import logging
 import sys
-from config import LOG_LEVEL # Importer le niveau depuis la config
+from app.config import LOG_LEVEL # Importer le niveau depuis la config
 
 def setup_logging():
     """Configure le système de logging."""

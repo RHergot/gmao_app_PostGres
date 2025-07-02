@@ -16,7 +16,7 @@ from typing import Dict, List, Any, Optional
 
 # Imports PySide6
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QComboBox, QDateEdit, QPushButton, QFrame,
     QScrollArea, QGroupBox, QSplitter, QTabWidget,
     QMessageBox, QProgressBar, QStatusBar
@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 try:
-    from config import APP_NAME, APP_VERSION, LOG_LEVEL  # Import de la configuration principale
+    from app.config import APP_NAME, APP_VERSION, LOG_LEVEL  # Import de la configuration principale
     from app.config import app_config, Language  # Import de la configuration de langue
     from app.core.services.kpi_service import KPIService
     from app.utils.logging_config import setup_logging
@@ -150,20 +150,19 @@ def get_text(key: str) -> str:
         return TRANSLATIONS[Language.FRENCH].get(key, key)
 
 
-class KPIDashboard(QWidget):
+class KPIDashboard(QDialog):
     """
-    Dashboard principal pour les KPI financiers.
+    Dashboard principal pour les KPI financiers - Fenêtre modale.
     
     Permet de:
-    - Sélectionner des centres de frais (machine, site, équipe)
-    - Choisir des périodes d'analyse
-    - Visualiser les KPI avec des graphiques
-    - Exporter les données
+    - Visualiser une vue d'ensemble des KPI
+    - Accéder aux analyses détaillées via des fenêtres modales spécialisées
+    - Choisir des périodes d'analyse globales
+    - Exporter les données de synthèse
     """
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.kpi_service = None
         self.current_data = {}
         
         # Configuration du logging
@@ -171,6 +170,20 @@ class KPIDashboard(QWidget):
             setup_logging()
         logger.info(f"Initialisation du KPI Dashboard - {APP_NAME} v{APP_VERSION}")
         logger.debug(f"Niveau de log configuré: {LOG_LEVEL}")
+        
+        # Initialiser le service KPI
+        self.kpi_service = None
+        if KPIService:
+            try:
+                self.kpi_service = KPIService()
+                logger.info("KPIService initialisé avec succès")
+            except Exception as e:
+                logger.error(f"Erreur lors de l'initialisation du KPIService: {e}")
+                QMessageBox.warning(self, "Avertissement", 
+                                  f"Service KPI non disponible: {str(e)}\n"
+                                  "Certaines fonctionnalités peuvent être limitées.")
+        else:
+            logger.warning("KPIService non disponible (module non importé)")
         
         self.setup_ui()
         self.setup_connections()
@@ -261,23 +274,26 @@ class KPIDashboard(QWidget):
         self.sidebar = sidebar
     
     def create_centre_selection(self, parent_layout):
-        """Crée la zone de sélection du centre de frais."""
-        centre_group = QGroupBox(get_text("cost_center"))
-        centre_layout = QVBoxLayout(centre_group)
+        """Crée la zone de navigation vers les analyses spécialisées."""
+        navigation_group = QGroupBox("🔍 Analyses Spécialisées")
+        nav_layout = QVBoxLayout(navigation_group)
         
-        self.centre_combo = QComboBox()
-        self.centre_combo.addItems([
-            get_text("overview"),
-            get_text("by_machine"), 
-            get_text("by_site"),
-            get_text("by_team"),
-            get_text("preventive_corrective"),
-            get_text("advanced_analysis")
-        ])
-        self.centre_combo.setCurrentIndex(0)
-        centre_layout.addWidget(self.centre_combo)
+        # Boutons pour ouvrir les fenêtres modales spécialisées
+        analyses_buttons = [
+            ("🏭 Analyse par Machine", self.open_machine_analysis),
+            ("🏢 Analyse par Site", self.open_site_analysis),
+            ("👥 Analyse par Équipe", self.open_team_analysis),
+            ("🔧 Préventif vs Curatif", self.open_preventive_analysis),
+            ("🔬 Analyse Avancée", self.open_advanced_analysis)
+        ]
         
-        parent_layout.addWidget(centre_group)
+        for button_text, callback in analyses_buttons:
+            btn = QPushButton(button_text)
+            btn.setMinimumHeight(40)
+            btn.clicked.connect(callback)
+            nav_layout.addWidget(btn)
+        
+        parent_layout.addWidget(navigation_group)
     
     def create_periode_selection(self, parent_layout):
         """Crée la zone de sélection de période."""
@@ -387,149 +403,76 @@ class KPIDashboard(QWidget):
         parent_layout.addWidget(actions_group)
     
     def create_main_content(self, parent):
-        """Crée la zone de contenu principal avec onglets des widgets KPI."""
-        # Widget principal avec onglets
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabsClosable(False)
+        """Crée la zone de contenu principal avec la vue d'ensembles."""
+        # Widget principal - Vue d'ensemble uniquement
+        main_content = QFrame()
+        main_content.setStyleSheet("QFrame { background-color: #FFFFFF; border: 1px solid #E0E0E0; }")
         
-        # === ONGLET VUE D'ENSEMBLE ===
+        content_layout = QVBoxLayout(main_content)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Titre de la vue d'ensemble
+        title_label = QLabel(f"📊 {get_text('overview')}")
+        title_font = QFont()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(title_label)
+        
+        # Séparateur
+        content_layout.addSpacing(20)
+        
+        # === VUE D'ENSEMBLE GLOBALE ===
         if GlobalSummaryWidget:
             self.global_widget = GlobalSummaryWidget()
-            self.tab_widget.addTab(self.global_widget, get_text("overview"))
+            # Passer le service KPI au widget
+            if hasattr(self.global_widget, 'kpi_service') and self.kpi_service:
+                self.global_widget.kpi_service = self.kpi_service
+            content_layout.addWidget(self.global_widget)
         else:
-            self.tab_widget.addTab(QLabel("Widget Vue d'Ensemble non disponible"), get_text("overview"))
+            placeholder_label = QLabel("📊 Widget Vue d'Ensemble en cours de développement")
+            placeholder_label.setAlignment(Qt.AlignCenter)
+            placeholder_label.setStyleSheet("""
+                QLabel {
+                    color: #666666;
+                    font-size: 16px;
+                    font-style: italic;
+                    padding: 40px;
+                    border: 2px dashed #CCCCCC;
+                    border-radius: 8px;
+                }
+            """)
+            content_layout.addWidget(placeholder_label)
         
-        # === ONGLET MACHINES ===
-        if MachineKPIWidget:
-            self.machine_widget = MachineKPIWidget()
-            self.tab_widget.addTab(self.machine_widget, get_text("by_machine"))
-        else:
-            self.tab_widget.addTab(QLabel("Widget Machine non disponible"), get_text("by_machine"))
+        # Stretcher pour pousser vers le haut
+        content_layout.addStretch()
         
-        # === ONGLET SITES ===
-        if SiteKPIWidget:
-            self.site_widget = SiteKPIWidget()
-            self.tab_widget.addTab(self.site_widget, get_text("by_site"))
-        else:
-            self.tab_widget.addTab(QLabel("Widget Site non disponible"), get_text("by_site"))
-        
-        # === ONGLET ÉQUIPES ===
-        if EquipeKPIWidget:
-            self.equipe_widget = EquipeKPIWidget()
-            self.tab_widget.addTab(self.equipe_widget, get_text("by_team"))
-        else:
-            self.tab_widget.addTab(QLabel("Widget Équipe non disponible"), get_text("by_team"))
-        
-        # === ONGLET PRÉVENTIF/CURATIF ===
-        if PreventifCuratifWidget:
-            self.preventif_widget = PreventifCuratifWidget()
-            self.tab_widget.addTab(self.preventif_widget, get_text("preventive_corrective"))
-        else:
-            self.tab_widget.addTab(QLabel("Widget Préventif/Curatif non disponible"), get_text("preventive_corrective"))
-        
-        # === ONGLET ANALYSE AVANCÉE ===
-        if AdvancedKPIWidget:
-            self.advanced_widget = AdvancedKPIWidget()
-            self.tab_widget.addTab(self.advanced_widget, get_text("advanced_analysis"))
-        else:
-            self.tab_widget.addTab(QLabel("Widget Analyse Avancée non disponible"), get_text("advanced_analysis"))
-        
-        # Connecter le changement d'onglet
-        self.tab_widget.currentChanged.connect(self.on_tab_changed)
-        
-        parent.addWidget(self.tab_widget)
-        self.content_widget = self.tab_widget
-        
-    def on_tab_changed(self, index):
-        """Gestionnaire de changement d'onglet."""
-        tab_names = ["Vue d'Ensemble", "Par Machine", "Par Site", "Par Équipe", "Préventif/Curatif", "Analyse Avancée"]
-        if 0 <= index < len(tab_names):
-            logger.info(f"Changement vers l'onglet: {tab_names[index]}")
-            
-            # Synchroniser la combo box de la sidebar
-            self.centre_combo.setCurrentIndex(index)
-            
-            # Rafraîchir les données du widget actuel
-            current_widget = self.tab_widget.currentWidget()
-            if hasattr(current_widget, 'refresh_data'):
-                QTimer.singleShot(100, current_widget.refresh_data)
+        parent.addWidget(main_content)
+        self.content_widget = main_content
     
     def create_status_bar(self):
         """Crée la barre de statut."""
-        status_layout = QHBoxLayout()
+        self.status_bar = QStatusBar()
+        self.status_bar.showMessage("Prêt")
         
-        # Barre de progression
+        # Barre de progression pour les opérations longues
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        self.progress_bar.setMaximumHeight(20)
+        self.progress_bar.setMaximumWidth(200)
+        self.status_bar.addPermanentWidget(self.progress_bar)
         
-        # Label de statut
-        self.status_label = QLabel("Prêt")
-        
-        status_layout.addWidget(self.status_label)
-        status_layout.addStretch()
-        status_layout.addWidget(self.progress_bar)
-        
-        # Ajouter à la layout principale (en bas)
-        if hasattr(self, 'layout'):
-            self.layout().addLayout(status_layout)
+        # Note: Dans un QDialog, on ne peut pas utiliser setStatusBar() comme dans QMainWindow
+        # On ajoute donc la status bar au layout principal si nécessaire
+        # Pour l'instant, on la stocke juste comme attribut pour éviter l'erreur
     
     def setup_connections(self):
-        """Configure les connexions des signaux."""
-        # Connexions des contrôles
-        self.centre_combo.currentTextChanged.connect(self.on_centre_changed)
+        """Configure les connexions de signaux."""
+        # Connexions pour les changements de dates
         self.date_debut.dateChanged.connect(self.on_date_changed)
         self.date_fin.dateChanged.connect(self.on_date_changed)
-        
-        # Style de l'application
-        self.setStyleSheet("""
-            QPushButton {
-                padding: 8px 16px;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-                background-color: #F8F9FA;
-            }
-            
-            QPushButton:hover {
-                background-color: #E9ECEF;
-            }
-            
-            QPushButton:pressed {
-                background-color: #DEE2E6;
-            }
-            
-            QComboBox, QDateEdit {
-                padding: 5px;
-                border: 1px solid #CCCCCC;
-                border-radius: 4px;
-            }
-            
-            QFrame {
-                background-color: #FFFFFF;
-            }
-        """)
     
     # === ÉVÉNEMENTS ===
-    
-    def on_centre_changed(self, text):
-        """Gère le changement de centre de frais."""
-        logger.info(f"Centre de frais changé: {text}")
-        
-        # Synchroniser l'onglet avec la sélection
-        index_map = {
-            get_text("overview"): 0,
-            get_text("by_machine"): 1,
-            get_text("by_site"): 2,
-            get_text("by_team"): 3,
-            get_text("preventive_corrective"): 4,
-            get_text("advanced_analysis"): 5
-        }
-        
-        if text in index_map:
-            self.tab_widget.setCurrentIndex(index_map[text])
-        
-        # Recharger les données
-        self.refresh_data()
     
     def on_date_changed(self):
         """Gère le changement de dates."""
@@ -551,6 +494,88 @@ class KPIDashboard(QWidget):
         self.date_debut.setDate(date_debut)
         self.date_fin.setDate(date_fin)
     
+    # === MÉTHODES DE NAVIGATION VERS ANALYSES SPÉCIALISÉES ===
+    
+    def open_machine_analysis(self):
+        """Ouvre la fenêtre d'analyse par machine."""
+        try:
+            from app.ui.kpi.dialogs.machine_kpi_dialog import MachineKPIDialog
+            dialog = MachineKPIDialog(parent=self)
+            # Passer le service KPI au dialog
+            if hasattr(dialog, 'kpi_service') and self.kpi_service:
+                dialog.kpi_service = self.kpi_service
+            dialog.set_date_range(
+                self.date_debut.date().toPython(),
+                self.date_fin.date().toPython()
+            )
+            dialog.exec()
+        except ImportError:
+            QMessageBox.information(self, "Info", "Analyse par Machine en cours de développement")
+    
+    def open_site_analysis(self):
+        """Ouvre la fenêtre d'analyse par site."""
+        try:
+            from app.ui.kpi.dialogs.site_kpi_dialog import SiteKPIDialog
+            dialog = SiteKPIDialog(parent=self)
+            # Passer le service KPI au dialog
+            if hasattr(dialog, 'kpi_service') and self.kpi_service:
+                dialog.kpi_service = self.kpi_service
+            dialog.set_date_range(
+                self.date_debut.date().toPython(),
+                self.date_fin.date().toPython()
+            )
+            dialog.exec()
+        except ImportError:
+            QMessageBox.information(self, "Info", "Analyse par Site en cours de développement")
+    
+    def open_team_analysis(self):
+        """Ouvre la fenêtre d'analyse par équipe."""
+        try:
+            from app.ui.kpi.dialogs.team_kpi_dialog import TeamKPIDialog
+            dialog = TeamKPIDialog(parent=self)
+            # Passer le service KPI au dialog
+            if hasattr(dialog, 'kpi_service') and self.kpi_service:
+                dialog.kpi_service = self.kpi_service
+            dialog.set_date_range(
+                self.date_debut.date().toPython(),
+                self.date_fin.date().toPython()
+            )
+            dialog.exec()
+        except ImportError:
+            QMessageBox.information(self, "Info", "Analyse par Équipe en cours de développement")
+    
+    def open_preventive_analysis(self):
+        """Ouvre la fenêtre d'analyse préventif vs curatif."""
+        try:
+            from app.ui.kpi.dialogs.preventive_kpi_dialog import PreventiveKPIDialog
+            dialog = PreventiveKPIDialog(parent=self)
+            # Passer le service KPI au dialog
+            if hasattr(dialog, 'kpi_service') and self.kpi_service:
+                dialog.kpi_service = self.kpi_service
+            dialog.set_date_range(
+                self.date_debut.date().toPython(),
+                self.date_fin.date().toPython()
+            )
+            dialog.exec()
+        except ImportError:
+            QMessageBox.information(self, "Info", "Analyse Préventif/Curatif en cours de développement")
+    
+    def open_advanced_analysis(self):
+        """Ouvre la fenêtre d'analyse avancée."""
+        try:
+            from app.ui.kpi.dialogs.advanced_kpi_dialog import AdvancedKPIDialog
+            dialog = AdvancedKPIDialog(parent=self)
+            # Passer le service KPI au dialog
+            if hasattr(dialog, 'kpi_service') and self.kpi_service:
+                dialog.kpi_service = self.kpi_service
+            dialog.set_date_range(
+                self.date_debut.date().toPython(),
+                self.date_fin.date().toPython()
+            )
+            dialog.exec()
+        except ImportError:
+            QMessageBox.information(self, "Info", "Analyse Avancée en cours de développement")
+
     # === MÉTHODES DE DONNÉES ===
     
     def load_initial_data(self):
@@ -606,27 +631,52 @@ class KPIDashboard(QWidget):
     def update_quick_summary(self):
         """Met à jour le résumé rapide dans la sidebar."""
         try:
+            # Essayer d'abord avec les données du widget global
+            data_found = False
             if hasattr(self, 'global_widget') and hasattr(self.global_widget, 'current_data'):
                 data = self.global_widget.current_data
                 
                 if 'machines' in data and data['machines']:
                     total_cost = sum(item.get('cout_total', 0) for item in data['machines'])
                     nb_machines = len(data['machines'])
-                    nb_interventions = sum(item.get('nb_interventions', 0) for item in data['machines'])
+                    nb_interventions = sum(item.get('nb_interventions_total', 0) for item in data['machines'])
                     cout_moyen = total_cost / nb_machines if nb_machines > 0 else 0
                     
                     self.lbl_cout_total.setText(f"{get_text('total_cost')}: {total_cost:,.0f} €")
                     self.lbl_nb_interventions.setText(f"{get_text('interventions')}: {nb_interventions}")
                     self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: {cout_moyen:,.0f} €")
                     self.lbl_machines_actives.setText(f"{get_text('machines')}: {nb_machines}")
-                else:
-                    self.lbl_cout_total.setText(f"{get_text('total_cost')}: --")
-                    self.lbl_nb_interventions.setText(f"{get_text('interventions')}: --")
-                    self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: --")
-                    self.lbl_machines_actives.setText(f"{get_text('machines')}: --")
+                    data_found = True
+            
+            # Si pas de données dans le widget global, utiliser le service KPI directement
+            if not data_found and self.kpi_service:
+                debut = self.date_debut.date().toPython()
+                fin = self.date_fin.date().toPython()
+                
+                # Obtenir le résumé global depuis le service
+                resume = self.kpi_service.get_resume_global(debut, fin)
+                
+                if resume:
+                    self.lbl_cout_total.setText(f"{get_text('total_cost')}: {resume.get('cout_total', 0):,.0f} €")
+                    self.lbl_nb_interventions.setText(f"{get_text('interventions')}: {resume.get('nb_interventions', 0)}")
+                    self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: {resume.get('cout_moyen', 0):,.0f} €")
+                    self.lbl_machines_actives.setText(f"{get_text('machines')}: {resume.get('nb_machines', 0)}")
+                    data_found = True
+            
+            # Si toujours pas de données, afficher des tirets
+            if not data_found:
+                self.lbl_cout_total.setText(f"{get_text('total_cost')}: --")
+                self.lbl_nb_interventions.setText(f"{get_text('interventions')}: --")
+                self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: --")
+                self.lbl_machines_actives.setText(f"{get_text('machines')}: --")
                     
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour du résumé: {e}")
+            # En cas d'erreur, afficher des tirets
+            self.lbl_cout_total.setText(f"{get_text('total_cost')}: --")
+            self.lbl_nb_interventions.setText(f"{get_text('interventions')}: --")
+            self.lbl_cout_moyen.setText(f"{get_text('average_cost')}: --")
+            self.lbl_machines_actives.setText(f"{get_text('machines')}: --")
     
     def show_error_message(self, message: str):
         """Affiche un message d'erreur."""
