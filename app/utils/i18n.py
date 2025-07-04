@@ -2,10 +2,24 @@
 Fichier centralisé de gestion des traductions pour l'application GMAO.
 Inclut tous les dictionnaires multilingues et helpers Python pour les menus, statuts, priorités, types d'OT, etc.
 Ceci est la référence unique pour la traduction Python côté application.
+
+Organisation par domaines :
+- MENUS : Labels des menus principaux
+- FILTRES : Labels génériques des filtres (All, AllOpen, AllClosed, etc.)
+- ORDRE_TRAVAIL : Types, priorités, statuts des ordres de travail
+- COMMANDES : Statuts des commandes d'achat
+- ENTRETIEN : Types d'entretien et maintenance
+
+Note: Les valeurs en base de données sont en français.
+Les conversions UI <-> DB sont gérées par les fonctions reverse_translate_*.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.config import app_config, Language
+
+# =============================================================================
+# SECTION 1 : MENUS - Labels des menus principaux
+# =============================================================================
 
 # Dictionnaire de traduction des noms de menus (français -> autres langues)
 MENU_LABELS = {
@@ -52,6 +66,10 @@ MENU_LABELS = {
     # ... (autres menus)
 }
 
+# =============================================================================
+# SECTION 2 : FILTRES GENERIQUES - Labels pour les combos de filtres
+# =============================================================================
+
 # Labels pour les filtres génériques (utilisés dans les combos)
 filter_labels = {
     "All": {
@@ -62,8 +80,35 @@ filter_labels = {
         Language.ITALIAN: "Tutti",
         Language.PORTUGUESE: "Todos"
     },
-    # ... (autres filtres)
+    "AllOpen": {
+        Language.FRENCH: "Tous Ouverts",
+        Language.ENGLISH: "All Open",
+        Language.GERMAN: "Alle Offen",
+        Language.SPANISH: "Todos Abiertos",
+        Language.ITALIAN: "Tutti Aperti",
+        Language.PORTUGUESE: "Todos Abertos"
+    },
+    "AllClosed": {
+        Language.FRENCH: "Tous Fermés",
+        Language.ENGLISH: "All Closed",
+        Language.GERMAN: "Alle Geschlossen",
+        Language.SPANISH: "Todos Cerrados",
+        Language.ITALIAN: "Tutti Chiusi",
+        Language.PORTUGUESE: "Todos Fechados"
+    },
+    "Unassigned": {
+        Language.FRENCH: "Non Assigné",
+        Language.ENGLISH: "Unassigned",
+        Language.GERMAN: "Nicht Zugewiesen",
+        Language.SPANISH: "Sin Asignar",
+        Language.ITALIAN: "Non Assegnato",
+        Language.PORTUGUESE: "Não Atribuído"
+    }
 }
+
+# =============================================================================
+# SECTION 3 : ENTRETIEN - Types d'entretien et maintenance
+# =============================================================================
 
 # Dictionnaires multilingues pour les types d'entretien et priorités
 ENTRETIEN_TYPE_LABELS = {
@@ -121,70 +166,45 @@ ENTRETIEN_TYPE_LABELS = {
 PRIORITE_LABELS = {
     Language.FRENCH: {
         "Basse": "Basse",
+        "Normale": "Normale",
         "Moyenne": "Moyenne",
         "Haute": "Haute",
     },
     Language.ENGLISH: {
         "Basse": "Low",
+        "Normale": "Normal",
         "Moyenne": "Medium",
         "Haute": "High",
     },
     Language.GERMAN: {
         "Basse": "Niedrig",
+        "Normale": "Normal",
         "Moyenne": "Mittel",
         "Haute": "Hoch",
     },
     Language.SPANISH: {
         "Basse": "Baja",
+        "Normale": "Normal",
         "Moyenne": "Media",
         "Haute": "Alta",
     },
     Language.ITALIAN: {
         "Basse": "Bassa",
+        "Normale": "Normale",
         "Moyenne": "Media",
         "Haute": "Alta",
     },
     Language.PORTUGUESE: {
         "Basse": "Baixa",
+        "Normale": "Normal",
         "Moyenne": "Média",
         "Haute": "Alta",
     },
 }
 
-
-def get_label_multi(d: dict, value: str, lang: Language) -> str:
-    """
-    Retourne la traduction pour la valeur donnée dans la langue cible (Language Enum).
-    """
-    return d.get(lang, {}).get(value, value)
-
-def get_key_multi(d: dict, label: str, lang: Language) -> str:
-    """
-    Retourne la clé française à partir du label affiché dans la langue cible (pour stockage DB).
-    """
-    if lang == Language.FRENCH:
-        return label
-    inv = {v: k for k, v in d.get(lang, {}).items()}
-    return inv.get(label, label)
-
-# --- Fonctions de traduction centralisées ---
-def translate_menu_label(label_key: str, language: Language = None) -> str:
-    """
-    Traduit un label de menu à partir du dictionnaire centralisé.
-    Utilise la langue globale app_config.language si non précisée.
-    Retourne la clé d'origine si non trouvé.
-    """
-    if language is None:
-        language = app_config.language
-    return MENU_LABELS.get(label_key, {}).get(language, label_key)
-
-def translate_label(label_key: str, language: Language = None) -> str:
-    """
-    Traduit un label générique pour les filtres selon la langue globale app_config.language si non précisée.
-    """
-    if language is None:
-        language = app_config.language
-    return filter_labels.get(label_key, {}).get(language, label_key)
+# =============================================================================
+# SECTION 4 : ORDRE DE TRAVAIL - Types, Priorités et Statuts
+# =============================================================================
 
 # --- Dictionnaires de traduction pour les types d'OT ---
 type_translations = {
@@ -240,6 +260,14 @@ priority_translations = {
         Language.ITALIAN: "Bassa",
         Language.PORTUGUESE: "Baixa"
     },
+    "Normale": {
+        Language.FRENCH: "Normale",
+        Language.ENGLISH: "Normal",
+        Language.GERMAN: "Normal",
+        Language.SPANISH: "Normal",
+        Language.ITALIAN: "Normale",
+        Language.PORTUGUESE: "Normal"
+    },
     "Moyenne": {
         Language.FRENCH: "Moyenne",
         Language.ENGLISH: "Medium",
@@ -266,7 +294,8 @@ priority_translations = {
     }
 }
 
-# --- Dictionnaires de traduction pour les statuts ---
+# --- Dictionnaires de traduction pour les statuts d'OT ---
+# Note: Les valeurs en base sont en français, ces traductions permettent l'affichage multilingue
 status_translations = {
     "Créé": {
         Language.FRENCH: "Créé",
@@ -331,24 +360,15 @@ status_translations = {
         Language.SPANISH: "Listo",
         Language.ITALIAN: "Pronto",
         Language.PORTUGUESE: "Pronto"
-    },
-    "Realise": {
-        Language.FRENCH: "Réalisé",
-        Language.ENGLISH: "Completed",
-        Language.GERMAN: "Erledigt",
-        Language.SPANISH: "Realizado",
-        Language.ITALIAN: "Eseguito",
-        Language.PORTUGUESE: "Realizado"
-    },
-    "Cloture": {
-        Language.FRENCH: "Clôturé",
-        Language.ENGLISH: "Closed",
-        Language.GERMAN: "Abgeschlossen",
-        Language.SPANISH: "Cerrado",
-        Language.ITALIAN: "Chiuso",
-        Language.PORTUGUESE: "Encerrado"
-    },
-    # Purchase Order Statuses
+    }
+}
+
+# =============================================================================
+# SECTION 5 : COMMANDES - Statuts des commandes d'achat
+# =============================================================================
+
+# Dictionnaires de traduction pour les statuts de commandes d'achat
+purchase_order_status_translations = {
     "Brouillon": {
         Language.FRENCH: "Brouillon",
         Language.ENGLISH: "Draft",
@@ -399,7 +419,45 @@ status_translations = {
     }
 }
 
-# --- Fonctions utilitaires pour traduire types, priorités, statuts ---
+# =============================================================================
+# SECTION 6 : FONCTIONS UTILITAIRES DE TRADUCTION
+# =============================================================================
+
+def get_label_multi(d: dict, value: str, lang: Language) -> str:
+    """
+    Retourne la traduction pour la valeur donnée dans la langue cible (Language Enum).
+    """
+    return d.get(lang, {}).get(value, value)
+
+def get_key_multi(d: dict, label: str, lang: Language) -> str:
+    """
+    Retourne la clé française à partir du label affiché dans la langue cible (pour stockage DB).
+    """
+    if lang == Language.FRENCH:
+        return label
+    inv = {v: k for k, v in d.get(lang, {}).items()}
+    return inv.get(label, label)
+
+# --- Fonctions de traduction centralisées ---
+def translate_menu_label(label_key: str, language: Language = None) -> str:
+    """
+    Traduit un label de menu à partir du dictionnaire centralisé.
+    Utilise la langue globale app_config.language si non précisée.
+    Retourne la clé d'origine si non trouvé.
+    """
+    if language is None:
+        language = app_config.language
+    return MENU_LABELS.get(label_key, {}).get(language, label_key)
+
+def translate_label(label_key: str, language: Language = None) -> str:
+    """
+    Traduit un label générique pour les filtres selon la langue globale app_config.language si non précisée.
+    """
+    if language is None:
+        language = app_config.language
+    return filter_labels.get(label_key, {}).get(language, label_key)
+
+# --- Fonctions utilitaires pour traduire types, priorités, statuts d'OT ---
 def translate_type(ot_type: str, language: Language = None) -> str:
     """
     Traduit un type d'OT selon la langue globale app_config.language si non précisée.
@@ -424,7 +482,7 @@ def translate_priority(priority: str, language: Language = None) -> str:
 
 def translate_status(status: str, language: Language = None) -> str:
     """
-    Traduit un statut selon la langue globale app_config.language si non précisée.
+    Traduit un statut d'OT selon la langue globale app_config.language si non précisée.
     Args:
         status: Le statut à traduire
         language: Langue cible (optionnel, utilise app_config.language si non spécifié)
@@ -433,14 +491,31 @@ def translate_status(status: str, language: Language = None) -> str:
         language = app_config.language
     return status_translations.get(status, {}).get(language, status)
 
+def translate_purchase_order_status(status: str, language: Language = None) -> str:
+    """
+    Traduit un statut de commande d'achat selon la langue globale app_config.language si non précisée.
+    Args:
+        status: Le statut de commande à traduire
+        language: Langue cible (optionnel, utilise app_config.language si non spécifié)
+    """
+    if language is None:
+        language = app_config.language
+    return purchase_order_status_translations.get(status, {}).get(language, status)
+
+# =============================================================================
+# SECTION 7 : FONCTIONS DE CONVERSION INVERSE (UI -> DB)
+# =============================================================================
+
 def reverse_translate_status(translated_status: str, source_language: Language = None, prefer_keys: List[str] = None) -> str:
     """
-    Retourne la clé française du statut à partir de sa traduction dans une langue donnée.
+    Retourne la clé française du statut OT à partir de sa traduction dans une langue donnée.
     Utilisé pour convertir les valeurs traduites de l'UI vers les valeurs françaises de la base.
+    
     Args:
         translated_status: Le statut traduit affiché dans l'UI
         source_language: Langue source de la traduction (optionnel, utilise app_config.language si non spécifié)
         prefer_keys: Liste de clés préférées à rechercher en premier (pour résoudre les conflits)
+        
     Returns:
         La clé française du statut pour la base de données
     """
@@ -458,7 +533,7 @@ def reverse_translate_status(translated_status: str, source_language: Language =
             if translations.get(source_language) == translated_status:
                 return french_key
     
-    # Rechercher dans le dictionnaire de traductions
+    # Rechercher dans le dictionnaire de traductions des statuts OT
     for french_key, translations in status_translations.items():
         if translations.get(source_language) == translated_status:
             return french_key
@@ -466,12 +541,81 @@ def reverse_translate_status(translated_status: str, source_language: Language =
     # Si pas trouvé, retourner la valeur originale
     return translated_status
 
-# --- Helper functions for specific domains ---
+def reverse_translate_type(translated_type: str, source_language: Language = None) -> str:
+    """
+    Retourne la clé française du type OT à partir de sa traduction dans une langue donnée.
+    """
+    if source_language is None:
+        source_language = app_config.language
+    
+    if source_language == Language.FRENCH:
+        return translated_type
+    
+    for french_key, translations in type_translations.items():
+        if translations.get(source_language) == translated_type:
+            return french_key
+    
+    return translated_type
+
+def reverse_translate_priority(translated_priority: str, source_language: Language = None) -> str:
+    """
+    Retourne la clé française de la priorité à partir de sa traduction dans une langue donnée.
+    """
+    if source_language is None:
+        source_language = app_config.language
+    
+    if source_language == Language.FRENCH:
+        return translated_priority
+    
+    for french_key, translations in priority_translations.items():
+        if translations.get(source_language) == translated_priority:
+            return french_key
+    
+    return translated_priority
 
 def reverse_translate_purchase_order_status(translated_status: str, source_language: Language = None) -> str:
     """
+    Retourne la clé française du statut de commande à partir de sa traduction dans une langue donnée.
+    Fonction séparée pour éviter les conflits entre statuts OT et commandes.
+    """
+    if source_language is None:
+        source_language = app_config.language
+    
+    if source_language == Language.FRENCH:
+        return translated_status
+    
+    for french_key, translations in purchase_order_status_translations.items():
+        if translations.get(source_language) == translated_status:
+            return french_key
+    
+    return translated_status
+
+# =============================================================================
+# SECTION 8 : FONCTIONS HELPERS POUR DOMAINES SPECIFIQUES
+# =============================================================================
+
+# Fonctions helper pour éviter les conflits entre domaines
+def reverse_translate_purchase_order_status_safe(translated_status: str, source_language: Language = None) -> str:
+    """
     Helper function specifically for purchase order statuses.
     Prioritizes purchase order status keys to avoid conflicts with work order statuses.
+    DEPRECATED: Utilisez reverse_translate_purchase_order_status() à la place.
     """
-    purchase_order_keys = ['Brouillon', 'Validee', 'Envoyee', 'Partielle', 'Livree', 'Annulee']
-    return reverse_translate_status(translated_status, source_language, prefer_keys=purchase_order_keys)
+    return reverse_translate_purchase_order_status(translated_status, source_language)
+
+# =============================================================================
+# SECTION 9 : COMPATIBILITE - Fonctions pour maintenir la compatibilité avec l'existant
+# =============================================================================
+
+# Alias pour maintenir la compatibilité avec l'ancien code
+def get_work_order_status_translation(status: str, language: Language = None) -> str:
+    """Alias pour translate_status - compatibilité avec l'ancien code"""
+    return translate_status(status, language)
+
+def get_work_order_type_translation(ot_type: str, language: Language = None) -> str:
+    """Alias pour translate_type - compatibilité avec l'ancien code"""
+    return translate_type(ot_type, language)
+
+def get_work_order_priority_translation(priority: str, language: Language = None) -> str:
+    """Alias pour translate_priority - compatibilité avec l'ancien code"""
+    return translate_priority(priority, language)

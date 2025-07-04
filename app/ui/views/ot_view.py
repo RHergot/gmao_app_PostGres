@@ -27,7 +27,10 @@ from app.core.services.user_service import UserService
 from app.core.models.ordre_travail import OrdreTravail
 from app.core.models.maintenance import Maintenance
 from app.config import app_config, Language  # Import de la configuration centralisée
-from app.utils.i18n import translate_type, translate_priority, translate_status, translate_label
+from app.utils.i18n import (
+    translate_type, translate_priority, translate_status, translate_label,
+    reverse_translate_type, reverse_translate_priority, reverse_translate_status
+)
 from app.ui.dialogs.ot_dialog import OTDialog
 from app.ui.dialogs.maintenance_report_dialog import MaintenanceReportDialog
 from app.ui.views.maintenance_detail_view import MaintenanceDetailView
@@ -77,7 +80,7 @@ class OTView(QWidget):
         self.filter_type_combo = QComboBox()
         self.filter_statut_combo = QComboBox()
         self.filter_technicien_combo = QComboBox()
-        self.filter_urgence_check = QCheckBox(translate_label("UrgentOnly"))
+        self.filter_priorite_combo = QComboBox()  # Remplace la case à cocher
         self.clear_filters_button = QPushButton(translate_label("ClearFilters"))
         self._populate_filter_combos() # Charge listes
 
@@ -106,8 +109,11 @@ class OTView(QWidget):
         filter_layout1.addWidget(self.filter_statut_combo)
         filter_layout2 = QHBoxLayout()
         filter_layout2.addWidget(QLabel(self.tr("Technicien:")))
-        filter_layout2.addWidget(self.filter_technicien_combo); filter_layout2.addWidget(self.filter_urgence_check)
-        filter_layout2.addStretch(); filter_layout2.addWidget(self.clear_filters_button)
+        filter_layout2.addWidget(self.filter_technicien_combo)
+        filter_layout2.addWidget(QLabel(self.tr("Priorité:")))
+        filter_layout2.addWidget(self.filter_priorite_combo)
+        filter_layout2.addStretch()
+        filter_layout2.addWidget(self.clear_filters_button)
 
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.add_button)
@@ -217,41 +223,41 @@ class OTView(QWidget):
         for m_id, m_nom in sorted_machines:
             self.filter_machine_combo.addItem(m_nom, m_id)
 
-        # Remplir le filtre des types de maintenance
+        # Remplir le filtre des types de maintenance - CORRIGÉ
         self.filter_type_combo.clear()
-        self.filter_type_combo.addItem(translate_label("All"), "")
+        self.filter_type_combo.addItem(translate_label("All"), None)
         
-        # Ajouter les types de maintenance avec traduction
+        # Ajouter les types de maintenance avec traduction, mais stocker la valeur originale
         for ot_type in OT_TYPES:
-            self.filter_type_combo.addItem(translate_type(ot_type, app_config.language), ot_type)
+            translated_type = self._convert_db_to_ui_value(ot_type, "type")
+            self.filter_type_combo.addItem(translated_type, ot_type)  # Stocker la valeur DB originale
 
-        # Configurer le filtre de statut
+        # Configurer le filtre de statut - CORRIGÉ
         self.filter_statut_combo.clear()
         
-        # Ajouter les statuts avec traduction
-        all_statuts = [
-            (translate_label("All"), ""),
-            (translate_label("AllOpen"), "Tous Ouverts"),
-            (translate_label("AllClosed"), "Tous Fermés")
-        ]
+        # Ajouter les statuts avec traduction et les bonnes données
+        # Groupes spéciaux
+        self.filter_statut_combo.addItem(translate_label("All"), "")
+        self.filter_statut_combo.addItem(translate_label("AllOpen"), "Tous Ouverts")
+        self.filter_statut_combo.addItem(translate_label("AllClosed"), "Tous Fermés")
         
-        # Ajouter les statuts ouverts
+        # Ajouter les statuts ouverts avec traduction
         for statut in OT_STATUTS_OUVERT:
-            all_statuts.append((statut, statut))
+            translated_statut = self._convert_db_to_ui_value(statut, "status")
+            self.filter_statut_combo.addItem(translated_statut, statut)
             
-        # Ajouter les statuts fermés
+        # Ajouter les statuts fermés avec traduction
         for statut in OT_STATUTS_FERME:
-            all_statuts.append((statut, statut))
+            translated_statut = self._convert_db_to_ui_value(statut, "status")
+            self.filter_statut_combo.addItem(translated_statut, statut)
         
-        # Ajouter les statuts traduits à la combobox
-        for display_text, data_value in all_statuts:
-            if data_value in ["", "Tous Ouverts", "Tous Fermés"]:
-                self.filter_statut_combo.addItem(display_text, data_value)
-            else:
-                self.filter_statut_combo.addItem(translate_status(display_text, app_config.language), data_value)
-        
-        # Définir la valeur par défaut
-        self.filter_statut_combo.setCurrentText(translate_label("AllOpen"))
+        # Définir la valeur par défaut à "Tous Ouverts"
+        index_all_open = self.filter_statut_combo.findData("Tous Ouverts")
+        if index_all_open >= 0:
+            self.filter_statut_combo.setCurrentIndex(index_all_open)
+        else:
+            # Fallback sur le premier élément
+            self.filter_statut_combo.setCurrentIndex(0)
 
         # Configurer le filtre de technicien
         self.filter_technicien_combo.clear()
@@ -262,6 +268,15 @@ class OTView(QWidget):
         sorted_techs = sorted(self.techniciens_map.items(), key=lambda item: item[1])
         for t_id, t_nom in sorted_techs:
             self.filter_technicien_combo.addItem(t_nom, t_id)
+
+        # Configurer le filtre de priorité - NOUVEAU
+        self.filter_priorite_combo.clear()
+        self.filter_priorite_combo.addItem(translate_label("All"), None)
+        
+        # Ajouter les priorités avec traduction, mais stocker la valeur originale
+        for priorite in OT_PRIORITES:
+            translated_priorite = self._convert_db_to_ui_value(priorite, "priority")
+            self.filter_priorite_combo.addItem(translated_priorite, priorite)  # Stocker la valeur DB originale
 
         # Afficher un message d'erreur s'il y en a un
         if error_msg:
@@ -315,7 +330,7 @@ class OTView(QWidget):
         self.filter_type_combo.currentIndexChanged.connect(self.apply_filters)
         self.filter_statut_combo.currentIndexChanged.connect(self.apply_filters)
         self.filter_technicien_combo.currentIndexChanged.connect(self.apply_filters)
-        self.filter_urgence_check.stateChanged.connect(self.apply_filters)
+        self.filter_priorite_combo.currentIndexChanged.connect(self.apply_filters)  # Remplace stateChanged
         self.clear_filters_button.clicked.connect(self.clear_filters)
 
 
@@ -390,7 +405,7 @@ class OTView(QWidget):
     def apply_filters(self): self.refresh_ots()
 
     def _get_current_filters(self) -> Dict[str, Any]:
-        """ Construit le dict de filtres. """
+        """ Construit le dict de filtres avec conversion UI->DB. """
         try:
             logger.debug("Début construction des filtres OT...")
             filters = {}
@@ -401,57 +416,33 @@ class OTView(QWidget):
                 filters['machine_id'] = machine_id
                 logger.debug(f"Filtre machine_id ajouté: {machine_id}")
             
-            # Filtre par type
-            type_ot = self.filter_type_combo.currentText()
-            if type_ot != "Tous" and type_ot != self.tr("All"): 
-                filters['type'] = type_ot
-                logger.debug(f"Filtre type ajouté: {type_ot}")
+            # Filtre par type - CORRIGÉ avec data() de la combobox
+            type_data = self.filter_type_combo.currentData()
+            type_text = self.filter_type_combo.currentText()
+            if type_data is not None:
+                filters['type'] = type_data
+                logger.debug(f"Filtre type ajouté: '{type_text}' -> '{type_data}'")
             
-            # Filtre par statut (partie la plus complexe)
-            statut = self.filter_statut_combo.currentText()
-            logger.debug(f"Statut sélectionné: '{statut}'")
+            # Filtre par statut - CORRIGÉ avec data() de la combobox
+            statut_data = self.filter_statut_combo.currentData()
+            statut_text = self.filter_statut_combo.currentText()
+            logger.debug(f"Statut sélectionné - Data: '{statut_data}', Text: '{statut_text}'")
             
-            if statut != "Tous" and statut != self.tr("All"):
-                # Cas spéciaux pour les groupes de statuts
-                if statut in ["Tous Ouverts", self.tr("All Open")]:
+            if statut_data:  # Si data n'est pas None ou vide
+                if statut_data == "Tous Ouverts":
                     logger.debug(f"Ajout filtre statut__in pour statuts ouverts: {OT_STATUTS_OUVERT}")
-                    filters['statut__in'] = OT_STATUTS_OUVERT.copy()  # Utiliser une copie pour éviter les problèmes de référence
-                elif statut in ["Tous Fermés", self.tr("All Closed")]:
+                    filters['statut__in'] = OT_STATUTS_OUVERT.copy()
+                elif statut_data == "Tous Fermés":
                     logger.debug(f"Ajout filtre statut__in pour statuts fermés: {OT_STATUTS_FERME}")
-                    filters['statut__in'] = OT_STATUTS_FERME.copy()  # Utiliser une copie pour éviter les problèmes de référence
+                    filters['statut__in'] = OT_STATUTS_FERME.copy()
                 else:
-                    # Statut individuel - vérifier s'il est déjà dans les listes de statuts originaux
-                    if statut in OT_STATUTS_OUVERT or statut in OT_STATUTS_FERME:
-                        logger.debug(f"Ajout filtre statut direct: {statut}")
-                        filters['statut'] = statut
-                    else:
-                        # Essayer de trouver la correspondance dans les traductions
-                        found = False
-                        for i, translated in enumerate(self.ALL_OT_STATUTS_TRANSLATED):
-                            if translated == statut and i >= 3:  # Ignorer les 3 premiers qui sont spéciaux
-                                if i < 3 + len(OT_STATUTS_OUVERT):
-                                    # C'est un statut ouvert
-                                    original_statut = OT_STATUTS_OUVERT[i-3]
-                                    logger.debug(f"Correspondance trouvée pour statut traduit '{statut}' -> '{original_statut}'")
-                                    filters['statut'] = original_statut
-                                    found = True
-                                    break
-                                else:
-                                    # C'est un statut fermé
-                                    idx = i - 3 - len(OT_STATUTS_OUVERT)
-                                    if idx < len(OT_STATUTS_FERME):
-                                        original_statut = OT_STATUTS_FERME[idx]
-                                        logger.debug(f"Correspondance trouvée pour statut traduit '{statut}' -> '{original_statut}'")
-                                        filters['statut'] = original_statut
-                                        found = True
-                                        break
-                        
-                        if not found:
-                            logger.warning(f"Aucune correspondance trouvée pour le statut '{statut}', aucun filtre de statut appliqué")
+                    # Statut individuel - utiliser directement la data (qui est déjà en français)
+                    filters['statut'] = statut_data
+                    logger.debug(f"Filtre statut ajouté: '{statut_text}' -> '{statut_data}'")
             else:
-                logger.debug("Aucun filtre de statut appliqué (statut = 'Tous')")
+                logger.debug("Aucun filtre de statut appliqué (data = vide)")
             
-            # Traitement du technicien
+            # Traitement du technicien (inchangé)
             tech_id = self.filter_technicien_combo.currentData()
             if tech_id is not None:
                 if tech_id == -1:  # Non assigné
@@ -461,10 +452,12 @@ class OTView(QWidget):
                     logger.debug(f"Ajout filtre technicien_assigne_id: {tech_id}")
                     filters['technicien_assigne_id'] = tech_id
             
-            # Filtre d'urgence
-            if self.filter_urgence_check.isChecked():
-                logger.debug("Ajout filtre urgence = True")
-                filters['urgence'] = True
+            # Filtre de priorité - NOUVEAU remplace le filtre urgence
+            priorite_data = self.filter_priorite_combo.currentData()
+            priorite_text = self.filter_priorite_combo.currentText()
+            if priorite_data is not None:
+                filters['priorite'] = priorite_data
+                logger.debug(f"Filtre priorité ajouté: '{priorite_text}' -> '{priorite_data}'")
                 
             logger.debug(f"Filtres OT finaux: {filters}")
             return filters
@@ -495,7 +488,7 @@ class OTView(QWidget):
             self.filter_statut_combo.setCurrentIndex(0)
             
         self.filter_technicien_combo.setCurrentIndex(0)
-        self.filter_urgence_check.setChecked(False)
+        self.filter_priorite_combo.setCurrentIndex(0)  # Remplace filter_urgence_check
         
         logger.debug("Filtres réinitialisés, rafraîchissement des OTs...")
         self.refresh_ots()
@@ -523,7 +516,7 @@ class OTView(QWidget):
             self.filter_statut_combo.setCurrentIndex(0)
             
         self.filter_technicien_combo.setCurrentIndex(0)
-        self.filter_urgence_check.setChecked(False)
+        self.filter_priorite_combo.setCurrentIndex(0)  # Remplace filter_urgence_check
         
         # Forcer un rafraîchissement complet
         logger.info("Forcer un rafraîchissement complet de la liste des OTs...")
@@ -1328,3 +1321,60 @@ class OTView(QWidget):
         except Exception as e:
             QMessageBox.critical(self, self.tr("Erreur"), self.tr("Erreur lors de l'ouverture des détails de maintenance : %1").replace('%1', str(e)))
             logger.error(f"Erreur ouverture détails maintenance OT {ot_id}: {e}", exc_info=True)
+
+    # --- Méthodes de conversion UI <-> Base de données ---
+    
+    def _convert_ui_to_db_value(self, ui_value: str, field_type: str) -> Any:
+        """
+        Convertit une valeur de l'interface utilisateur vers la valeur correspondante en base.
+        Args:
+            ui_value: Valeur affichée dans l'UI (potentiellement traduite)
+            field_type: Type de champ ('type', 'status', 'priority', etc.)
+        Returns:
+            La valeur correspondante pour la base de données (généralement en français)
+        """
+        if not ui_value or ui_value in ["Tous", self.tr("All")]:
+            return None
+            
+        try:
+            if field_type == "type":
+                return reverse_translate_type(ui_value, app_config.language)
+                
+            elif field_type == "status":
+                return reverse_translate_status(ui_value, app_config.language)
+                
+            elif field_type == "priority":
+                return reverse_translate_priority(ui_value, app_config.language)
+                
+            else:
+                # Pour d'autres types, retourner tel quel
+                return ui_value
+                
+        except Exception as e:
+            logger.error(f"Erreur conversion UI->DB pour '{ui_value}' (type: {field_type}): {e}")
+            return ui_value
+
+    def _convert_db_to_ui_value(self, db_value: str, field_type: str) -> str:
+        """
+        Convertit une valeur de base de données vers la valeur à afficher dans l'UI.
+        Args:
+            db_value: Valeur stockée en base (généralement en français)
+            field_type: Type de champ ('type', 'status', 'priority', etc.)
+        Returns:
+            La valeur traduite pour l'affichage dans l'UI
+        """
+        if not db_value:
+            return ""
+            
+        try:
+            if field_type == "type":
+                return translate_type(db_value, app_config.language)
+            elif field_type == "status":
+                return translate_status(db_value, app_config.language)
+            elif field_type == "priority":
+                return translate_priority(db_value, app_config.language)
+            else:
+                return db_value
+        except Exception as e:
+            logger.error(f"Erreur conversion DB->UI pour '{db_value}' (type: {field_type}): {e}")
+            return db_value

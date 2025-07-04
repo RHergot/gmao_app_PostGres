@@ -46,9 +46,9 @@ logger = logging.getLogger(__name__)
 
 # TODO: Définir les statuts/types/priorités possibles (pourrait venir de config/DB)
 OT_TYPES = ["Preventif", "Correctif", "Amelioratif", "Demande", "Reglementaire"]
-OT_PRIORITES = ["Basse", "Moyenne", "Haute", "Urgente"]
+OT_PRIORITES = ["Basse", "Normale", "Moyenne", "Haute", "Urgente"]
 OT_STATUTS_OUVERT = ["Créé", "Planifié", "AttentePieces", "Pret", "EnCours", "Suspendu"]  # Statuts considérés comme ouverts
-OT_STATUTS_FERME = ["Realise", "Cloture", "Annule"]
+OT_STATUTS_FERME = ["Terminé"]
 MAINTENANCE_RESULTATS = ["OK", "OK avec reserve", "NOK", "A suivre"]
 
 
