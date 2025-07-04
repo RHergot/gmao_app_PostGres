@@ -1006,8 +1006,8 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(self.exit_action)
         
-        # --- Menu Gestion ---
-        # Ce menu regroupe les fonctionnalités d'administration et de gestion des éléments principaux
+        # --- Menu Gestion (simplifié) ---
+        # Ce menu regroupe uniquement les fonctionnalités opérationnelles principales
         manage_menu = menu_bar.addMenu(self.tr("Gestion"))
 
         # Ajout du sous-menu Demande Intervention
@@ -1015,75 +1015,13 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'demande_intervention_action') and self.demande_intervention_action:
             manage_menu.addAction(self.demande_intervention_action)
 
-        # Ajout des actions en fonction des droits de l'utilisateur
-        if self.manage_users_action:
-            manage_menu.addAction(self.manage_users_action)
-        if self.manage_machines_action:
-            manage_menu.addAction(self.manage_machines_action)
+        # Ajout des actions opérationnelles uniquement
         if self.manage_ots_action:
-            # Ajoute Gérer les OTs à la 3ème position si possible, sinon à la fin
-            actions = manage_menu.actions()
-            if len(actions) > 2:
-                manage_menu.insertAction(actions[2], self.manage_ots_action)
-            else:
-                manage_menu.addAction(self.manage_ots_action)
-        
-        # Ajout du Menu KPI (accessible à tous les rôles)
-        if hasattr(self, 'kpi_dashboard_action') and self.kpi_dashboard_action:
-            manage_menu.addSeparator()
-            
-            # Créer un sous-menu KPI
-            kpi_submenu = manage_menu.addMenu("📊 KPI & Analyses")
-            kpi_submenu.setStatusTip("Accéder aux tableaux de bord et analyses de performance")
-            
-            # Dashboard principal
-            kpi_submenu.addAction(self.kpi_dashboard_action)
-            kpi_submenu.addSeparator()
-            
-            # Analyses spécialisées
-            if hasattr(self, 'kpi_machines_action'):
-                kpi_submenu.addAction(self.kpi_machines_action)
-            if hasattr(self, 'kpi_sites_action'):
-                kpi_submenu.addAction(self.kpi_sites_action)
-            if hasattr(self, 'kpi_teams_action'):
-                kpi_submenu.addAction(self.kpi_teams_action)
-            kpi_submenu.addSeparator()
-            if hasattr(self, 'kpi_preventive_action'):
-                kpi_submenu.addAction(self.kpi_preventive_action)
-            if hasattr(self, 'kpi_advanced_action'):
-                kpi_submenu.addAction(self.kpi_advanced_action)
-            
+            manage_menu.addAction(self.manage_ots_action)
         
         # Ajout des actions de gestion des gammes si autorisées
         if self.manage_gammes_action and can_access("Gérer les Gammes d'Entretien", self.user_role):
             manage_menu.addAction(self.manage_gammes_action)
-        # --- Séparateur pour le sous-menu de configuration ---
-        manage_menu.addSeparator()
-        
-        # --- Sous-menu Configuration ---
-        # Ce sous-menu contient les paramètres de l'application comme les sites, fabricants, etc.
-        if can_access("Configuration", self.user_role):
-            config_submenu = manage_menu.addMenu(self.tr("Configuration"))
-            
-            # Action pour gérer les sites géographiques où sont installées les machines
-            if self.manage_sites_action:
-                config_submenu.addAction(self.manage_sites_action)
-                
-            # Actions pour gérer les fabricants et types de machines
-            # Ces actions sont ajoutées même si elles sont désactivées pour une meilleure cohérence
-            # Elles seront activées lors de l'implémentation des vues correspondantes
-            if hasattr(self, 'manage_fabricants_action'):
-                config_submenu.addAction(self.manage_fabricants_action)
-                
-            # Action pour gérer les types de machines (catégories d'équipements)
-            if hasattr(self, 'manage_types_action') and self.manage_types_action:
-                config_submenu.addAction(self.manage_types_action)
-                
-            # Action pour gérer les équipes (intervenants et groupes de travail)
-            if hasattr(self, 'manage_equipes_action'):
-                config_submenu.addAction(self.manage_equipes_action)
-            if hasattr(self, 'manage_techniciens_action') and self.manage_techniciens_action:
-                config_submenu.addAction(self.manage_techniciens_action)
 
         # --- Menu Stock ---
         # Ce menu regroupe les fonctionnalités de gestion des stocks et pièces détachées
@@ -1105,6 +1043,65 @@ class MainWindow(QMainWindow):
             if self.manage_commandes_action and can_access("Gérer Commandes", self.user_role):
                 stock_menu.addSeparator()
                 stock_menu.addAction(self.manage_commandes_action)
+
+        # --- Menu KPI & Analyses (menu principal) ---
+        # Ce menu regroupe tous les tableaux de bord et analyses de performance
+        if hasattr(self, 'kpi_dashboard_action') and self.kpi_dashboard_action:
+            kpi_menu = menu_bar.addMenu(self.tr("📊 KPI & Analyses"))
+            kpi_menu.setStatusTip("Accéder aux tableaux de bord et analyses de performance")
+            
+            # Dashboard principal
+            kpi_menu.addAction(self.kpi_dashboard_action)
+            kpi_menu.addSeparator()
+            
+            # Analyses spécialisées
+            if hasattr(self, 'kpi_machines_action'):
+                kpi_menu.addAction(self.kpi_machines_action)
+            if hasattr(self, 'kpi_sites_action'):
+                kpi_menu.addAction(self.kpi_sites_action)
+            if hasattr(self, 'kpi_teams_action'):
+                kpi_menu.addAction(self.kpi_teams_action)
+            kpi_menu.addSeparator()
+            if hasattr(self, 'kpi_preventive_action'):
+                kpi_menu.addAction(self.kpi_preventive_action)
+            if hasattr(self, 'kpi_advanced_action'):
+                kpi_menu.addAction(self.kpi_advanced_action)
+        
+        # --- Menu Configuration (menu principal) ---
+        # Ce menu regroupe tous les paramètres système et référentiels
+        if can_access("Configuration", self.user_role):
+            config_menu = menu_bar.addMenu(self.tr("Configuration"))
+            config_menu.setStatusTip("Paramètres système et référentiels")
+            
+            # Gestion des utilisateurs (déplacé depuis Gestion)
+            if self.manage_users_action:
+                config_menu.addAction(self.manage_users_action)
+            
+            # Gestion des machines (déplacé depuis Gestion)
+            if self.manage_machines_action:
+                config_menu.addAction(self.manage_machines_action)
+            
+            config_menu.addSeparator()
+            
+            # Action pour gérer les sites géographiques où sont installées les machines
+            if self.manage_sites_action:
+                config_menu.addAction(self.manage_sites_action)
+                
+            # Actions pour gérer les fabricants et types de machines
+            # Ces actions sont ajoutées même si elles sont désactivées pour une meilleure cohérence
+            # Elles seront activées lors de l'implémentation des vues correspondantes
+            if hasattr(self, 'manage_fabricants_action'):
+                config_menu.addAction(self.manage_fabricants_action)
+                
+            # Action pour gérer les types de machines (catégories d'équipements)
+            if hasattr(self, 'manage_types_action') and self.manage_types_action:
+                config_menu.addAction(self.manage_types_action)
+                
+            # Action pour gérer les équipes (intervenants et groupes de travail)
+            if hasattr(self, 'manage_equipes_action'):
+                config_menu.addAction(self.manage_equipes_action)
+            if hasattr(self, 'manage_techniciens_action') and self.manage_techniciens_action:
+                config_menu.addAction(self.manage_techniciens_action)
 
         # --- Menu Aide ---
         # Ce menu contient les actions d'assistance et d'information sur l'application

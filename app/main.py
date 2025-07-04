@@ -152,7 +152,7 @@ def main():
     # --- Phase 1: Configuration de la langue via argument ---
     import argparse
     parser = argparse.ArgumentParser(description="Lancement de l'application GMAO.")
-    parser.add_argument("--lang", type=str, default="Français", help="Langue de l'application (ex: Français, Anglais)")
+    parser.add_argument("--lang", type=str, default="Anglais", help="Langue de l'application (ex: Français, Anglais)")
     # Parse les arguments connus, ignore les autres (comme ceux de Qt)
     args, unknown = parser.parse_known_args()
     selected_language_str = args.lang
@@ -166,15 +166,15 @@ def main():
         "Italien": Language.ITALIAN
     }
     
-    # Utiliser le mapping, avec le français comme valeur par défaut
-    app_language_enum = language_map.get(selected_language_str, Language.FRENCH)
+    # Utiliser le mapping, avec l'anglais comme valeur par défaut
+    app_language_enum = language_map.get(selected_language_str, Language.ENGLISH)
 
     global APP_LANGUAGE
     APP_LANGUAGE = app_language_enum
     app_config.language = app_language_enum
     logger.info(f"Langue sélectionnée: {selected_language_str} -> {app_config.language.name} (code: {app_config.language.value})")
 
-    # --- Chargement du traducteur Qt pour le Français ---
+    # --- Chargement du traducteur Qt pour l'anglais ---
     from PySide6.QtCore import QTranslator
     import os
     
