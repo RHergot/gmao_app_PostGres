@@ -44,8 +44,6 @@ MACHINE_TRANSLATIONS = {
         "title": "📊 Analyse KPI par Machine",
         "machine_filter": "Filtrer par Machine",
         "all_machines": "Toutes les machines",
-        "site_filter": "Filtrer par Site",
-        "all_sites": "Tous les sites",
         "type_filter": "Type de Machine",
         "all_types": "Tous les types",
         "summary_tab": "📊 Résumé",
@@ -70,8 +68,6 @@ MACHINE_TRANSLATIONS = {
         "title": "📊 Machine KPI Analysis",
         "machine_filter": "Filter by Machine",
         "all_machines": "All machines",
-        "site_filter": "Filter by Site",
-        "all_sites": "All sites",
         "type_filter": "Machine Type",
         "all_types": "All types",
         "summary_tab": "📊 Summary",
@@ -96,8 +92,6 @@ MACHINE_TRANSLATIONS = {
         "title": "📊 Maschinen-KPI-Analyse",
         "machine_filter": "Nach Maschine filtern",
         "all_machines": "Alle Maschinen",
-        "site_filter": "Nach Standort filtern",
-        "all_sites": "Alle Standorte",
         "type_filter": "Maschinentyp",
         "all_types": "Alle Typen",
         "summary_tab": "📊 Zusammenfassung",
@@ -147,7 +141,6 @@ class MachineKPIDialog(BaseKPIDialog):
         
         # Données spécifiques aux machines
         self.machines_data = []
-        self.sites_list = []
         self.machine_types = []
         
         logger.info("Initialisation du MachineKPIDialog")
@@ -165,17 +158,7 @@ class MachineKPIDialog(BaseKPIDialog):
         
         toolbar_layout.addWidget(machine_group)
         
-        # === FILTRE PAR SITE ===
-        site_group = QGroupBox(get_machine_text("site_filter"))
-        site_layout = QHBoxLayout(site_group)
-        
-        self.site_combo = QComboBox()
-        self.site_combo.addItem(get_machine_text("all_sites"))
-        self.site_combo.currentTextChanged.connect(self.on_filter_changed)
-        site_layout.addWidget(self.site_combo)
-        
-        toolbar_layout.addWidget(site_group)
-        
+
         # === FILTRE PAR TYPE ===
         type_group = QGroupBox(get_machine_text("type_filter"))
         type_layout = QHBoxLayout(type_group)
@@ -275,10 +258,9 @@ class MachineKPIDialog(BaseKPIDialog):
         
         # Table détaillée des machines
         self.details_table = QTableWidget()
-        self.details_table.setColumnCount(8)
+        self.details_table.setColumnCount(7)
         headers = [
             get_machine_text("machine_name"),
-            "Site",
             "Type",
             get_machine_text("total_cost"),
             get_machine_text("interventions"),
@@ -338,36 +320,35 @@ class MachineKPIDialog(BaseKPIDialog):
             
             # Utiliser le service KPI pour récupérer les données réelles
             if self.kpi_service:
-                self.machines_data = self.kpi_service.get_couts_par_machine(
+                # Récupérer les données brutes du service
+                raw_kpi_data = self.kpi_service.get_couts_par_machine(
                     periode_debut=start_date,
                     periode_fin=end_date,
                     limite=100  # Limiter à 100 machines pour les performances
                 )
-                
-                # Convertir les données au format attendu par l'interface
-                self.machines_data = self.convert_kpi_data_to_ui_format(self.machines_data)
+                # Convertir les données pour l'UI
+                self.machines_data = self.convert_kpi_data_to_ui_format(raw_kpi_data)
             else:
-                # Fallback vers les données de test si le service n'est pas disponible
-                self.machines_data = self.get_mock_machine_data()
-            
-            # Mise à jour des filtres
+                raise Exception("Service KPI non initialisé")
+
+            # Mettre à jour les filtres avant les vues
             self.update_filters()
-            
-            # Mise à jour des vues
+
             self.update_summary_view()
             self.update_details_view()
             self.update_charts_view()
-            
+
             self.set_status(f"Données chargées: {len(self.machines_data)} machines", success=True)
-            
+
         except Exception as e:
             logger.error(f"Erreur lors du chargement des données machines: {e}")
-            self.set_status(f"Erreur: {e}", success=False)
-            # En cas d'erreur, utiliser les données de test
-            self.machines_data = self.get_mock_machine_data()
+            self.set_status(f"Erreur de connexion à la base de données : {e}", success=False)
+            self.machines_data = []
             self.update_summary_view()
             self.update_details_view()
             self.update_charts_view()
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Erreur", f"Impossible de charger les données depuis la base de données.\n\nDétail : {e}")
     
     def convert_kpi_data_to_ui_format(self, kpi_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convertit les données KPI au format attendu par l'interface."""
@@ -377,7 +358,6 @@ class MachineKPIDialog(BaseKPIDialog):
             machine_data = {
                 "machine_name": item.get('machine_nom', 'N/A'),
                 "serial": item.get('machine_serial', 'N/A'),
-                "site": item.get('site_nom', 'N/A'),
                 "type": item.get('type_nom', 'N/A'),
                 "criticite": item.get('machine_criticite', 'Standard'),
                 "total_cost": float(item.get('cout_total', 0)),
@@ -406,7 +386,6 @@ class MachineKPIDialog(BaseKPIDialog):
         """Génère des données de test pour les machines."""
         import random
         
-        sites = ["Site A", "Site B", "Site C"]
         types = ["Presse", "Tour", "Fraiseuse", "Robot", "Convoyeur"]
         statuses = ["Actif", "Maintenance", "Arrêt"]
         
@@ -415,7 +394,6 @@ class MachineKPIDialog(BaseKPIDialog):
             machine_name = f"MACH-{i+1:03d}"
             data.append({
                 "machine_name": machine_name,
-                "site": random.choice(sites),
                 "type": random.choice(types),
                 "total_cost": random.uniform(5000, 50000),
                 "interventions": random.randint(5, 30),
@@ -432,12 +410,6 @@ class MachineKPIDialog(BaseKPIDialog):
     
     def update_filters(self):
         """Met à jour les listes de filtres."""
-        # Sites
-        self.site_combo.clear()
-        self.site_combo.addItem(get_machine_text("all_sites"))
-        sites = sorted(set(machine["site"] for machine in self.machines_data))
-        self.site_combo.addItems(sites)
-        
         # Types
         self.type_combo.clear()
         self.type_combo.addItem(get_machine_text("all_types"))
@@ -453,11 +425,6 @@ class MachineKPIDialog(BaseKPIDialog):
     def get_filtered_data(self) -> List[Dict[str, Any]]:
         """Récupère les données filtrées."""
         filtered_data = self.machines_data.copy()
-        
-        # Filtre par site
-        selected_site = self.site_combo.currentText()
-        if selected_site != get_machine_text("all_sites"):
-            filtered_data = [m for m in filtered_data if m["site"] == selected_site]
         
         # Filtre par type
         selected_type = self.type_combo.currentText()
@@ -514,13 +481,12 @@ class MachineKPIDialog(BaseKPIDialog):
         
         for row, machine in enumerate(filtered_data):
             self.details_table.setItem(row, 0, QTableWidgetItem(machine["machine_name"]))
-            self.details_table.setItem(row, 1, QTableWidgetItem(machine["site"]))
-            self.details_table.setItem(row, 2, QTableWidgetItem(machine["type"]))
-            self.details_table.setItem(row, 3, QTableWidgetItem(f"{machine['total_cost']:.2f}€"))
-            self.details_table.setItem(row, 4, QTableWidgetItem(str(machine["interventions"])))
-            self.details_table.setItem(row, 5, QTableWidgetItem(machine["last_maintenance"]))
-            self.details_table.setItem(row, 6, QTableWidgetItem(machine["next_maintenance"]))
-            self.details_table.setItem(row, 7, QTableWidgetItem(machine["status"]))
+            self.details_table.setItem(row, 1, QTableWidgetItem(machine["type"]))
+            self.details_table.setItem(row, 2, QTableWidgetItem(f"{machine['total_cost']:.2f}€"))
+            self.details_table.setItem(row, 3, QTableWidgetItem(str(machine["interventions"])))
+            self.details_table.setItem(row, 4, QTableWidgetItem(machine["last_maintenance"]))
+            self.details_table.setItem(row, 5, QTableWidgetItem(machine["next_maintenance"]))
+            self.details_table.setItem(row, 6, QTableWidgetItem(machine["status"]))
     
     def update_charts_view(self):
         """Met à jour la vue des graphiques."""

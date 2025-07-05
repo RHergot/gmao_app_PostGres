@@ -221,3 +221,76 @@ class FinanceService:
         }
         
         return resume
+
+    def recalculer_couts_maintenance(self, maintenance_id: int) -> Dict[str, float]:
+        """
+        Recalcule et met à jour les coûts d'une maintenance.
+        Cette méthode est appelée après modification d'une maintenance.
+        """
+        logger.info(f"Recalcul des coûts pour maintenance ID: {maintenance_id}")
+        return self.calculer_couts_maintenance(maintenance_id)
+
+    def get_detailed_costs_for_widget(self, maintenance_id: int) -> Dict[str, Any]:
+        """
+        Retourne les coûts dans le format attendu par MaintenanceCoutsWidget.
+        """
+        # Récupération des coûts de base
+        costs = self.calculer_couts_maintenance(maintenance_id)
+        
+        # Récupération des détails pour structurer les données
+        maintenance = self.maintenance_repo.get_by_id(maintenance_id)
+        if not maintenance:
+            return {}
+        
+        intervenants = self.intervenant_repo.get_by_maintenance_id(maintenance_id)
+        frais_externes = self.frais_repo.get_by_maintenance_id(maintenance_id)
+        
+        # Structure attendue par le widget
+        detailed_costs = {
+            'cout_total': costs.get('cout_total', 0),
+            'detail': {
+                'pieces_internes': {
+                    'cout_total': costs.get('cout_pieces_internes', 0),
+                    'items': []  # Les pièces sont gérées ailleurs
+                },
+                'main_oeuvre': {
+                    'cout_total': costs.get('cout_main_oeuvre', 0),
+                    'items': [
+                        {
+                            'id_intervenant': i.id_intervenant,
+                            'nom': i.nom_intervenant_externe if i.nom_intervenant_externe else f"Technicien {i.technicien_id}",
+                            'technicien_id': i.technicien_id,
+                            'heures': i.heures_travaillees or 0,
+                            'cout_horaire': i.cout_horaire or 0,
+                            'cout_total': i.cout_total or 0
+                        } for i in intervenants
+                    ]
+                },
+                'frais_externes': {
+                    'cout_total': costs.get('cout_pieces_externes', 0) + costs.get('cout_autres_frais', 0),
+                    'par_type': {},
+                    'ventilation_centre_frais': {}
+                }
+            }
+        }
+        
+        # Grouper les frais externes par type
+        for frais in frais_externes:
+            type_frais = frais.type_frais
+            if type_frais not in detailed_costs['detail']['frais_externes']['par_type']:
+                detailed_costs['detail']['frais_externes']['par_type'][type_frais] = []
+            
+            detailed_costs['detail']['frais_externes']['par_type'][type_frais].append({
+                'id_frais': frais.id_frais,
+                'description': frais.description,
+                'montant': frais.montant,
+                'quantite': frais.quantite,
+                'montant_total': frais.montant_total
+            })
+            
+            # Ventilation pour le résumé
+            if type_frais not in detailed_costs['detail']['frais_externes']['ventilation_centre_frais']:
+                detailed_costs['detail']['frais_externes']['ventilation_centre_frais'][type_frais] = 0
+            detailed_costs['detail']['frais_externes']['ventilation_centre_frais'][type_frais] += frais.montant_total
+        
+        return detailed_costs
