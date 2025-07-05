@@ -81,7 +81,6 @@ class OTView(QWidget):
         self.filter_statut_combo = QComboBox()
         self.filter_technicien_combo = QComboBox()
         self.filter_priorite_combo = QComboBox()  # Remplace la case à cocher
-        
         self.clear_filters_button = QPushButton(translate_label("ClearFilters"))
         self._populate_filter_combos() # Charge listes
 
@@ -730,10 +729,6 @@ class OTView(QWidget):
         action_cancel = QAction(self.tr("❌ Annuler OT"), self)
         action_delete = QAction(self.tr("🗑️ Supprimer OT"), self)
         action_details = QAction(self.tr("🔍 Détails Maintenance..."), self)
-        
-        # Actions d'archivage
-        action_archive = QAction(self.tr("📁 Archiver"), self)
-        action_unarchive = QAction(self.tr("📂 Désarchiver"), self)
 
         # --- Connexion des Actions ---
         action_edit.triggered.connect(self.edit_ot)
@@ -746,10 +741,6 @@ class OTView(QWidget):
         action_cancel.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, "Annule"))
         action_delete.triggered.connect(self.delete_ot)
         action_details.triggered.connect(lambda checked=False, otid=ot_id: self.open_maintenance_details_dialog(otid))
-        
-        # Connexions des actions d'archivage
-        action_archive.triggered.connect(lambda checked=False, otid=ot_id: self.archive_ot(otid))
-        action_unarchive.triggered.connect(lambda checked=False, otid=ot_id: self.unarchive_ot(otid))
 
         # --- Activation/Désactivation des Actions ---
         action_edit.setEnabled(current_status in OT_STATUTS_OUVERT)
@@ -761,10 +752,6 @@ class OTView(QWidget):
         action_view_report.setEnabled(current_status in OT_STATUTS_FERME and current_status != "Annule")
         action_cancel.setEnabled(current_status in OT_STATUTS_OUVERT)
         action_delete.setEnabled(current_status in ["Créé", "Planifié", "Annule"])
-        
-        # Activation des actions d'archivage
-        action_archive.setEnabled(current_status == "Terminé")  # Seuls les OT terminés peuvent être archivés
-        action_unarchive.setEnabled(current_status == "Archivé")  # Seuls les OT archivés peuvent être désarchivés
 
         # --- Ajout des Actions au Menu ---
         menu.addAction(action_edit)
@@ -779,10 +766,6 @@ class OTView(QWidget):
         menu.addSeparator()
         menu.addAction(action_cancel)
         menu.addAction(action_delete)
-        menu.addSeparator()
-        menu.addAction(action_archive)
-        menu.addAction(action_unarchive)
-        menu.addSeparator()
         menu.addAction(action_details)
 
         menu.exec(self.table_widget.mapToGlobal(pos))
@@ -1395,107 +1378,3 @@ class OTView(QWidget):
         except Exception as e:
             logger.error(f"Erreur conversion DB->UI pour '{db_value}' (type: {field_type}): {e}")
             return db_value
-
-    # --- Méthodes d'archivage ---
-    
-    @Slot(int)
-    def archive_ot(self, ot_id: int):
-        """Archive l'OT sélectionné."""
-        try:
-            # Vérification préliminaire
-            ot = next((o for o in self.current_ots if o.id_ot == ot_id), None)
-            if not ot:
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("OT non trouvé."))
-                return
-            
-            if ot.statut != "Terminé":
-                QMessageBox.warning(self, self.tr("Action impossible"), 
-                                  self.tr("Seuls les OT avec le statut 'Terminé' peuvent être archivés."))
-                return
-            
-            # Demande de confirmation
-            reply = QMessageBox.question(
-                self, 
-                self.tr("Confirmation d'archivage"),
-                self.tr("Êtes-vous sûr de vouloir archiver l'OT {0} ?\n\nCette action changera son statut vers 'Archivé'.").format(ot.numero_ot or f"ID {ot_id}"),
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            
-            if reply != QMessageBox.Yes:
-                logger.info(f"Archivage de l'OT {ot_id} annulé par l'utilisateur.")
-                return
-            
-            # Appel du service d'archivage
-            logger.info(f"Archivage de l'OT {ot_id}...")
-            archived_ot = self.maintenance_service.archive_ot(ot_id, self.current_user_id)
-            
-            # Message de succès
-            QMessageBox.information(
-                self, 
-                self.tr("Archivage réussi"),
-                self.tr("L'OT {0} a été archivé avec succès.").format(archived_ot.numero_ot or f"ID {ot_id}")
-            )
-            
-            # Rafraîchir la liste
-            self.refresh_ots()
-            logger.info(f"OT {ot_id} archivé avec succès.")
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                self.tr("Erreur d'archivage"),
-                self.tr("Impossible d'archiver l'OT :\n{0}").format(str(e))
-            )
-            logger.exception(f"Erreur lors de l'archivage de l'OT {ot_id}")
-
-    @Slot(int)
-    def unarchive_ot(self, ot_id: int):
-        """Désarchive l'OT sélectionné."""
-        try:
-            # Vérification préliminaire
-            ot = next((o for o in self.current_ots if o.id_ot == ot_id), None)
-            if not ot:
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("OT non trouvé."))
-                return
-            
-            if ot.statut != "Archivé":
-                QMessageBox.warning(self, self.tr("Action impossible"), 
-                                  self.tr("Seuls les OT avec le statut 'Archivé' peuvent être désarchivés."))
-                return
-            
-            # Demande de confirmation
-            reply = QMessageBox.question(
-                self, 
-                self.tr("Confirmation de désarchivage"),
-                self.tr("Êtes-vous sûr de vouloir désarchiver l'OT {0} ?\n\nCette action changera son statut vers 'Terminé'.").format(ot.numero_ot or f"ID {ot_id}"),
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-            
-            if reply != QMessageBox.Yes:
-                logger.info(f"Désarchivage de l'OT {ot_id} annulé par l'utilisateur.")
-                return
-            
-            # Appel du service de désarchivage
-            logger.info(f"Désarchivage de l'OT {ot_id}...")
-            unarchived_ot = self.maintenance_service.unarchive_ot(ot_id, self.current_user_id)
-            
-            # Message de succès
-            QMessageBox.information(
-                self, 
-                self.tr("Désarchivage réussi"),
-                self.tr("L'OT {0} a été désarchivé avec succès et son statut est maintenant 'Terminé'.").format(unarchived_ot.numero_ot or f"ID {ot_id}")
-            )
-            
-            # Rafraîchir la liste
-            self.refresh_ots()
-            logger.info(f"OT {ot_id} désarchivé avec succès.")
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self, 
-                self.tr("Erreur de désarchivage"),
-                self.tr("Impossible de désarchiver l'OT :\n{0}").format(str(e))
-            )
-            logger.exception(f"Erreur lors du désarchivage de l'OT {ot_id}")

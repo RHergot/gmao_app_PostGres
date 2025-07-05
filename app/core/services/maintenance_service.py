@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 OT_TYPES = ["Preventif", "Correctif", "Amelioratif", "Demande", "Reglementaire"]
 OT_PRIORITES = ["Basse", "Normale", "Moyenne", "Haute", "Urgente"]
 OT_STATUTS_OUVERT = ["Créé", "Planifié", "AttentePieces", "Pret", "EnCours", "Suspendu"]  # Statuts considérés comme ouverts
-OT_STATUTS_FERME = ["Terminé"]
+OT_STATUTS_FERME = ["Terminé", "Archivé"]  # Inclure "Archivé" dans les statuts fermés
 MAINTENANCE_RESULTATS = ["OK", "OK avec reserve", "NOK", "A suivre"]
 
 
@@ -116,14 +116,7 @@ class MaintenanceService:
                  mi_repo: MaintenanceIntervenantRepository = None,  # Repo pour intervenants 
                  mfe_repo: MaintenanceFraisExterneRepository = None # Repo pour frais externes
                  ):
-        
-        # ... (stocker les repos and services injectés SAUF preventive_service) ...
-        logger.debug("Repositories assignés dans MaintenanceService") # Log après assignation
-        self._preventive_service: Optional[PreventiveMaintenanceService] = None # Initialiser à None
-
-        """Initialises avec les repositories nécessaires."""
-        # ... (stocker les repos and services injectés) ...
-        
+        """Initialise avec les repositories nécessaires."""
         self._ot_repo = ot_repo
         self._maint_repo = maint_repo
         self._tech_repo = tech_repo
@@ -135,6 +128,10 @@ class MaintenanceService:
         # Nouveaux repositories pour la gestion des coûts
         self._mi_repo = mi_repo
         self._mfe_repo = mfe_repo
+        
+        # Services injectés par setter après instanciation
+        self._finance_service = None
+        self._preventive_service = None
         
         logger.debug("MaintenanceService initialisé avec gestion des coûts.")
 
@@ -612,444 +609,131 @@ class MaintenanceService:
              logger.error(f"Erreur (non bloquante) maj état machine suite à statut OT {ot_id}: {e}")
 
         return updated_ot # Renvoyer l'OT mis à jour
+
+    # --- Méthodes d'injection de dépendances ---
     
-
-    def set_preventive_service(self, preventive_service: 'PreventiveMaintenanceService'):
-         """ Injecte une référence au service préventif pour la màj post-maint. """
-         # Utiliser 'PreventiveMaintenanceService' en string pour type hint évite import circulaire
-         logger.debug("Injection de PreventiveMaintenanceService dans MaintenanceService.")
-         self._preventive_service = preventive_service
-
     def set_finance_service(self, finance_service):
-        """Injection du service financier (pour éviter les cycles d'import)."""
+        """
+        Injecte le service financier pour résoudre les dépendances circulaires.
+        Cette méthode doit être appelée après l'instanciation.
+        """
         self._finance_service = finance_service
-
-    def calculate_maintenance_cost(self, maintenance_id: int) -> dict:
-        """Calcule et retourne le détail des coûts pour une maintenance donnée (lecture seule, ne modifie pas la DB)."""
-        if not hasattr(self, '_finance_service') or self._finance_service is None:
-            raise RuntimeError("FinanceService non injecté dans MaintenanceService. Utilisez set_finance_service().")
+        logger.debug("Service financier injecté dans MaintenanceService.")
+    
+    def set_preventive_service(self, preventive_service):
+        """
+        Injecte le service de maintenance préventive pour résoudre les dépendances circulaires.
+        Cette méthode doit être appelée après l'instanciation.
+        """
+        self._preventive_service = preventive_service
+        logger.debug("Service de maintenance préventive injecté dans MaintenanceService.")
+    
+    # --- Méthodes d'archivage ---
+    
+    def archive_ot(self, ot_id: int, user_id: int) -> OrdreTravail:
+        """
+        Archive un OT manuellement.
+        Seuls les OT avec statut "Terminé" peuvent être archivés.
+        """
+        logger.info(f"Tentative d'archivage manuel OT ID {ot_id} par utilisateur {user_id}")
         
-        # Utiliser get_resume_couts_maintenance pour obtenir la structure complète avec détails
-        resume = self._finance_service.get_resume_couts_maintenance(maintenance_id)
-        
-        # Adapter la structure pour MaintenanceCoutsWidget qui attend une structure spécifique
-        if resume:
-            adapted_result = {
-                'cout_total': resume.get('cout_total', 0.0),
-                'cout_main_oeuvre': resume.get('ventilation', {}).get('main_oeuvre', {}).get('total', 0.0),
-                'cout_pieces_internes': resume.get('ventilation', {}).get('pieces_internes', {}).get('total', 0.0),
-                'cout_pieces_externes': resume.get('ventilation', {}).get('frais_externes', {}).get('pieces_externes', {}).get('total', 0.0),
-                'cout_autres_frais': resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('total', 0.0),
-                'detail': {
-                    'main_oeuvre': {
-                        'cout_total': resume.get('ventilation', {}).get('main_oeuvre', {}).get('total', 0.0),
-                        'items': resume.get('ventilation', {}).get('main_oeuvre', {}).get('details', [])
-                    },
-                    'pieces_internes': {
-                        'cout_total': resume.get('ventilation', {}).get('pieces_internes', {}).get('total', 0.0),
-                        'items': resume.get('ventilation', {}).get('pieces_internes', {}).get('details', [])
-                    },
-                    'frais_externes': {
-                        'cout_total': resume.get('ventilation', {}).get('frais_externes', {}).get('pieces_externes', {}).get('total', 0.0) + resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('total', 0.0),
-                        'par_type': {
-                            'PIECE_EXTERNE': resume.get('ventilation', {}).get('frais_externes', {}).get('pieces_externes', {}).get('details', []),
-                            'DEPLACEMENT': [f for f in resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('details', []) if f.get('type') == 'DEPLACEMENT'],
-                            'SOUS_TRAITANCE': [f for f in resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('details', []) if f.get('type') == 'SOUS_TRAITANCE'],
-                            'AUTRE': [f for f in resume.get('ventilation', {}).get('frais_externes', {}).get('autres_frais', {}).get('details', []) if f.get('type') == 'AUTRE']
-                        }
-                    }
-                }
-            }
-            return adapted_result
-        else:
-            # Fallback si le résumé n'est pas disponible, utiliser l'ancienne méthode
-            return self._finance_service.calculer_couts_maintenance(maintenance_id)
-
-    def get_intervention_pieces_by_maintenance_id(self, maintenance_id: int) -> List[InterventionPiece]:
-        """Récupère toutes les pièces utilisées pour une intervention de maintenance spécifique."""
-        logger.debug(f"Récupération des pièces utilisées pour la maintenance ID: {maintenance_id}")
-        try:
-            return self._ip_repo.get_by_maintenance_id(maintenance_id)
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Erreur DB lors de la récupération des pièces utilisées: {e}") from e
-
-    def _calculate_stock_adjustments(self, old_pieces: List[InterventionPiece], new_pieces_data: List[Dict[str, Any]]) -> Dict[int, Dict[str, int]]:
-        """ Calcule la différence de quantité pour chaque pièce entre l'ancien and le nouvel état. """
-        # Correction: utiliser piece_id and quantite (au lieu de id_piece and quantite_utilisee)
-        old_qty = {p.piece_id: p.quantite for p in old_pieces}
-        new_qty = {}
-        for data in new_pieces_data:
-            p_id, qte = None, None
-            if isinstance(data, dict):
-                p_id = data.get('piece_id')
-                qte = data.get('quantite')
-            elif isinstance(data, tuple):
-                p_id = data[0] if len(data) > 0 else None
-                qte = data[3] if len(data) > 3 else 1
-            
-            if p_id is not None and qte is not None and qte > 0:
-                new_qty[p_id] = new_qty.get(p_id, 0) + qte # Agréger si même pièce ajoutée plusieurs fois
-        
-        adjustments = {}
-        all_piece_ids = set(old_qty.keys()) | set(new_qty.keys())
-        
-        for p_id in all_piece_ids:
-            old = old_qty.get(p_id, 0)
-            new = new_qty.get(p_id, 0)
-            diff = new - old
-            if diff != 0:
-                adjustments[p_id] = {'old': old, 'new': new, 'diff': diff}
-                
-        logger.debug(f"Calcul ajustements stock: {adjustments}")
-        return adjustments
-
-    def update_maintenance(self, data: Dict[str, Any]) -> Maintenance:
-        """ Met à jour un rapport de maintenance existant and ajuste le stock si nécessaire. """
-        logger.info(f"Tentative de mise à jour de maintenance ID: {data.get('id_maintenance')}")
-        logger.debug(f"[update_maintenance] Données reçues : {data}")
-        
-        # --- Validations ---
-        if not data.get('id_maintenance'): 
-            raise BusinessLogicError("ID de maintenance obligatoire pour la mise à jour.")
-        
-        maint_id = data.get('id_maintenance')
-        # Vérifier existence
-        existing_maintenance = self.get_maintenance_by_id(maint_id)
-        if not existing_maintenance:
-            raise NotFoundError(f"Maintenance ID {maint_id} non trouvée.")
-            
-        technicien_id = data.get('technicien_id')
-        if not technicien_id: 
-            raise BusinessLogicError("ID Technicien obligatoire.")
-        if not self._tech_repo.get_by_id(technicien_id):
-            raise NotFoundError(f"Technicien ID {technicien_id} non trouvé.")
-            
-        ot_id = data.get('ot_id', existing_maintenance.ot_id)
+        # Récupérer l'OT pour vérifications
         ot = self.get_ot_by_id(ot_id)
         if not ot:
-            raise NotFoundError(f"OT ID {ot_id} non trouvé.")
+            raise NotFoundError(f"OT ID {ot_id} non trouvé pour archivage.")
         
-        # Récupérer les pièces existantes and nouvelles
-        pieces_utilisees_data = data.get("pieces_utilisees", [])
-        logger.debug(f"[update_maintenance] Nouvelles pièces: {pieces_utilisees_data}")
+        # Vérifier que l'OT peut être archivé
+        if ot.statut != "Terminé":
+            raise BusinessLogicError(f"Impossible d'archiver un OT avec le statut '{ot.statut}'. Seuls les OT 'Terminé' peuvent être archivés.")
         
-        existing_pieces = self.get_intervention_pieces_by_maintenance_id(maint_id)
-        logger.debug(f"[update_maintenance] Pièces existantes: {existing_pieces}")
+        # Archiver l'OT via fonction PostgreSQL
+        try:
+            with db_cursor() as cursor:
+                cursor.execute("SELECT archive_ot(%s, %s)", (ot_id, user_id))
+                result = cursor.fetchone()
+                # Gérer à la fois les tuples et les dictionnaires
+                if hasattr(result, 'keys'):
+                    # C'est un dictionnaire (RealDictCursor)
+                    success = result.get('archive_ot', False) or list(result.values())[0] if result else False
+                else:
+                    # C'est un tuple
+                    success = result[0] if result else False
+                    
+                if not success:
+                    raise DatabaseError("Échec de l'archivage via la fonction PostgreSQL")
+                    
+        except Exception as e:
+            logger.error(f"Erreur lors de l'archivage OT {ot_id}: {e}")
+            raise DatabaseError(f"Erreur d'archivage: {e}")
         
-        # Calculer les ajustements de stock nécessaires
-        adjustments = self._calculate_stock_adjustments(existing_pieces, pieces_utilisees_data)
-        logger.debug(f"[update_maintenance] Ajustements de stock à effectuer: {adjustments}")
+        # Retourner l'OT mis à jour
+        return self.get_ot_by_id(ot_id)
+    
+    def unarchive_ot(self, ot_id: int, user_id: int) -> OrdreTravail:
+        """
+        Désarchive un OT (le remet au statut "Terminé").
+        """
+        logger.info(f"Tentative de désarchivage OT ID {ot_id} par utilisateur {user_id}")
         
-        # --- Logique principale encapsulée dans une transaction ---
+        # Vérifier que l'OT existe et est archivé
+        ot = self.get_ot_by_id(ot_id)
+        if not ot:
+            raise NotFoundError(f"OT ID {ot_id} non trouvé pour désarchivage.")
+        
+        if ot.statut != "Archivé":
+            raise BusinessLogicError(f"L'OT n'est pas archivé (statut actuel: '{ot.statut}').")
+        
+        # Désarchiver via fonction PostgreSQL
         try:
-            # === Début de la transaction ===
-            with db_cursor():
-                # 1. Mettre à jour les données de maintenance
-                maint_core_data = {k: v for k, v in data.items() if k != 'pieces_utilisees' and hasattr(existing_maintenance, k)}
-                
-                # Appliquer les modifications
-                for key, value in maint_core_data.items():
-                    setattr(existing_maintenance, key, value)
-                
-                # Sauvegarder les modifications
-                self._maint_repo.update(existing_maintenance)
-                logger.info(f"Données principales de maintenance {maint_id} mises à jour.")
-                
-                # 2. Supprimer les anciennes relations pièces-interventions
-                self._ip_repo.delete_by_maintenance_id(maint_id)
-                logger.info(f"Anciennes relations pièces-intervention pour maintenance {maint_id} supprimées.")
-                
-                # 3. Ajouter les nouvelles relations pièces-interventions and ajuster le stock
-                if pieces_utilisees_data:
-                    logger.info(f"Ajout de {len(pieces_utilisees_data)} nouvelles relations pièces-intervention.")
-                    for piece_data in pieces_utilisees_data:
-                        p_id, qte, lot = None, None, None
-                        
-                        if isinstance(piece_data, dict):
-                            p_id = piece_data.get('piece_id')
-                            qte = piece_data.get('quantite')
-                            lot = piece_data.get('lot')
-                        elif isinstance(piece_data, tuple):
-                            p_id = piece_data[0] if len(piece_data) > 0 else None
-                            qte = piece_data[3] if len(piece_data) > 3 else 1
-                            lot = piece_data[4] if len(piece_data) > 4 else None
-                        else:
-                            logger.warning(f"Format inattendu pour pièce utilisée: {piece_data}")
-                            continue
-                            
-                        if p_id is None or qte is None or qte <= 0:
-                            logger.warning(f"Donnée pièce utilisée invalide ignorée: {piece_data}")
-                            continue
-                            
-                        # a. Enregistrer le lien dans INTERVENTION_PIECE
-                        ip_obj = InterventionPiece(maintenance_id=maint_id, piece_id=p_id, quantite=qte, lot=lot)
-                        self._ip_repo.add(ip_obj)
-                        
-                # 4. Ajuster le stock en fonction des différences
-                for p_id, adj_data in adjustments.items():
-                    diff = adj_data['diff']
-                    if diff != 0:
-                        raison_mouvement = f"Ajustement suite à mise à jour rapport maint. ID {maint_id}"
-                        type_mouvement = 'ENTREE' if diff < 0 else 'SORTIE'
-                        # Pour ENTREE, diff < 0 car on a utilisé moins que prévu
-                        # Pour SORTIE, diff > 0 car on a utilisé plus que prévu
-                        qte_mouvement = abs(diff)
-                        
-                        self._stock_service.enregistrer_mouvement(
-                            piece_id=p_id,
-                            quantite=qte_mouvement,
-                            type_mouvement=type_mouvement,
-                            raison=raison_mouvement,
-                            ot_id=ot.id_ot,
-                            user_id=technicien_id
-                        )
-                        logger.info(f"Stock ajusté pour pièce ID {p_id}: {type_mouvement} de {qte_mouvement} unités.")
-                        
-            # === Fin de la transaction ===
-            
-            # Récupérer l'objet Maintenance mis à jour
-            updated_maintenance = self.get_maintenance_by_id(maint_id)
-            logger.debug(f"[update_maintenance] updated_maintenance récupéré : {updated_maintenance}")
-            if not updated_maintenance: raise BusinessLogicError("Maintenance mise à jour mais non retrouvée après transaction.")
-            logger.info(f"Mise à jour maintenance {maint_id} terminée avec succès.")
-            return updated_maintenance
-            
+            with db_cursor() as cursor:
+                cursor.execute("SELECT unarchive_ot(%s, %s)", (ot_id, user_id))
+                result = cursor.fetchone()
+                # Gérer à la fois les tuples et les dictionnaires
+                if hasattr(result, 'keys'):
+                    # C'est un dictionnaire (RealDictCursor)
+                    success = result.get('unarchive_ot', False) or list(result.values())[0] if result else False
+                else:
+                    # C'est un tuple
+                    success = result[0] if result else False
+                    
+                if not success:
+                    raise DatabaseError("Échec du désarchivage via la fonction PostgreSQL")
+                    
         except Exception as e:
-            # Le rollback est géré automatiquement par db_cursor
-            logger.error(f"Erreur lors de update_maintenance pour ID {maint_id}: {e}", exc_info=True)
-            raise BusinessLogicError(f"Échec mise à jour maintenance ID {maint_id}: {e}") from e
-
-    def recalculer_et_maj_couts(self, maintenance_id: int):
-        """Recalcule tous les coûts (main d'oeuvre, pièces, frais) et met à jour la table MAINTENANCE."""
-        # Récupérer tous les intervenants
-        intervenants = self._mi_repo.get_by_maintenance_id(maintenance_id)
-        frais_externes = self._mfe_repo.get_by_maintenance_id(maintenance_id)
-        interventions_pieces = self._ip_repo.get_by_maintenance_id(maintenance_id)
-        # Main d'oeuvre
-        cout_main_oeuvre = sum(i.cout_total or 0.0 for i in intervenants)
-        # Pièces internes
-        cout_pieces_internes = 0.0
-        for ip in interventions_pieces:
-            # Utiliser le stock_service pour récupérer les informations de la pièce
-            piece = self._stock_service.get_piece_by_id(ip.piece_id)
-            if piece:
-                cout_pieces_internes += (piece.prix_unitaire or 0.0) * (ip.quantite or 0.0)
-        # Pièces externes
-        cout_pieces_externes = sum(f.montant_total or 0.0 for f in frais_externes if f.type_frais == 'PIECE_EXTERNE')
-        # Autres frais
-        cout_autres_frais = sum(f.montant_total or 0.0 for f in frais_externes if f.type_frais != 'PIECE_EXTERNE')
-        # Total
-        cout_total = cout_main_oeuvre + cout_pieces_internes + cout_pieces_externes + cout_autres_frais
-        # Mettre à jour la table MAINTENANCE
-        maint = self.get_maintenance_by_id(maintenance_id)
-        if maint:
-            maint.cout_main_oeuvre = cout_main_oeuvre
-            maint.cout_pieces_internes = cout_pieces_internes
-            maint.cout_pieces_externes = cout_pieces_externes
-            maint.cout_autres_frais = cout_autres_frais
-            maint.cout_total = cout_total
-            self._maint_repo.update(maint)
-
-    def add_intervenant(self, data: Dict[str, Any]) -> 'MaintenanceIntervenant':
-        """Ajoute un intervenant à une maintenance."""
-        try:
-            # Créer l'objet MaintenanceIntervenant à partir des données
-            intervenant = MaintenanceIntervenant(
-                maintenance_id=data.get('maintenance_id'),
-                technicien_id=data.get('technicien_id'),
-                heures_travaillees=data.get('heures_travaillees', 0),
-                cout_horaire=data.get('cout_horaire', 0),
-                nom_intervenant_externe=data.get('nom_intervenant_externe'),
-                notes=data.get('notes')
-            )
-            
-            # Utiliser le repository des intervenants pour ajouter l'entrée
-            new_id = self._mi_repo.add(intervenant)
-            if new_id:
-                intervenant.id_intervenant = new_id
-            
-            # Recalculer les coûts de maintenance après ajout
-            if data.get('maintenance_id'):
-                self.recalculer_et_maj_couts(data['maintenance_id'])
-            
-            logger.debug(f"Intervenant ajouté avec succès: ID {intervenant.id_intervenant}")
-            return intervenant
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de l'ajout d'un intervenant: {e}")
-            raise BusinessLogicError(f"Impossible d'ajouter l'intervenant: {e}") from e
+            logger.error(f"Erreur lors du désarchivage OT {ot_id}: {e}")
+            raise DatabaseError(f"Erreur de désarchivage: {e}")
+        
+        # Retourner l'OT mis à jour
+        return self.get_ot_by_id(ot_id)
     
-    def add_frais_externe(self, data: Dict[str, Any]) -> 'MaintenanceFraisExterne':
-        """Ajoute un frais externe à une maintenance."""
+    def get_archive_statistics(self) -> dict:
+        """
+        Retourne des statistiques sur les archives.
+        """
         try:
-            # Créer l'objet MaintenanceFraisExterne à partir des données
-            frais = MaintenanceFraisExterne(
-                maintenance_id=data.get('maintenance_id'),
-                type_frais=data.get('type_frais'),
-                description=data.get('description'),
-                montant=data.get('montant', 0),
-                quantite=data.get('quantite', 1),
-                reference_piece=data.get('reference_piece'),
-                fournisseur=data.get('fournisseur'),
-                facture_reference=data.get('facture_reference')
-            )
-            
-            # Utiliser le repository des frais externes pour ajouter l'entrée
-            new_id = self._mfe_repo.add(frais)
-            if new_id:
-                frais.id_frais = new_id
-            
-            # Recalculer les coûts de maintenance après ajout
-            if data.get('maintenance_id'):
-                self.recalculer_et_maj_couts(data['maintenance_id'])
-            
-            logger.debug(f"Frais externe ajouté avec succès: ID {frais.id_frais}")
-            return frais
-            
+            with db_cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COUNT(*) FILTER (WHERE statut = 'Archivé') as archives_count,
+                        COUNT(*) FILTER (WHERE statut = 'Terminé' AND date_creation::timestamp < CURRENT_DATE - INTERVAL '6 months') as archivable_count,
+                        COUNT(*) FILTER (WHERE statut NOT IN ('Archivé')) as actifs_count
+                    FROM ordre_travail
+                """)
+                result = cursor.fetchone()
+                if hasattr(result, 'keys'):
+                    # C'est un dictionnaire (RealDictCursor)
+                    return {
+                        'archives_count': result.get('archives_count', 0) or 0,
+                        'archivable_count': result.get('archivable_count', 0) or 0,
+                        'actifs_count': result.get('actifs_count', 0) or 0
+                    }
+                else:
+                    # C'est un tuple
+                    return {
+                        'archives_count': result[0] or 0,
+                        'archivable_count': result[1] or 0,
+                        'actifs_count': result[2] or 0
+                    }
         except Exception as e:
-            logger.error(f"Erreur lors de l'ajout d'un frais externe: {e}")
-            raise BusinessLogicError(f"Impossible d'ajouter le frais externe: {e}") from e
-
-    def get_intervenant_by_id(self, intervenant_id: int) -> Optional['MaintenanceIntervenant']:
-        """Récupère un intervenant par son ID."""
-        try:
-            return self._mi_repo.get_by_id(intervenant_id)
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération de l'intervenant {intervenant_id}: {e}")
-            raise BusinessLogicError(f"Impossible de récupérer l'intervenant: {e}") from e
-    
-    def update_intervenant(self, intervenant_id: int, data: Dict[str, Any]) -> 'MaintenanceIntervenant':
-        """Met à jour un intervenant."""
-        try:
-            # Récupérer l'intervenant existant
-            intervenant = self._mi_repo.get_by_id(intervenant_id)
-            if not intervenant:
-                raise NotFoundError(f"Intervenant {intervenant_id} non trouvé")
-            
-            # Mettre à jour les champs
-            if 'technicien_id' in data:
-                intervenant.technicien_id = data['technicien_id']
-            if 'heures_travaillees' in data:
-                intervenant.heures_travaillees = data['heures_travaillees']
-            if 'cout_horaire' in data:
-                intervenant.cout_horaire = data['cout_horaire']
-            if 'nom_intervenant_externe' in data:
-                intervenant.nom_intervenant_externe = data['nom_intervenant_externe']
-            if 'notes' in data:
-                intervenant.notes = data['notes']
-            
-            # Sauvegarder les modifications
-            success = self._mi_repo.update(intervenant)
-            if not success:
-                raise BusinessLogicError("Échec de la mise à jour de l'intervenant")
-            
-            # Recalculer les coûts de maintenance après modification
-            if intervenant.maintenance_id:
-                self.recalculer_et_maj_couts(intervenant.maintenance_id)
-            
-            logger.debug(f"Intervenant {intervenant_id} mis à jour avec succès")
-            return intervenant
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la mise à jour de l'intervenant {intervenant_id}: {e}")
-            raise BusinessLogicError(f"Impossible de mettre à jour l'intervenant: {e}") from e
-    
-    def delete_intervenant(self, intervenant_id: int) -> bool:
-        """Supprime un intervenant."""
-        try:
-            # Récupérer l'intervenant pour obtenir l'ID de maintenance
-            intervenant = self._mi_repo.get_by_id(intervenant_id)
-            if not intervenant:
-                raise NotFoundError(f"Intervenant {intervenant_id} non trouvé")
-            
-            maintenance_id = intervenant.maintenance_id
-            
-            # Supprimer l'intervenant
-            success = self._mi_repo.delete(intervenant_id)
-            if not success:
-                raise BusinessLogicError("Échec de la suppression de l'intervenant")
-            
-            # Recalculer les coûts de maintenance après suppression
-            if maintenance_id:
-                self.recalculer_et_maj_couts(maintenance_id)
-            
-            logger.debug(f"Intervenant {intervenant_id} supprimé avec succès")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la suppression de l'intervenant {intervenant_id}: {e}")
-            raise BusinessLogicError(f"Impossible de supprimer l'intervenant: {e}") from e
-    
-    def get_frais_externe_by_id(self, frais_id: int) -> Optional['MaintenanceFraisExterne']:
-        """Récupère un frais externe par son ID."""
-        try:
-            return self._mfe_repo.get_by_id(frais_id)
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération du frais externe {frais_id}: {e}")
-            raise BusinessLogicError(f"Impossible de récupérer le frais externe: {e}") from e
-    
-    def update_frais_externe(self, frais_id: int, data: Dict[str, Any]) -> 'MaintenanceFraisExterne':
-        """Met à jour un frais externe."""
-        try:
-            # Récupérer le frais externe existant
-            frais = self._mfe_repo.get_by_id(frais_id)
-            if not frais:
-                raise NotFoundError(f"Frais externe {frais_id} non trouvé")
-            
-            # Mettre à jour les champs
-            if 'type_frais' in data:
-                frais.type_frais = data['type_frais']
-            if 'description' in data:
-                frais.description = data['description']
-            if 'montant' in data:
-                frais.montant = data['montant']
-            if 'quantite' in data:
-                frais.quantite = data['quantite']
-            if 'reference_piece' in data:
-                frais.reference_piece = data['reference_piece']
-            if 'fournisseur' in data:
-                frais.fournisseur = data['fournisseur']
-            if 'facture_reference' in data:
-                frais.facture_reference = data['facture_reference']
-            
-            # Sauvegarder les modifications
-            success = self._mfe_repo.update(frais)
-            if not success:
-                raise BusinessLogicError("Échec de la mise à jour du frais externe")
-            
-            # Recalculer les coûts de maintenance après modification
-            if frais.maintenance_id:
-                self.recalculer_et_maj_couts(frais.maintenance_id)
-            
-            logger.debug(f"Frais externe {frais_id} mis à jour avec succès")
-            return frais
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la mise à jour du frais externe {frais_id}: {e}")
-            raise BusinessLogicError(f"Impossible de mettre à jour le frais externe: {e}") from e
-    
-    def delete_frais_externe(self, frais_id: int) -> bool:
-        """Supprime un frais externe."""
-        try:
-            # Récupérer le frais externe pour obtenir l'ID de maintenance
-            frais = self._mfe_repo.get_by_id(frais_id)
-            if not frais:
-                raise NotFoundError(f"Frais externe {frais_id} non trouvé")
-            
-            maintenance_id = frais.maintenance_id
-            
-            # Supprimer le frais externe
-            success = self._mfe_repo.delete(frais_id)
-            if not success:
-                raise BusinessLogicError("Échec de la suppression du frais externe")
-            
-            # Recalculer les coûts de maintenance après suppression
-            if maintenance_id:
-                self.recalculer_et_maj_couts(maintenance_id)
-            
-            logger.debug(f"Frais externe {frais_id} supprimé avec succès")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la suppression du frais externe {frais_id}: {e}")
-            raise BusinessLogicError(f"Impossible de supprimer le frais externe: {e}") from e
+            logger.error(f"Erreur récupération statistiques archives: {e}")
+            return {'archives_count': 0, 'archivable_count': 0, 'actifs_count': 0}

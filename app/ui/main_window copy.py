@@ -160,7 +160,7 @@ from app.core.services.finance_service import FinanceService # <-- Ajouter cet i
 # ... etc ...
 # Importer la configuration pour le dialogue "À Propos"
 from app.config import APP_NAME, APP_VERSION
-from app.access_control import can_access, normalize_role
+from app.access_control import can_access
 
 logger = logging.getLogger(__name__)
 
@@ -794,12 +794,8 @@ class MainWindow(QMainWindow):
             self.manage_machines_action = None
 
         # Clé: Gérer les OTs
-        # DEBUG: Afficher la valeur réelle du rôle avant le test d'accès
-        logger.debug(f"[create_actions] Rôle AVANT normalisation: {self.user_role} (type: {type(self.user_role)})")
-        # On force la normalisation du rôle pour éviter tout problème de casse ou synonyme
-        normalized_role = normalize_role(self.user_role)
-        logger.debug(f"[create_actions] Rôle APRÈS normalisation: {normalized_role}")
-        if can_access("Gérer les OTs", normalized_role):
+        logger.debug(f"[create_actions] Vérification accès menu 'Gérer les OTs' pour rôle {self.user_role}")
+        if can_access("Gérer les OTs", self.user_role):
             self.manage_ots_action = QAction(self.tr("Gérer les OTs"), self)
             self.manage_ots_action.setStatusTip(self.tr("Accéder à la gestion des OT"))
         else:
@@ -934,28 +930,28 @@ class MainWindow(QMainWindow):
         self.demande_intervention_action.setStatusTip(self.tr("Accéder au formulaire de demande d'intervention"))
 
         # Action pour Dashboard KPI Financiers
-        self.kpi_dashboard_action = QAction(self.tr(" Dashboard KPI"), self)
+        self.kpi_dashboard_action = QAction(self.tr("📊 Dashboard KPI"), self)
         self.kpi_dashboard_action.setStatusTip(self.tr("Accéder aux indicateurs de performance financiers"))
         self.kpi_dashboard_action.triggered.connect(self.show_kpi_dashboard)
 
         # Actions pour les dialogs KPI spécialisés
-        self.kpi_machines_action = QAction(self.tr(" KPI Machines"), self)
+        self.kpi_machines_action = QAction(self.tr("🏭 KPI Machines"), self)
         self.kpi_machines_action.setStatusTip(self.tr("Analyse détaillée des KPI par machine"))
         self.kpi_machines_action.triggered.connect(self.show_kpi_machines)
 
-        self.kpi_sites_action = QAction(self.tr(" KPI Sites"), self)
+        self.kpi_sites_action = QAction(self.tr("🏢 KPI Sites"), self)
         self.kpi_sites_action.setStatusTip(self.tr("Comparaison des performances entre sites"))
         self.kpi_sites_action.triggered.connect(self.show_kpi_sites)
 
-        self.kpi_teams_action = QAction(self.tr(" KPI Équipes"), self)
+        self.kpi_teams_action = QAction(self.tr("👥 KPI Équipes"), self)
         self.kpi_teams_action.setStatusTip(self.tr("Performance et charge de travail des équipes"))
         self.kpi_teams_action.triggered.connect(self.show_kpi_teams)
 
-        self.kpi_preventive_action = QAction(self.tr(" Préventif vs Curatif"), self)
+        self.kpi_preventive_action = QAction(self.tr("🔧 Préventif vs Curatif"), self)
         self.kpi_preventive_action.setStatusTip(self.tr("Comparaison coûts/efficacité préventif/curatif"))
         self.kpi_preventive_action.triggered.connect(self.show_kpi_preventive)
 
-        self.kpi_advanced_action = QAction(self.tr(" Analyses Avancées"), self)
+        self.kpi_advanced_action = QAction(self.tr("🔬 Analyses Avancées"), self)
         self.kpi_advanced_action.setStatusTip(self.tr("Statistiques avancées et prédictions"))
         self.kpi_advanced_action.triggered.connect(self.show_kpi_advanced)
 
@@ -1051,7 +1047,7 @@ class MainWindow(QMainWindow):
         # --- Menu KPI & Analyses (menu principal) ---
         # Ce menu regroupe tous les tableaux de bord et analyses de performance
         if hasattr(self, 'kpi_dashboard_action') and self.kpi_dashboard_action:
-            kpi_menu = menu_bar.addMenu(self.tr(" KPI & Analyses"))
+            kpi_menu = menu_bar.addMenu(self.tr("📊 KPI & Analyses"))
             kpi_menu.setStatusTip("Accéder aux tableaux de bord et analyses de performance")
             
             # Dashboard principal

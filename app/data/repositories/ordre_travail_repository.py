@@ -67,6 +67,11 @@ class OrdreTravailRepository:
                        where_clauses.append(f"statut IN ({placeholders})")
                        params.extend(value)
                        logger.debug(f"Ajout filtre statut__in: {value}")
+                  # Support du filtre 'statut__ne' pour exclure un statut
+                  elif key == 'statut__ne' and value is not None:
+                       where_clauses.append(f"statut != %s")
+                       params.append(value)
+                       logger.debug(f"Ajout filtre statut__ne: {value}")
                   elif key == 'technicien_assigne_id' and value is None:
                        # Cas spécial pour technicien non assigné (NULL)
                        where_clauses.append(f"{key} IS NULL")

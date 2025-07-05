@@ -103,6 +103,14 @@ filter_labels = {
         Language.SPANISH: "Sin Asignar",
         Language.ITALIAN: "Non Assegnato",
         Language.PORTUGUESE: "Não Atribuído"
+    },
+    "Afficher archives": {
+        Language.FRENCH: "Afficher archives",
+        Language.ENGLISH: "Show archives",
+        Language.GERMAN: "Archive anzeigen",
+        Language.SPANISH: "Mostrar archivos",
+        Language.ITALIAN: "Mostra archivi",
+        Language.PORTUGUESE: "Mostrar arquivos"
     }
 }
 
@@ -360,6 +368,14 @@ status_translations = {
         Language.SPANISH: "Listo",
         Language.ITALIAN: "Pronto",
         Language.PORTUGUESE: "Pronto"
+    },
+    "Archivé": {
+        Language.FRENCH: "Archivé",
+        Language.ENGLISH: "Archived",
+        Language.GERMAN: "Archiviert",
+        Language.SPANISH: "Archivado",
+        Language.ITALIAN: "Archiviato",
+        Language.PORTUGUESE: "Arquivado"
     }
 }
 
