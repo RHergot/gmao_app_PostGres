@@ -457,6 +457,165 @@ class MaintenanceService:
          try: return self._maint_repo.get_by_ot_id(ot_id)
          except DatabaseError as e: raise BusinessLogicError(f"Erreur DB: {e}") from e
 
+    def get_intervention_pieces_by_maintenance_id(self, maintenance_id: int) -> List[InterventionPiece]:
+        """
+        Récupère toutes les pièces utilisées pour une maintenance donnée.
+        """
+        logger.debug(f"Recherche intervention pieces pour maintenance ID: {maintenance_id}")
+        try:
+            return self._ip_repo.get_by_maintenance_id(maintenance_id)
+        except DatabaseError as e:
+            logger.error(f"Erreur récupération intervention pieces pour maintenance {maintenance_id}: {e}")
+            raise BusinessLogicError(f"Erreur DB: {e}") from e
+
+    def calculate_maintenance_cost(self, maintenance_id: int) -> dict:
+        """
+        Calcule les coûts d'une maintenance en déléguant au FinanceService.
+        Méthode de compatibilité pour les widgets qui l'utilisent.
+        """
+        logger.debug(f"Calcul des coûts pour maintenance ID: {maintenance_id}")
+        
+        if not self._finance_service:
+            raise BusinessLogicError("FinanceService non injecté dans MaintenanceService. Vérifiez l'initialisation.")
+        
+        try:
+            # Utiliser la méthode qui retourne le format détaillé pour le widget
+            return self._finance_service.get_detailed_costs_for_widget(maintenance_id)
+        except Exception as e:
+            logger.error(f"Erreur calcul coûts maintenance {maintenance_id}: {e}")
+            raise BusinessLogicError(f"Erreur calcul coûts: {e}") from e
+
+    def update_maintenance(self, data: Dict[str, Any]) -> Maintenance:
+        """
+        Met à jour une maintenance existante.
+        """
+        maintenance_id = data.get('id_maintenance')
+        if not maintenance_id:
+            raise BusinessLogicError("ID maintenance obligatoire pour la mise à jour.")
+        
+        logger.info(f"Tentative mise à jour maintenance ID: {maintenance_id}")
+        
+        # Récupérer la maintenance existante
+        existing_maintenance = self.get_maintenance_by_id(maintenance_id)
+        if not existing_maintenance:
+            raise NotFoundError(f"Maintenance ID {maintenance_id} non trouvée.")
+        
+        # Validations similaires à record_maintenance
+        if data.get('technicien_id') and not self._tech_repo.get_by_id(data['technicien_id']):
+            raise NotFoundError(f"Technicien ID {data['technicien_id']} non trouvé.")
+        
+        # Récupérer les pièces utilisées
+        pieces_utilisees_data = data.get("pieces_utilisees", [])
+        
+        try:
+            with db_cursor():
+                # 1. Mettre à jour les données de base de la maintenance
+                maintenance_data = {k: v for k, v in data.items() if k not in ['pieces_utilisees', 'id_maintenance']}
+                
+                # Appliquer les modifications à l'objet existant
+                for key, value in maintenance_data.items():
+                    if hasattr(existing_maintenance, key):
+                        setattr(existing_maintenance, key, value)
+                
+                # Sauvegarder la maintenance
+                if not self._maint_repo.update(existing_maintenance):
+                    raise BusinessLogicError("Échec mise à jour maintenance.")
+                
+                # 2. Gérer les pièces utilisées - Supprimer les anciennes et ajouter les nouvelles
+                # Supprimer les anciennes liaisons intervention_piece
+                try:
+                    # Récupérer les anciennes pièces pour restaurer le stock
+                    old_pieces = self._ip_repo.get_by_maintenance_id(maintenance_id)
+                    
+                    # Restaurer le stock des anciennes pièces
+                    for old_piece in old_pieces:
+                        raison_restauration = f"Restauration stock - Modification OT {existing_maintenance.ot_id}"
+                        self._stock_service.enregistrer_mouvement(
+                            piece_id=old_piece.piece_id,
+                            quantite=old_piece.quantite,
+                            type_mouvement='ENTREE',
+                            raison=raison_restauration,
+                            ot_id=existing_maintenance.ot_id,
+                            user_id=data.get('technicien_id', 1)
+                        )
+                    
+                    # Supprimer les anciennes liaisons
+                    self._ip_repo.delete_by_maintenance_id(maintenance_id)
+                    
+                except Exception as e:
+                    logger.warning(f"Erreur lors de la restauration du stock pour maintenance {maintenance_id}: {e}")
+                
+                # 3. Ajouter les nouvelles pièces
+                if pieces_utilisees_data:
+                    logger.info(f"Mise à jour de {len(pieces_utilisees_data)} type(s) de pièce(s) utilisée(s).")
+                    for piece_data in pieces_utilisees_data:
+                        # Support tuple or dict
+                        if isinstance(piece_data, dict):
+                            p_id = piece_data.get('piece_id')
+                            qte = piece_data.get('quantite')
+                            lot = piece_data.get('lot')
+                        elif isinstance(piece_data, tuple):
+                            p_id = piece_data[0] if len(piece_data) > 0 else None
+                            qte = piece_data[3] if len(piece_data) > 3 else 1
+                            lot = piece_data[4] if len(piece_data) > 4 else None
+                        else:
+                            logger.warning(f"Format inattendu pour pièce utilisée: {piece_data}")
+                            continue
+
+                        if p_id is None or qte is None or qte <= 0:
+                            logger.warning(f"Donnée pièce utilisée invalide ignorée: {piece_data}")
+                            continue
+
+                        # Ajouter la nouvelle liaison
+                        ip_obj = InterventionPiece(maintenance_id=maintenance_id, piece_id=p_id, quantite=qte, lot=lot)
+                        self._ip_repo.add(ip_obj)
+
+                        # Décrémenter le stock
+                        raison_mvt = f"Utilisation OT {existing_maintenance.ot_id} (modification)"
+                        self._stock_service.enregistrer_mouvement(
+                            piece_id=p_id,
+                            quantite=qte,
+                            type_mouvement='SORTIE',
+                            raison=raison_mvt,
+                            ot_id=existing_maintenance.ot_id,
+                            user_id=data.get('technicien_id', 1)
+                        )
+                        logger.info(f"Mouvement de sortie enregistré pour Pièce ID {p_id} (Qt: {qte}).")
+            
+            # 4. Recalculer les coûts financiers
+            if hasattr(self, 'recalculer_et_maj_couts'):
+                self.recalculer_et_maj_couts(maintenance_id)
+            
+            # 5. Récupérer la maintenance mise à jour
+            updated_maintenance = self.get_maintenance_by_id(maintenance_id)
+            if not updated_maintenance:
+                raise BusinessLogicError("Maintenance mise à jour mais non retrouvée.")
+            
+            logger.info(f"Maintenance {maintenance_id} mise à jour avec succès.")
+            return updated_maintenance
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour maintenance {maintenance_id}: {e}", exc_info=True)
+            raise BusinessLogicError(f"Échec mise à jour maintenance {maintenance_id}: {e}") from e
+
+    def recalculer_et_maj_couts(self, maintenance_id: int):
+        """
+        Recalcule et met à jour les coûts financiers d'une maintenance.
+        """
+        logger.debug(f"Recalcul des coûts pour maintenance ID: {maintenance_id}")
+        
+        if not self._finance_service:
+            logger.warning("FinanceService non injecté, impossible de recalculer les coûts.")
+            return
+        
+        try:
+            # Déléguer au FinanceService pour recalculer les coûts
+            self._finance_service.recalculer_couts_maintenance(maintenance_id)
+            logger.info(f"Coûts recalculés pour maintenance {maintenance_id}")
+        except Exception as e:
+            logger.error(f"Erreur lors du recalcul des coûts pour maintenance {maintenance_id}: {e}")
+            # Ne pas faire échouer la transaction pour une erreur de calcul de coûts
+    
     # Ajouter update/delete Maintenance si nécessaire (moins courant)
 
     # gmao_app/app/core/services/maintenance_service.py
@@ -590,7 +749,7 @@ class MaintenanceService:
                  machine = self._machine_repo.get_by_id(updated_ot.machine_id)
                  if machine and machine.etat not in ["En maintenance", "En panne"]:
                       logger.info(f"Màj état machine {machine.id_machine} -> 'En maintenance'")
-                      # Note: update_machine n'est pas fait pour màj partielle facilement ici
+                      # Note: update_machine n'est pas fait pour màd partielle facilement ici
                       # Faudrait adapter MachineService or MachineRepository
                       # Pour l'instant, on fait la màj complète (pas idéal)
                       machine.etat = "En maintenance"
