@@ -155,19 +155,25 @@ class BaseKPIDialog(QDialog):
         
         # === SÉLECTION DE PÉRIODE ===
         period_group = QGroupBox(get_shared_text("analysis_period"))
-        period_layout = QHBoxLayout(period_group)
+        period_layout = QVBoxLayout(period_group)
         
-        period_layout.addWidget(QLabel(get_shared_text("from")))
+        # From - première ligne
+        from_layout = QHBoxLayout()
+        from_layout.addWidget(QLabel(get_shared_text("from")))
         self.date_debut = QDateEdit()
         self.date_debut.setDate(QDate.fromString(self.start_date.isoformat(), "yyyy-MM-dd"))
         self.date_debut.setCalendarPopup(True)
-        period_layout.addWidget(self.date_debut)
+        from_layout.addWidget(self.date_debut)
+        period_layout.addLayout(from_layout)
         
-        period_layout.addWidget(QLabel(get_shared_text("to")))
+        # To - deuxième ligne
+        to_layout = QHBoxLayout()
+        to_layout.addWidget(QLabel(get_shared_text("to")))
         self.date_fin = QDateEdit()
         self.date_fin.setDate(QDate.fromString(self.end_date.isoformat(), "yyyy-MM-dd"))
         self.date_fin.setCalendarPopup(True)
-        period_layout.addWidget(self.date_fin)
+        to_layout.addWidget(self.date_fin)
+        period_layout.addLayout(to_layout)
         
         toolbar_layout.addWidget(period_group)
         

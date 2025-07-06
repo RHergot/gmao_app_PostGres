@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 from decimal import Decimal
 
 from app.data.database import fetch_all, fetch_one, DatabaseError
+from app.core.services.kpi_query_builder import KPIQueryBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -33,106 +34,51 @@ class KPIService:
     # MÉTHODES KPI PAR MACHINE
     # ===================================================================
 
-    def get_couts_par_machine(self, periode_debut: Union[str, date], periode_fin: Union[str, date], 
-                             site_id: Optional[int] = None, type_machine_id: Optional[int] = None,
+    def get_couts_par_machine(self, periode_debut: Union[str, date], periode_fin: Union[str, date],
+                             machine_ids: Optional[List[int]] = None, type_machine: Optional[str] = None,
+                             site_id: Optional[int] = None,
                              limite: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Récupère les coûts agrégés par machine sur une période.
-        
+
         Args:
             periode_debut: Date de début (format 'YYYY-MM-DD' ou objet date)
             periode_fin: Date de fin (format 'YYYY-MM-DD' ou objet date)
-            site_id: Filtre par site (optionnel)
-            type_machine_id: Filtre par type de machine (optionnel)
+            machine_ids: Filtre par une liste d'IDs de machine (optionnel)
+            type_machine: Filtre par type de machine (optionnel)
+            site_id: Filtre par ID de site (optionnel)
             limite: Nombre max de résultats (optionnel)
-            
+
         Returns:
             Liste des machines avec leurs KPI financiers
         """
         try:
-            # Construction de la requête de base
-            sql = """
-                SELECT 
-                    id_machine,
-                    machine_nom,
-                    machine_serial,
-                    machine_criticite,
-                    site_nom,
-                    type_nom,
-                    type_categorie,
-                    
-                    -- Compteurs
-                    SUM(nb_interventions) AS nb_interventions_total,
-                    SUM(nb_preventif) AS nb_preventif,
-                    SUM(nb_correctif) AS nb_correctif,
-                    SUM(nb_urgence) AS nb_urgence,
-                    
-                    -- Coûts
-                    SUM(cout_total_periode) AS cout_total,
-                    SUM(cout_mod_periode) AS cout_main_oeuvre,
-                    SUM(cout_pieces_periode) AS cout_pieces_internes,
-                    SUM(cout_frais_externes_periode) AS cout_frais_externes,
-                    
-                    -- Moyennes pondérées
-                    CASE 
-                        WHEN SUM(nb_interventions) > 0 
-                        THEN SUM(cout_total_periode) / SUM(nb_interventions)
-                        ELSE 0 
-                    END AS cout_moyen_intervention,
-                    
-                    AVG(cout_moyen_par_heure) AS cout_moyen_par_heure,
-                    AVG(ratio_preventif_curatif) AS ratio_preventif_curatif,
-                    
-                    -- Pourcentages moyens
-                    AVG(pourcentage_moyen_mod) AS pourcentage_mod,
-                    AVG(pourcentage_moyen_pieces) AS pourcentage_pieces,
-                    AVG(pourcentage_moyen_frais_externes) AS pourcentage_frais_externes
-                    
-                FROM v_kpi_machine_mensuel
-                WHERE periode_mois >= %s AND periode_mois <= %s
-            """
-            
-            # Paramètres
-            params = [str(periode_debut)[:7], str(periode_fin)[:7]]  # Format YYYY-MM
-            
-            # Filtres optionnels
-            if site_id:
-                sql += " AND id_site = %s"
-                params.append(site_id)
-                
-            if type_machine_id:
-                sql += " AND id_type_machine = %s"
-                params.append(type_machine_id)
-            
-            # Groupement et tri
-            sql += """
-                GROUP BY 
-                    id_machine, machine_nom, machine_serial, machine_criticite,
-                    site_nom, type_nom, type_categorie
-                ORDER BY cout_total DESC
-            """
-            
-            # Limite
-            if limite:
-                sql += " LIMIT %s"
-                params.append(limite)
-            
+            # Utilisation du query builder pour générer la requête SQL
+            sql_query, params = KPIQueryBuilder.build_machine_kpi_query(
+                periode_debut=periode_debut,
+                periode_fin=periode_fin,
+                machine_ids=machine_ids,
+                type_machine=type_machine,
+                site_id=site_id,
+                limite=limite
+            )
+
             logger.debug(f"Exécution requête KPI machines - Période: {periode_debut} à {periode_fin}")
-            rows = fetch_all(sql, params)
-            
-            # Conversion des résultats
+
+            rows = fetch_all(sql_query, params)
+
             results = []
             for row in rows:
                 result = dict(row)
-                # Conversion des Decimal en float pour JSON
+                # Conversion des Decimal en float pour la sérialisation JSON
                 for key, value in result.items():
                     if isinstance(value, Decimal):
                         result[key] = float(value)
                 results.append(result)
-            
+
             logger.info(f"KPI machines récupérés: {len(results)} machines sur période {periode_debut}-{periode_fin}")
             return results
-            
+
         except DatabaseError as e:
             logger.error(f"Erreur récupération KPI machines: {e}")
             raise
@@ -211,29 +157,11 @@ class KPIService:
             Dictionnaire avec les données temporelles de la machine
         """
         try:
-            sql = """
-                SELECT 
-                    periode_mois,
-                    annee,
-                    mois,
-                    nb_interventions,
-                    nb_preventif,
-                    nb_correctif,
-                    nb_urgence,
-                    cout_total_periode,
-                    cout_mod_periode,
-                    cout_pieces_periode,
-                    cout_frais_externes_periode,
-                    cout_moyen_intervention,
-                    ratio_preventif_curatif
-                FROM v_kpi_machine_mensuel
-                WHERE id_machine = %s
-                ORDER BY annee DESC, mois DESC
-                LIMIT %s
-            """
+            # Utilisation du query builder pour générer la requête SQL
+            sql, params = KPIQueryBuilder.build_machine_trends_query(machine_id, nb_periodes)
             
             logger.debug(f"Récupération tendances machine {machine_id} sur {nb_periodes} mois")
-            rows = fetch_all(sql, [machine_id, nb_periodes])
+            rows = fetch_all(sql, params)
             
             # Organisation des données
             periodes = []
