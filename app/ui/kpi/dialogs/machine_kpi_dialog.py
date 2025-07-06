@@ -1,3 +1,4 @@
+#machine_kpi_dialog.py
 #!/usr/bin/env python3
 """
 Dialog d'analyse KPI par machine.
