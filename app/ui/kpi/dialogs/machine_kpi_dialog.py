@@ -118,17 +118,21 @@ MACHINE_TRANSLATIONS = {
     },
     Language.ENGLISH: {
         "title": "📊 Machine KPI Analysis",
-        "machine_filter": "Filter by Machine",
-        "all_machines": "All machines",
-        "type_filter": "Machine Type",
-        "all_types": "All types",
-        "data_tab": "📊 Detailed Data",
-        "charts_tab": "📈 Charts",
+        "machine_filter": "🔍 Filter by Machine",
+        "all_machines": "🏭 All machines",
+        "type_filter": "⚙️ Machine Type",
+        "all_types": "📋 All types",
+        "search_placeholder": "🔍 Search for a machine...",
+        "data_tab": "📊 Overview",
+        "charts_tab": "📈 Charts & Trends",
+        "details_tab": "🔧 Technical Details",
+        "performance_tab": "⚡ Performance",
         "top_machines": "🔝 Top Machines by Cost",
-        "machine_performance": "⚡ Machine Performance",
-        "summary_totals": "📊 Totals & Averages",
-        "grand_total_cost": "Overall Total Cost:",
-        "grand_avg_cost": "Average Cost per Machine:",
+        "machine_performance": "⚡ Key Indicators",
+        "summary_totals": "📊 Global Summary",
+        "machine_cards": "🏭 Machine Cards",
+        "grand_total_cost": "💰 Total Cost:",
+        "grand_avg_cost": "📊 Average Cost:",
         "cost_evolution": "📈 Cost Evolution",
         "machine_name": "Machine",
         "total_cost": "Total Cost (€)",
@@ -138,11 +142,27 @@ MACHINE_TRANSLATIONS = {
         "last_maintenance": "Last Maintenance",
         "next_maintenance": "Next Maintenance",
         "status": "Status",
-        "total_intervention_time": "Total Interv. Time (h)",
-        "avg_intervention_time": "Avg Interv. Time (h)",
+        "critical_machines": "⚠️ Critical Machines",
+        "active_machines": "✅ Active Machines", 
+        "inactive_machines": "⏸️ Inactive Machines",
+        "total_machines": "🏭 Total Machines",
+        "total_intervention_time": "⏱️ Total Time (h)",
+        "avg_intervention_time": "⏱️ Average Time (h)",
+        "preventive_ratio": "🛡️ Preventive Ratio",
+        "corrective_ratio": "🔧 Corrective Ratio",
+        "urgency_ratio": "🚨 Urgency Ratio",
+        "maintenance_efficiency": "⚡ Maintenance Efficiency",
         "no_data_message": "No machine data available for this period",
         "loading_machines": "Loading machine data...",
         "export_success": "Machine data exported successfully",
+        "filter_by_status": "🎚️ Filter by Status",
+        "filter_by_criticality": "⚠️ Filter by Criticality",
+        "show_only_critical": "Critical machines only",
+        "show_charts": "📊 Show charts",
+        "refresh_data": "🔄 Refresh",
+        "export_excel": "📄 Excel",
+        "export_pdf": "📑 PDF",
+        "export_csv": "📝 CSV",
         "advanced_filters": "🎚️ Advanced Filters",
         "status_filter": "Status:",
         "limit_filter": "Limit:",
@@ -170,17 +190,21 @@ MACHINE_TRANSLATIONS = {
     },
     Language.GERMAN: {
         "title": "📊 Maschinen-KPI-Analyse",
-        "machine_filter": "Nach Maschine filtern",
-        "all_machines": "Alle Maschinen",
-        "type_filter": "Maschinentyp",
-        "all_types": "Alle Typen",
-        "data_tab": "📊 Detaillierte Daten",
-        "charts_tab": "📈 Diagramme",
+        "machine_filter": "🔍 Nach Maschine filtern",
+        "all_machines": "🏭 Alle Maschinen",
+        "type_filter": "⚙️ Maschinentyp",
+        "all_types": "📋 Alle Typen",
+        "search_placeholder": "🔍 Maschine suchen...",
+        "data_tab": "📊 Übersicht",
+        "charts_tab": "📈 Diagramme & Trends",
+        "details_tab": "🔧 Technische Details",
+        "performance_tab": "⚡ Leistung",
         "top_machines": "🔝 Top Maschinen nach Kosten",
-        "machine_performance": "⚡ Maschinenleistung",
-        "summary_totals": "📊 Summen & Durchschnittswerte",
-        "grand_total_cost": "Gesamtkosten:",
-        "grand_avg_cost": "Durchschnittliche Kosten pro Maschine:",
+        "machine_performance": "⚡ Kennzahlen",
+        "summary_totals": "📊 Globale Zusammenfassung",
+        "machine_cards": "🏭 Maschinenkarten",
+        "grand_total_cost": "💰 Gesamtkosten:",
+        "grand_avg_cost": "📊 Durchschnittskosten:",
         "cost_evolution": "📈 Kostenentwicklung",
         "machine_name": "Maschine",
         "total_cost": "Gesamtkosten (€)",
@@ -190,11 +214,27 @@ MACHINE_TRANSLATIONS = {
         "last_maintenance": "Letzte Wartung",
         "next_maintenance": "Nächste Wartung",
         "status": "Status",
-        "total_intervention_time": "Gesamte Interv.-Zeit (h)",
-        "avg_intervention_time": "Ø Interv.-Zeit (h)",
+        "critical_machines": "⚠️ Kritische Maschinen",
+        "active_machines": "✅ Aktive Maschinen", 
+        "inactive_machines": "⏸️ Inaktive Maschinen",
+        "total_machines": "🏭 Maschinen Gesamt",
+        "total_intervention_time": "⏱️ Gesamtzeit (h)",
+        "avg_intervention_time": "⏱️ Durchschnitt Zeit (h)",
+        "preventive_ratio": "🛡️ Präventiv-Verhältnis",
+        "corrective_ratio": "🔧 Korrektiv-Verhältnis",
+        "urgency_ratio": "🚨 Notfall-Verhältnis",
+        "maintenance_efficiency": "⚡ Wartungseffizienz",
         "no_data_message": "Keine Maschinendaten für diesen Zeitraum verfügbar",
         "loading_machines": "Lade Maschinendaten...",
         "export_success": "Maschinendaten erfolgreich exportiert",
+        "filter_by_status": "🎚️ Nach Status filtern",
+        "filter_by_criticality": "⚠️ Nach Kritikalität filtern",
+        "show_only_critical": "Nur kritische Maschinen",
+        "show_charts": "📊 Diagramme anzeigen",
+        "refresh_data": "🔄 Aktualisieren",
+        "export_excel": "📄 Excel",
+        "export_pdf": "📑 PDF",
+        "export_csv": "📝 CSV",
         "advanced_filters": "🎚️ Erweiterte Filter",
         "status_filter": "Status:",
         "limit_filter": "Limit:",
@@ -644,6 +684,9 @@ class MachineKPIDialog(BaseKPIDialog):
             self.machines_data = self._convert_kpi_to_ui_format(raw_kpi_data)
             self.filtered_data = self.machines_data.copy()
 
+            # RÉINITIALISER TOUS LES FILTRES AVANT DE METTRE À JOUR
+            self._reset_all_filters()
+            
             # Mettre à jour les vues
             self.update_initial_filters()
             self.apply_filters_and_update_views()
@@ -738,6 +781,39 @@ class MachineKPIDialog(BaseKPIDialog):
             f"Impossible de charger les données depuis la base de données.\n\nDétail : {error}"
         )
     
+    def _reset_all_filters(self):
+        """Réinitialise tous les filtres à leurs valeurs par défaut."""
+        # Bloquer les signaux pour éviter les mises à jour multiples
+        self.type_combo.blockSignals(True)
+        self.machine_combo.blockSignals(True)
+        
+        # Réinitialiser les combos principaux
+        self.type_combo.setCurrentText(get_machine_text("all_types"))
+        self.machine_combo.setCurrentText(get_machine_text("all_machines"))
+        
+        # Réinitialiser les filtres avancés s'ils existent
+        if hasattr(self, 'status_combo'):
+            self.status_combo.blockSignals(True)
+            self.status_combo.setCurrentText(get_machine_text("all_statuses"))
+            self.status_combo.blockSignals(False)
+        
+        if hasattr(self, 'critical_only_checkbox'):
+            self.critical_only_checkbox.blockSignals(True)
+            self.critical_only_checkbox.setChecked(False)
+            self.critical_only_checkbox.blockSignals(False)
+        
+        if hasattr(self, 'limit_slider'):
+            self.limit_slider.blockSignals(True)
+            self.limit_slider.setValue(50)  # Valeur par défaut
+            self.limit_label.setText("50")
+            self.limit_slider.blockSignals(False)
+        
+        # Réactiver les signaux
+        self.type_combo.blockSignals(False)
+        self.machine_combo.blockSignals(False)
+        
+        logger.debug("Tous les filtres ont été réinitialisés")
+
     def update_initial_filters(self):
         """
         Met à jour les filtres une seule fois après le chargement des données.
