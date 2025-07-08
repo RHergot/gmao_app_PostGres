@@ -771,3 +771,150 @@ class KPIService:
         except Exception as e:
             logger.error(f"Erreur lors du calcul du résumé global: {e}")
             return {'error': str(e)}
+        
+    # ===================================================================
+    # MÉTHODES INTERVENTIONS ET COÛTS PAR PÉRIODE
+    # ===================================================================
+    
+    def get_interventions_by_period(self, machine_ids: List[int], start_date: Union[str, date], 
+                                   end_date: Union[str, date], period_type: str) -> List[Dict[str, Any]]:
+        """
+        Récupère les interventions regroupées par période pour des machines spécifiques.
+        
+        Args:
+            machine_ids: Liste des IDs de machines à analyser
+            start_date: Date de début
+            end_date: Date de fin
+            period_type: Type de regroupement ('daily', 'weekly', 'monthly')
+            
+        Returns:
+            Liste des interventions par période
+        """
+        try:
+            debut_str = self._convert_date_to_string(start_date)
+            fin_str = self._convert_date_to_string(end_date)
+            
+            # Construire la clause WHERE pour les machines
+            machine_ids_str = ','.join(str(id) for id in machine_ids if id)
+            if not machine_ids_str:
+                return []
+            
+            # Définir le format de regroupement selon le type de période
+            if period_type == 'daily':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-MM-DD')"
+            elif period_type == 'weekly':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-\"W\"WW')"
+            elif period_type == 'monthly':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-MM')"
+            else:
+                raise ValueError(f"Type de période non supporté: {period_type}")
+            
+            sql = f"""
+                SELECT 
+                    {date_format} AS period_key,
+                    COUNT(*) AS intervention_count,
+                    COUNT(CASE WHEN m.type_reel = 'Preventif' THEN 1 END) AS preventif_count,
+                    COUNT(CASE WHEN m.type_reel = 'Correctif' THEN 1 END) AS correctif_count,
+                    COUNT(CASE WHEN m.type_reel = 'Urgence' THEN 1 END) AS urgence_count,
+                    SUM(COALESCE(m.duree_intervention_h, 0)) AS total_duration_hours,
+                    AVG(COALESCE(m.duree_intervention_h, 0)) AS avg_duration_per_intervention
+                FROM MAINTENANCE m
+                WHERE m.machine_id IN ({machine_ids_str})
+                    AND m.date_fin_reelle >= %s
+                    AND m.date_fin_reelle <= %s
+                    AND m.date_fin_reelle IS NOT NULL
+                GROUP BY {date_format}
+                ORDER BY {date_format}
+            """
+            
+            params = [debut_str, fin_str]
+            
+            logger.debug(f"Récupération interventions par période - Machines: {machine_ids}, Période: {debut_str} à {fin_str}, Type: {period_type}")
+            rows = fetch_all(sql, params)
+            
+            results = []
+            for row in rows:
+                result = dict(row)
+                results.append(result)
+            
+            logger.info(f"Interventions par période récupérées: {len(results)} périodes")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Erreur récupération interventions par période: {e}")
+            return []
+    
+    def get_costs_by_period(self, machine_ids: List[int], start_date: Union[str, date], 
+                           end_date: Union[str, date], period_type: str) -> List[Dict[str, Any]]:
+        """
+        Récupère les coûts regroupés par période pour des machines spécifiques.
+        
+        Args:
+            machine_ids: Liste des IDs de machines à analyser
+            start_date: Date de début
+            end_date: Date de fin
+            period_type: Type de regroupement ('daily', 'weekly', 'monthly')
+            
+        Returns:
+            Liste des coûts par période
+        """
+        try:
+            debut_str = self._convert_date_to_string(start_date)
+            fin_str = self._convert_date_to_string(end_date)
+            
+            # Construire la clause WHERE pour les machines
+            machine_ids_str = ','.join(str(id) for id in machine_ids if id)
+            if not machine_ids_str:
+                return []
+            
+            # Définir le format de regroupement selon le type de période
+            if period_type == 'daily':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-MM-DD')"
+            elif period_type == 'weekly':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-\"W\"WW')"
+            elif period_type == 'monthly':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-MM')"
+            else:
+                raise ValueError(f"Type de période non supporté: {period_type}")
+            
+            sql = f"""
+                SELECT 
+                    {date_format} AS period_key,
+                    SUM(COALESCE(m.cout_total, 0)) AS total_cost,
+                    SUM(COALESCE(m.cout_main_oeuvre, 0)) AS labor_cost,
+                    SUM(COALESCE(m.cout_pieces_internes, 0)) AS parts_cost,
+                    SUM(COALESCE(m.cout_pieces_externes, 0)) AS external_parts_cost,
+                    SUM(COALESCE(m.cout_autres_frais, 0)) AS other_costs,
+                    COUNT(*) AS intervention_count,
+                    AVG(COALESCE(m.cout_total, 0)) AS avg_cost_per_intervention,
+                    SUM(COALESCE(m.duree_intervention_h, 0)) AS total_duration_hours,
+                    AVG(COALESCE(m.duree_intervention_h, 0)) AS avg_duration_per_intervention
+                FROM MAINTENANCE m
+                WHERE m.machine_id IN ({machine_ids_str})
+                    AND m.date_fin_reelle >= %s
+                    AND m.date_fin_reelle <= %s
+                    AND m.date_fin_reelle IS NOT NULL
+                GROUP BY {date_format}
+                ORDER BY {date_format}
+            """
+            
+            params = [debut_str, fin_str]
+            
+            logger.debug(f"Récupération coûts par période - Machines: {machine_ids}, Période: {debut_str} à {fin_str}, Type: {period_type}")
+            rows = fetch_all(sql, params)
+            
+            results = []
+            for row in rows:
+                result = dict(row)
+                # Conversion des Decimal
+                for key, value in result.items():
+                    if isinstance(value, Decimal):
+                        result[key] = float(value)
+                results.append(result)
+            
+            logger.info(f"Coûts par période récupérés: {len(results)} périodes")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Erreur récupération coûts par période: {e}")
+            return []
