@@ -910,6 +910,7 @@ class MachineKPIDialog(BaseKPIDialog):
         for item in kpi_data:
             # Conversion avec gestion des erreurs pour chaque champ
             machine_data = {
+                "machine_id": self._safe_int(item.get('machine_id')), # AJOUT IMPORTANT
                 "machine_name": str(item.get('machine_nom', 'N/A')),
                 "serial": str(item.get('machine_serial', 'N/A')),
                 "type": str(item.get('type_nom', 'N/A')),
@@ -1221,7 +1222,7 @@ class MachineKPIDialog(BaseKPIDialog):
             self.chart_widget.set_data(sites, machines, types)
             
             # Calculer et envoyer les données du graphique
-            self.calculate_and_send_chart_data()
+            self.calculate_and_send_chart_data();
             
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour des données graphiques: {e}")
@@ -1271,16 +1272,15 @@ class MachineKPIDialog(BaseKPIDialog):
             # Extraire les IDs des machines filtrées
             machine_ids = [m.get('machine_id') for m in filtered_data if m.get('machine_id')]
             if not machine_ids:
-                # Si pas d'IDs, utiliser les noms comme fallback
-                machine_names = [m['machine_name'] for m in filtered_data]
-                logger.warning(f"Pas d'IDs machines trouvés, utilisation des noms: {machine_names}")
-                return self._generate_fallback_time_series_data(filters)
+                logger.warning("Aucun ID de machine trouvé pour le graphique.")
+                return self._generate_empty_time_series_data(filters)
+
+            # Vérifier la disponibilité du service KPI
+            if not self.kpi_service:
+                logger.warning("KPI Service non disponible, impossible de générer le graphique.")
+                return self._generate_empty_time_series_data(filters)
             
             # Récupérer les vraies données d'interventions par période (incluent déjà les durées)
-            if not self.kpi_service:
-                logger.warning("KPI Service non disponible, utilisation de données simulées")
-                return self._generate_fallback_time_series_data(filters)
-            
             interventions_raw_data = self.kpi_service.get_interventions_by_period(
                 machine_ids=machine_ids,
                 start_date=start_date,
@@ -1289,81 +1289,49 @@ class MachineKPIDialog(BaseKPIDialog):
             )
             
             # Récupérer les vraies données de coûts par période
-            costs_data = self._get_costs_by_period(
-                machine_ids, start_date, end_date, period_type
+            costs_raw_data = self.kpi_service.get_costs_by_period(
+                machine_ids=machine_ids,
+                start_date=start_date,
+                end_date=end_date,
+                period_type=period_type
             )
             
-            # Extraire les données d'interventions et de durées des données brutes
-            interventions_data = {}
-            durations_data = {}
-            for item in interventions_raw_data:
-                period_key = item.get('period_key')
-                if period_key:
-                    interventions_data[period_key] = item.get('intervention_count', 0)
-                    durations_data[period_key] = item.get('total_duration_hours', 0.0)
-            
+            # Organiser les données par clé de période pour un accès rapide
+            interventions_map = {item['period_key']: item.get('intervention_count', 0) for item in interventions_raw_data}
+            durations_map = {item['period_key']: item.get('total_duration_hours', 0.0) for item in interventions_raw_data}
+            costs_map = {item['period_key']: item.get('total_cost', 0.0) for item in costs_raw_data}
+
             # Générer les périodes et assembler les données
-            periods = []
-            costs = []
-            interventions = []
-            durations = []
+            periods, costs, interventions, durations = [], [], [], []
             
-            if period_type == 'daily':
-                current_date = start_date
-                while current_date <= end_date:
-                    date_str = current_date.strftime('%Y-%m-%d')
-                    periods.append(date_str)
-                    
-                    # Récupérer les valeurs réelles pour cette date
-                    daily_interventions = interventions_data.get(date_str, 0)
-                    daily_cost = costs_data.get(date_str, 0.0)
-                    daily_duration = durations_data.get(date_str, 0.0)
-                    
-                    interventions.append(daily_interventions)
-                    costs.append(max(0.0, daily_cost))  # Assurer des valeurs positives
-                    durations.append(max(0.0, daily_duration))  # Assurer des valeurs positives
-                    
-                    current_date += timedelta(days=1)
-            
-            elif period_type == 'weekly':
-                current_date = start_date
-                while current_date <= end_date:
-                    week_start = current_date - timedelta(days=current_date.weekday())
-                    week_end = week_start + timedelta(days=6)
-                    week_key = f"{week_start.strftime('%Y-W%W')}"
-                    periods.append(f"S{week_start.strftime('%W')} {week_start.strftime('%Y')}")
-                    
-                    # Récupérer les valeurs réelles pour cette semaine
-                    weekly_interventions = interventions_data.get(week_key, 0)
-                    weekly_cost = costs_data.get(week_key, 0.0)
-                    weekly_duration = durations_data.get(week_key, 0.0)
-                    
-                    interventions.append(weekly_interventions)
-                    costs.append(max(0.0, weekly_cost))  # Assurer des valeurs positives
-                    durations.append(max(0.0, weekly_duration))  # Assurer des valeurs positives
-                    
-                    current_date += timedelta(weeks=1)
-            
-            elif period_type == 'monthly':
+            current_date = start_date
+            if period_type == 'monthly':
                 current_date = start_date.replace(day=1)
-                while current_date <= end_date:
-                    month_key = current_date.strftime('%Y-%m')
-                    periods.append(month_key)
-                    
-                    # Récupérer les valeurs réelles pour ce mois
-                    monthly_interventions = interventions_data.get(month_key, 0)
-                    monthly_cost = costs_data.get(month_key, 0.0)
-                    monthly_duration = durations_data.get(month_key, 0.0)
-                    
-                    interventions.append(monthly_interventions)
-                    costs.append(max(0.0, monthly_cost))  # Assurer des valeurs positives
-                    durations.append(max(0.0, monthly_duration))  # Assurer des valeurs positives
-                    
+
+            while current_date <= end_date:
+                if period_type == 'daily':
+                    period_key = current_date.strftime('%Y-%m-%d')
+                    periods.append(period_key)
+                    current_date += timedelta(days=1)
+                elif period_type == 'weekly':
+                    week_start = current_date - timedelta(days=current_date.weekday())
+                    period_key = f"{week_start.strftime('%Y-W%W')}"
+                    periods.append(f"S{week_start.strftime('%W')} {week_start.strftime('%Y')}")
+                    current_date += timedelta(weeks=1)
+                elif period_type == 'monthly':
+                    period_key = current_date.strftime('%Y-%m')
+                    periods.append(period_key)
                     # Aller au mois suivant
                     if current_date.month == 12:
                         current_date = current_date.replace(year=current_date.year + 1, month=1)
                     else:
                         current_date = current_date.replace(month=current_date.month + 1)
+                
+                interventions.append(interventions_map.get(period_key, 0))
+                costs.append(max(0.0, costs_map.get(period_key, 0.0)))
+                durations.append(max(0.0, durations_map.get(period_key, 0.0)))
+
+            logger.info(f"Données temporelles générées: {len(periods)} périodes.")
             
             return {
                 'periods': periods,
@@ -1374,221 +1342,15 @@ class MachineKPIDialog(BaseKPIDialog):
             }
             
         except Exception as e:
+            import traceback
             logger.error(f"Erreur lors de la génération des données temporelles: {e}")
-            # Fallback avec données simulées réalistes
-            return self._generate_fallback_time_series_data(filters)
-    
-    def _get_interventions_by_period(self, machine_ids, start_date, end_date, period_type):
-        """Récupère les interventions réelles groupées par période."""
-        try:
-            if not self.kpi_service:
-                logger.warning("KPI Service non disponible, utilisation de données simulées")
-                return self._simulate_interventions_by_period(start_date, end_date, period_type)
-            
-            # Appeler le service KPI pour récupérer les interventions par période
-            interventions_data = self.kpi_service.get_interventions_by_period(
-                machine_ids=machine_ids,
-                start_date=start_date,
-                end_date=end_date,
-                period_type=period_type
-            )
-            
-            # Convertir au format attendu {période: nombre_interventions}
-            result = {}
-            for item in interventions_data:
-                period_key = item.get('period_key')
-                count = item.get('intervention_count', 0)
-                if period_key:
-                    result[period_key] = count
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération des interventions: {e}")
-            return self._simulate_interventions_by_period(start_date, end_date, period_type)
-    
-    def _get_costs_by_period(self, machine_ids, start_date, end_date, period_type):
-        """Récupère les coûts réels groupés par période."""
-        try:
-            if not self.kpi_service:
-                logger.warning("KPI Service non disponible, utilisation de données simulées")
-                return self._simulate_costs_by_period(start_date, end_date, period_type)
-            
-            # Appeler le service KPI pour récupérer les coûts par période
-            costs_data = self.kpi_service.get_costs_by_period(
-                machine_ids=machine_ids,
-                start_date=start_date,
-                end_date=end_date,
-                period_type=period_type
-            )
-            
-            # Convertir au format attendu {période: coût_total}
-            result = {}
-            for item in costs_data:
-                period_key = item.get('period_key')
-                cost = item.get('total_cost', 0.0)
-                if period_key:
-                    result[period_key] = max(0.0, cost)  # Assurer des valeurs positives
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération des coûts: {e}")
-            return self._simulate_costs_by_period(start_date, end_date, period_type)
-    
-    def _get_durations_by_period(self, machine_ids, start_date, end_date, period_type):
-        """Récupère les durées réelles groupées par période."""
-        try:
-            if not self.kpi_service:
-                logger.warning("KPI Service non disponible, utilisation de données simulées")
-                return self._simulate_durations_by_period(start_date, end_date, period_type)
-            
-            # Appeler le service KPI pour récupérer les interventions par période (qui incluent maintenant la durée)
-            interventions_data = self.kpi_service.get_interventions_by_period(
-                machine_ids=machine_ids,
-                start_date=start_date,
-                end_date=end_date,
-                period_type=period_type
-            )
-            
-            # Convertir au format attendu {période: durée_totale}
-            result = {}
-            for item in interventions_data:
-                period_key = item.get('period_key')
-                duration = item.get('total_duration_hours', 0.0)
-                if period_key:
-                    result[period_key] = max(0.0, duration)  # Assurer des valeurs positives
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération des durées: {e}")
-            return self._simulate_durations_by_period(start_date, end_date, period_type)
-    
-    def _simulate_interventions_by_period(self, start_date, end_date, period_type):
-        """Simule des données d'interventions réalistes par période."""
-        import random
-        from datetime import timedelta
-        
-        result = {}
-        
-        if period_type == 'daily':
-            current_date = start_date
-            while current_date <= end_date:
-                date_str = current_date.strftime('%Y-%m-%d')
-                # Simuler des interventions réalistes (0-5 par jour, avec des pics)
-                if random.random() < 0.3:  # 30% de chance d'avoir des interventions
-                    result[date_str] = random.randint(1, 5)
-                else:
-                    result[date_str] = 0
-                current_date += timedelta(days=1)
-        
-        elif period_type == 'weekly':
-            current_date = start_date
-            while current_date <= end_date:
-                week_start = current_date - timedelta(days=current_date.weekday())
-                week_key = f"{week_start.strftime('%Y-W%W')}"
-                # Simuler 5-25 interventions par semaine
-                result[week_key] = random.randint(5, 25)
-                current_date += timedelta(weeks=1)
-        
-        elif period_type == 'monthly':
-            current_date = start_date.replace(day=1)
-            while current_date <= end_date:
-                month_key = current_date.strftime('%Y-%m')
-                # Simuler 20-100 interventions par mois
-                result[month_key] = random.randint(20, 100)
-                # Aller au mois suivant
-                if current_date.month == 12:
-                    current_date = current_date.replace(year=current_date.year + 1, month=1)
-                else:
-                    current_date = current_date.replace(month=current_date.month + 1)
-        
-        return result
-    
-    def _simulate_costs_by_period(self, start_date, end_date, period_type):
-        """Simule des données de coûts réalistes par période."""
-        import random
-        from datetime import timedelta
-        
-        result = {}
-        
-        if period_type == 'daily':
-            current_date = start_date
-            while current_date <= end_date:
-                date_str = current_date.strftime('%Y-%m-%d')
-                # Simuler des coûts réalistes (0-5000€ par jour)
-                if random.random() < 0.3:  # 30% de chance d'avoir des coûts
-                    result[date_str] = random.uniform(100, 5000)
-                else:
-                    result[date_str] = 0.0
-                current_date += timedelta(days=1)
-        
-        elif period_type == 'weekly':
-            current_date = start_date
-            while current_date <= end_date:
-                week_start = current_date - timedelta(days=current_date.weekday())
-                week_key = f"{week_start.strftime('%Y-W%W')}"
-                # Simuler 500-15000€ par semaine
-                result[week_key] = random.uniform(500, 15000)
-                current_date += timedelta(weeks=1)
-        
-        elif period_type == 'monthly':
-            current_date = start_date.replace(day=1)
-            while current_date <= end_date:
-                month_key = current_date.strftime('%Y-%m')
-                # Simuler 2000-50000€ par mois
-                result[month_key] = random.uniform(2000, 50000)
-                # Aller au mois suivant
-                if current_date.month == 12:
-                    current_date = current_date.replace(year=current_date.year + 1, month=1)
-                else:
-                    current_date = current_date.replace(month=current_date.month + 1)
-        
-        return result
-    
-    def _simulate_durations_by_period(self, start_date, end_date, period_type):
-        """Simule des données de durée réalistes par période."""
-        import random
-        from datetime import timedelta
-        
-        result = {}
-        
-        if period_type == 'daily':
-            current_date = start_date
-            while current_date <= end_date:
-                date_str = current_date.strftime('%Y-%m-%d')
-                # Simuler des durées variables (0-12h par jour)
-                result[date_str] = random.uniform(0, 12)
-                current_date += timedelta(days=1)
-        
-        elif period_type == 'weekly':
-            current_date = start_date
-            while current_date <= end_date:
-                week_key = f"{current_date.strftime('%Y-W%W')}"
-                # Simuler des durées hebdomadaires (0-40h par semaine)
-                result[week_key] = random.uniform(0, 40)
-                current_date += timedelta(weeks=1)
-        
-        elif period_type == 'monthly':
-            current_date = start_date.replace(day=1)
-            while current_date <= end_date:
-                month_key = current_date.strftime('%Y-%m')
-                # Simuler des durées mensuelles (0-160h par mois)
-                result[month_key] = random.uniform(0, 160)
-                # Aller au mois suivant
-                if current_date.month == 12:
-                    current_date = current_date.replace(year=current_date.year + 1, month=1)
-                else:
-                    current_date = current_date.replace(month=current_date.month + 1)
-        
-        return result
+            traceback.print_exc()
+            return self._generate_empty_time_series_data(filters)
 
-    def _generate_fallback_time_series_data(self, filters):
-        """Génère des données temporelles de secours en cas d'erreur."""
+    def _generate_empty_time_series_data(self, filters):
+        """Génère des données temporelles vides (pas de simulation)."""
         try:
             from datetime import datetime, timedelta
-            import random
             
             start_date = filters['start_date']
             end_date = filters['end_date']
@@ -1603,15 +1365,9 @@ class MachineKPIDialog(BaseKPIDialog):
                 current_date = start_date
                 while current_date <= end_date:
                     periods.append(current_date.strftime('%Y-%m-%d'))
-                    # Données simulées réalistes
-                    daily_interventions = random.randint(0, 3) if random.random() < 0.4 else 0
-                    daily_cost = random.uniform(0, 2000) if daily_interventions > 0 else 0
-                    daily_duration = random.uniform(0, 12)  # Durée simulée entre 0 et 12 heures
-                    
-                    interventions.append(daily_interventions)
-                    costs.append(daily_cost)
-                    durations.append(daily_duration)
-                    
+                    costs.append(0.0)
+                    interventions.append(0)
+                    durations.append(0.0)
                     current_date += timedelta(days=1)
             
             elif period_type == 'weekly':
@@ -1619,30 +1375,18 @@ class MachineKPIDialog(BaseKPIDialog):
                 while current_date <= end_date:
                     week_start = current_date - timedelta(days=current_date.weekday())
                     periods.append(f"S{week_start.strftime('%W')} {week_start.strftime('%Y')}")
-                    
-                    weekly_interventions = random.randint(5, 20)
-                    weekly_cost = random.uniform(1000, 10000)
-                    weekly_duration = random.uniform(0, 40)  # Durée hebdomadaire simulée
-                    
-                    interventions.append(weekly_interventions)
-                    costs.append(weekly_cost)
-                    durations.append(weekly_duration)
-                    
+                    costs.append(0.0)
+                    interventions.append(0)
+                    durations.append(0.0)
                     current_date += timedelta(weeks=1)
             
             elif period_type == 'monthly':
                 current_date = start_date.replace(day=1)
                 while current_date <= end_date:
                     periods.append(current_date.strftime('%Y-%m'))
-                    
-                    monthly_interventions = random.randint(20, 80)
-                    monthly_cost = random.uniform(5000, 40000)
-                    monthly_duration = random.uniform(0, 160)  # Durée mensuelle simulée
-                    
-                    interventions.append(monthly_interventions)
-                    costs.append(monthly_cost)
-                    durations.append(monthly_duration)
-                    
+                    costs.append(0.0)
+                    interventions.append(0)
+                    durations.append(0.0)
                     # Aller au mois suivant
                     if current_date.month == 12:
                         current_date = current_date.replace(year=current_date.year + 1, month=1)
@@ -1658,9 +1402,9 @@ class MachineKPIDialog(BaseKPIDialog):
             }
             
         except Exception as e:
-            logger.error(f"Erreur dans le fallback des données temporelles: {e}")
+            logger.error(f"Erreur lors de la génération des données vides: {e}")
             return {}
-    
+
     def on_chart_filters_changed(self):
         """Gère le changement des filtres dans le widget graphique."""
         # Recalculer et envoyer les nouvelles données
