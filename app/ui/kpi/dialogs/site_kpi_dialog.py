@@ -251,12 +251,25 @@ class SiteKPIDialog(BaseKPIDialog):
         self.tab_widget.addTab(trends_widget, get_site_text("trends_tab"))
     
     def load_data(self):
-        """Charge les données des sites."""
+        """Charge les données des sites depuis la base de données."""
         self.set_status(get_site_text("loading_sites"))
         
         try:
-            # Simulation de données
-            self.sites_data = self.get_mock_site_data()
+            # Import du service KPI
+            from app.core.services.kpi_service import KPIService
+            
+            kpi_service = KPIService()
+            
+            # Récupération des données réelles depuis la base
+            raw_data = kpi_service.get_couts_par_site(
+                periode_debut=self.start_date,
+                periode_fin=self.end_date
+            )
+            
+            # Transformation des données pour l'interface
+            self.sites_data = self._transform_site_data(raw_data)
+            
+            # Mise à jour des filtres et vues
             self.update_filters()
             self.update_views()
             
@@ -266,30 +279,49 @@ class SiteKPIDialog(BaseKPIDialog):
             logger.error(f"Erreur lors du chargement des données sites: {e}")
             self.set_status(f"Erreur: {e}", success=False)
     
-    def get_mock_site_data(self) -> List[Dict[str, Any]]:
-        """Génère des données de test pour les sites."""
-        import random
+    def _transform_site_data(self, raw_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Transforme les données de la base vers le format attendu par l'interface."""
+        transformed_data = []
         
-        regions = ["Nord", "Sud", "Est", "Ouest", "Centre"]
-        sites = ["Site Alpha", "Site Beta", "Site Gamma", "Site Delta", "Site Epsilon"]
+        for site_data in raw_data:
+            # Transformation des données de la base vers le format interface
+            transformed_site = {
+                "site_name": site_data.get("site_nom", "Site Inconnu"),
+                "region": site_data.get("site_ville", "Région Inconnue"),
+                "machines_count": int(site_data.get("nb_machines_total", 0)),
+                "total_cost": float(site_data.get("cout_total", 0.0)),
+                "interventions": int(site_data.get("nb_interventions_total", 0)),
+                "preventive_count": int(site_data.get("nb_preventif", 0)),
+                "corrective_count": int(site_data.get("nb_correctif", 0)),
+                "urgent_count": int(site_data.get("nb_urgence", 0)),
+                "labor_cost": float(site_data.get("cout_main_oeuvre", 0.0)),
+                "parts_cost": float(site_data.get("cout_pieces_internes", 0.0)),
+                "external_cost": float(site_data.get("cout_frais_externes", 0.0)),
+                "avg_cost_per_intervention": float(site_data.get("cout_moyen_intervention", 0.0)),
+                "preventive_ratio": float(site_data.get("ratio_preventif_curatif", 0.0)),
+                # Données supplémentaires
+                "site_id": site_data.get("id_site"),
+                "country": site_data.get("site_pays", "Pays Inconnu")
+            }
+            
+            # Calculs dérivés
+            if transformed_site["machines_count"] > 0:
+                transformed_site["cost_per_machine"] = transformed_site["total_cost"] / transformed_site["machines_count"]
+            else:
+                transformed_site["cost_per_machine"] = 0.0
+                
+            # Calcul de l'efficacité (basé sur le ratio préventif/curatif)
+            if transformed_site["interventions"] > 0:
+                preventive_pct = (transformed_site["preventive_count"] / transformed_site["interventions"]) * 100
+                transformed_site["efficiency"] = min(95.0, max(60.0, preventive_pct + 20))  # Simulation d'efficacité
+                transformed_site["availability"] = min(98.0, max(80.0, 100 - (transformed_site["urgent_count"] * 2)))  # Simulation de disponibilité
+            else:
+                transformed_site["efficiency"] = 85.0
+                transformed_site["availability"] = 95.0
+                
+            transformed_data.append(transformed_site)
         
-        data = []
-        for i, site in enumerate(sites):
-            data.append({
-                "site_name": site,
-                "region": random.choice(regions),
-                "machines_count": random.randint(10, 50),
-                "total_cost": random.uniform(50000, 200000),
-                "interventions": random.randint(50, 200),
-                "availability": random.uniform(85, 98),
-                "efficiency": random.uniform(80, 95)
-            })
-        
-        # Calcul du coût par machine
-        for site in data:
-            site["cost_per_machine"] = site["total_cost"] / site["machines_count"]
-        
-        return data
+        return transformed_data
     
     def update_filters(self):
         """Met à jour les listes de filtres."""

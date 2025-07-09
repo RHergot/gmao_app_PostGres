@@ -640,12 +640,12 @@ class MachineKPIDialog(BaseKPIDialog):
         
         self.selection_stats_labels = {}
         stats_items = [
-            ("total_machines", get_machine_text("total_machines_label"), "🏭"),
-            ("total_cost", get_machine_text("total_cost_label"), "💰"),
-            ("avg_cost", get_machine_text("avg_cost_label"), "📊"),
-            ("total_interventions", get_machine_text("interventions_label"), "🔧"),
-            ("preventive_ratio", get_machine_text("preventive_ratio_label"), "🛡️"),
-            ("efficiency", get_machine_text("efficiency_label"), "⚡")
+            ("total_machines", get_machine_text("total_machines"), "🏭"),
+            ("total_cost", get_machine_text("total_cost"), "💰"),
+            ("avg_cost", get_machine_text("avg_cost"), "📊"),
+            ("total_interventions", get_machine_text("interventions"), "🔧"),
+            ("preventive_ratio", get_machine_text("preventive_ratio"), "🛡️"),
+            ("efficiency", get_machine_text("efficiency"), "⚡")
         ]
         
         for key, label, icon in stats_items:
