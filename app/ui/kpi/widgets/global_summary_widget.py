@@ -405,7 +405,9 @@ class GlobalSummaryWidget(QWidget):
             # Coûts par machine
             data['machines'] = self.kpi_service.get_couts_par_machine(
                 periode_debut=periode_debut,
-                periode_fin=periode_fin
+                periode_fin=periode_fin,
+                machine_ids=None,
+                type_machine=None
             )
             
             # Coûts par site

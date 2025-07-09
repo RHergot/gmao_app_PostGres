@@ -656,23 +656,33 @@ class AdvancedKPIWidget(QWidget):
             return
         
         try:
+            # Récupérer les filtres
+            periode_debut = self.filters['periode_debut']
+            periode_fin = self.filters['periode_fin']
+            machine_id = self.filters.get('machine_id')
+            type_machine = self.filters.get('type_machine')
+
             # Charger les données selon les filtres
-            if self.filters.get('machine_id'):
-                data = self.kpi_service.get_couts_par_machine(
-                    self.filters['periode_debut'], 
-                    self.filters['periode_fin']
-                )
-            else:
-                # Charger toutes les données
+            if machine_id:
                 machines_data = self.kpi_service.get_couts_par_machine(
-                    self.filters['periode_debut'], 
-                    self.filters['periode_fin']
+                    periode_debut=periode_debut, 
+                    periode_fin=periode_fin,
+                    machine_ids=[machine_id],
+                    type_machine=type_machine
+                )
+                data = {'machines': machines_data, 'sites': []}
+            else:
+                # Charger les données pour toutes les machines (potentiellement filtrées par type)
+                machines_data = self.kpi_service.get_couts_par_machine(
+                    periode_debut=periode_debut, 
+                    periode_fin=periode_fin,
+                    machine_ids=None,
+                    type_machine=type_machine
                 )
                 sites_data = self.kpi_service.get_couts_par_site(
-                    self.filters['periode_debut'], 
-                    self.filters['periode_fin']
+                    periode_debut=periode_debut, 
+                    periode_fin=periode_fin
                 )
-                
                 data = {
                     'machines': machines_data,
                     'sites': sites_data

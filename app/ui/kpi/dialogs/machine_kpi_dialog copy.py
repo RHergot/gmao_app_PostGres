@@ -499,8 +499,8 @@ class MachineKPIDialog(BaseKPIDialog):
         filters_layout.setContentsMargins(15, 10, 15, 10)
         filters_layout.setSpacing(10)
 
-        # === LIGNE UNIQUE : TOUS LES FILTRES SUR UNE SEULE LIGNE ===
-        all_filters_layout = QHBoxLayout()
+        # === PREMIÈRE LIGNE : PÉRIODE D'ANALYSE ===
+        period_layout = QHBoxLayout()
         period_group = QGroupBox(get_shared_text("analysis_period"))
         period_group_layout = QHBoxLayout(period_group)
         
@@ -520,41 +520,43 @@ class MachineKPIDialog(BaseKPIDialog):
         self.date_fin.dateChanged.connect(self.on_filter_changed)
         period_group_layout.addWidget(self.date_fin)
         
-        all_filters_layout.addWidget(period_group)
+        period_layout.addWidget(period_group)
+        period_layout.addStretch()
+        filters_layout.addLayout(period_layout)
+
+        # === DEUXIÈME LIGNE : FILTRES MACHINE ET TYPE ===
+        machine_filters_layout = QHBoxLayout()
         
-        # === CADRE 2 : FILTRES MACHINE ET TYPE COMBINÉS ===
-        machine_type_group = QGroupBox("Machine & Type")
-        machine_type_layout = QVBoxLayout(machine_type_group)
-        
-        # Ligne Machine
-        machine_layout = QHBoxLayout()
-        machine_layout.addWidget(QLabel("Machine:"))
+        # Filtre Machine
+        machine_group = QGroupBox(get_machine_text("machine_filter"))
+        machine_layout = QHBoxLayout(machine_group)
         self.machine_combo = QComboBox()
         self.machine_combo.addItem(get_machine_text("all_machines"))
         self.machine_combo.currentTextChanged.connect(self.on_filter_changed)
-        self.machine_combo.setMinimumWidth(150)
+        self.machine_combo.setMinimumWidth(180)
         machine_layout.addWidget(self.machine_combo)
-        machine_type_layout.addLayout(machine_layout)
+        machine_filters_layout.addWidget(machine_group)
         
-        # Ligne Type
-        type_layout = QHBoxLayout()
-        type_layout.addWidget(QLabel("Type:"))
+        # Filtre Type
+        type_group = QGroupBox(get_machine_text("type_filter"))
+        type_layout = QHBoxLayout(type_group)
         self.type_combo = QComboBox()
         self.type_combo.addItem(get_machine_text("all_types"))
         self.type_combo.currentTextChanged.connect(self.on_filter_changed)
-        self.type_combo.setMinimumWidth(150)
+        self.type_combo.setMinimumWidth(180)
         type_layout.addWidget(self.type_combo)
-        machine_type_layout.addLayout(type_layout)
+        machine_filters_layout.addWidget(type_group)
         
-        all_filters_layout.addWidget(machine_type_group)
-        
-        # === CADRE 3 : FILTRES AVANCÉS ===
+        machine_filters_layout.addStretch()
+        filters_layout.addLayout(machine_filters_layout)
+
+        # === TROISIÈME LIGNE : FILTRES AVANCÉS ===
+        advanced_layout = QHBoxLayout()
         advanced_group = QGroupBox(get_machine_text("advanced_filters"))
-        advanced_group_layout = QVBoxLayout(advanced_group)
+        advanced_group_layout = QHBoxLayout(advanced_group)
         
-        # Ligne 1: Statut
-        status_layout = QHBoxLayout()
-        status_layout.addWidget(QLabel(get_machine_text("status_filter")))
+        # Filtre par statut
+        advanced_group_layout.addWidget(QLabel(get_machine_text("status_filter")))
         self.status_combo = QComboBox()
         self.status_combo.addItems([
             get_machine_text("all_statuses"), 
@@ -563,36 +565,32 @@ class MachineKPIDialog(BaseKPIDialog):
             get_machine_text("inactive_status")
         ])
         self.status_combo.currentTextChanged.connect(self.on_filter_changed)
-        status_layout.addWidget(self.status_combo)
-        advanced_group_layout.addLayout(status_layout)
+        advanced_group_layout.addWidget(self.status_combo)
         
-        # Ligne 2: Checkbox critiques
+        # Checkbox pour machines critiques
         self.critical_only_checkbox = QCheckBox(get_machine_text("show_only_critical"))
         self.critical_only_checkbox.stateChanged.connect(self.on_filter_changed)
         advanced_group_layout.addWidget(self.critical_only_checkbox)
         
-        # Ligne 3: Limite
-        limit_layout = QHBoxLayout()
-        limit_layout.addWidget(QLabel(get_machine_text("limit_filter")))
+        # Slider limite
+        advanced_group_layout.addWidget(QLabel(get_machine_text("limit_filter")))
         self.limit_slider = QSlider(Qt.Horizontal)
         self.limit_slider.setRange(10, 100)
         self.limit_slider.setValue(50)
         self.limit_slider.setTickPosition(QSlider.TicksBelow)
         self.limit_slider.setTickInterval(10)
         self.limit_slider.valueChanged.connect(self.on_limit_changed)
-        limit_layout.addWidget(self.limit_slider)
+        advanced_group_layout.addWidget(self.limit_slider)
         
         self.limit_label = QLabel("50")
         self.limit_label.setMinimumWidth(30)
-        limit_layout.addWidget(self.limit_label)
-        advanced_group_layout.addLayout(limit_layout)
+        advanced_group_layout.addWidget(self.limit_label)
         
-        all_filters_layout.addWidget(advanced_group)
-        
-        # Ajouter la ligne unique de filtres au layout principal
-        filters_layout.addLayout(all_filters_layout)
-        
-        # === BOUTONS D'ACTIONS ===
+        advanced_layout.addWidget(advanced_group)
+        advanced_layout.addStretch()
+        filters_layout.addLayout(advanced_layout)
+
+        # === QUATRIÈME LIGNE : BOUTONS D'ACTIONS ===
         actions_layout = QHBoxLayout()
         actions_layout.addStretch()
         
@@ -640,12 +638,12 @@ class MachineKPIDialog(BaseKPIDialog):
         
         self.selection_stats_labels = {}
         stats_items = [
-            ("total_machines", get_machine_text("total_machines"), "🏭"),
-            ("total_cost", get_machine_text("total_cost"), "💰"),
-            ("avg_cost", get_machine_text("avg_cost"), "📊"),
-            ("total_interventions", get_machine_text("interventions"), "🔧"),
-            ("preventive_ratio", get_machine_text("preventive_ratio"), "🛡️"),
-            ("efficiency", get_machine_text("efficiency"), "⚡")
+            ("total_machines", get_machine_text("total_machines_label"), "🏭"),
+            ("total_cost", get_machine_text("total_cost_label"), "💰"),
+            ("avg_cost", get_machine_text("avg_cost_label"), "📊"),
+            ("total_interventions", get_machine_text("interventions_label"), "🔧"),
+            ("preventive_ratio", get_machine_text("preventive_ratio_label"), "🛡️"),
+            ("efficiency", get_machine_text("efficiency_label"), "⚡")
         ]
         
         for key, label, icon in stats_items:
@@ -724,27 +722,6 @@ class MachineKPIDialog(BaseKPIDialog):
                 font-size: 10px;
             }
         """)
-        
-        # Configuration des colonnes
-        header = self.data_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Machine
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Type
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Statut
-        
-        # Double-clic pour voir les détails
-        self.data_table.doubleClicked.connect(self.show_machine_details)
-        
-        # Configuration basique du tableau - optimisé pour remplir l'espace disponible
-        self.data_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        
-        # S'assurer que le tableau utilise tout l'espace disponible de l'onglet
-        self.data_table.setMinimumHeight(400)  # Hauteur minimale raisonnable
-        
-        # Ajouter directement le tableau à l'overview_layout avec stretch factor maximal
-        overview_layout.addWidget(self.data_table, 1)  # Le tableau prend tout l'espace restant
-        
-        self.tab_widget.addTab(overview_widget, get_machine_text("data_tab"))
-        self.overview_widget = overview_widget
         
         # Configuration des colonnes
         header = self.data_table.horizontalHeader()
