@@ -918,3 +918,125 @@ class KPIService:
         except Exception as e:
             logger.error(f"Erreur récupération coûts par période: {e}")
             return []
+    
+    def get_site_costs_by_period(self, site_ids: List[int], start_date: Union[str, date], 
+                                end_date: Union[str, date], period_type: str) -> List[Dict[str, Any]]:
+        """
+        Récupère les coûts et interventions regroupés par période pour des sites spécifiques.
+        
+        Args:
+            site_ids: Liste des IDs de sites à analyser (vide = tous les sites)
+            start_date: Date de début
+            end_date: Date de fin
+            period_type: Type de regroupement ('daily', 'weekly', 'monthly')
+            
+        Returns:
+            Liste des coûts et interventions par période
+        """
+        try:
+            debut_str = self._convert_date_to_string(start_date)
+            fin_str = self._convert_date_to_string(end_date)
+            
+            # Construire la clause WHERE pour les sites
+            site_filter = ""
+            if site_ids:
+                site_ids_str = ','.join(str(id) for id in site_ids if id)
+                if site_ids_str:
+                    site_filter = f"AND ma.site_id IN ({site_ids_str})"
+            
+            # Définir le format de regroupement selon le type de période
+            if period_type == 'daily':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-MM-DD')"
+            elif period_type == 'weekly':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-\"W\"WW')"
+            elif period_type == 'monthly':
+                date_format = "TO_CHAR(m.date_fin_reelle::date, 'YYYY-MM')"
+            else:
+                raise ValueError(f"Type de période non supporté: {period_type}")
+            
+            sql = f"""
+                SELECT 
+                    {date_format} AS period_key,
+                    SUM(COALESCE(m.cout_total, 0)) AS total_cost,
+                    SUM(COALESCE(m.cout_main_oeuvre, 0)) AS labor_cost,
+                    SUM(COALESCE(m.cout_pieces_internes, 0)) AS parts_cost,
+                    SUM(COALESCE(m.cout_pieces_externes, 0)) AS external_parts_cost,
+                    SUM(COALESCE(m.cout_autres_frais, 0)) AS other_costs,
+                    COUNT(DISTINCT m.id_maintenance) AS intervention_count,
+                    CASE 
+                        WHEN COUNT(DISTINCT m.id_maintenance) > 0 
+                        THEN SUM(COALESCE(m.cout_total, 0)) / COUNT(DISTINCT m.id_maintenance)
+                        ELSE 0 
+                    END AS avg_cost_per_intervention,
+                    SUM(COALESCE(m.duree_intervention_h, 0)) AS total_duration_hours,
+                    CASE 
+                        WHEN COUNT(DISTINCT m.id_maintenance) > 0 
+                        THEN SUM(COALESCE(m.duree_intervention_h, 0)) / COUNT(DISTINCT m.id_maintenance)
+                        ELSE 0 
+                    END AS avg_duration_per_intervention,
+                    COUNT(DISTINCT m.machine_id) AS machines_involved
+                FROM MAINTENANCE m
+                LEFT JOIN MACHINE ma ON m.machine_id = ma.id_machine
+                WHERE m.date_fin_reelle >= %s
+                    AND m.date_fin_reelle <= %s
+                    AND m.date_fin_reelle IS NOT NULL
+                    AND m.machine_id IS NOT NULL
+                    {site_filter}
+                GROUP BY {date_format}
+                ORDER BY {date_format}
+            """
+            
+            params = [debut_str, fin_str]
+            
+            logger.debug(f"Récupération coûts sites par période - Sites: {site_ids}, Période: {debut_str} à {fin_str}, Type: {period_type}")
+            rows = fetch_all(sql, params)
+            
+            results = []
+            for row in rows:
+                result = dict(row)
+                # Conversion des Decimal
+                for key, value in result.items():
+                    if isinstance(value, Decimal):
+                        result[key] = float(value)
+                results.append(result)
+            
+            logger.info(f"Coûts sites par période récupérés: {len(results)} périodes")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Erreur récupération coûts sites par période: {e}")
+            return []
+    
+    def get_all_sites(self) -> List[Dict[str, Any]]:
+        """
+        Récupère tous les sites disponibles dans la base de données.
+        
+        Returns:
+            Liste des sites avec leurs informations de base
+        """
+        try:
+            sql = """
+                SELECT 
+                    id_site,
+                    nom AS site_nom,
+                    ville,
+                    pays,
+                    adresse,
+                    contact_principal
+                FROM SITE
+                ORDER BY nom
+            """
+            
+            logger.debug("Récupération de tous les sites")
+            rows = fetch_all(sql, [])
+            
+            results = []
+            for row in rows:
+                results.append(dict(row))
+            
+            logger.info(f"Sites récupérés: {len(results)} sites")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Erreur récupération sites: {e}")
+            return []
