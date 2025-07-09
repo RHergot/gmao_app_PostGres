@@ -51,6 +51,7 @@ MACHINE_TRANSLATIONS = {
         "all_machines": "🏭 All machines",
         "type_filter": "⚙️ Machine Type",
         "all_types": "📋 All types",
+        "all_sites": "🏢 All sites",
         "search_placeholder": "🔍 Search for a machine...",
         "data_tab": "📊 Overview",
         "charts_tab": "📈 Charts & Trends",
@@ -123,6 +124,7 @@ MACHINE_TRANSLATIONS = {
         "all_machines": "🏭 Toutes les machines",
         "type_filter": "⚙️ Type de Machine",
         "all_types": "📋 Tous les types",
+        "all_sites": "🏢 Tous les sites",
         "search_placeholder": "🔍 Rechercher une machine...",
         "data_tab": "📊 Vue d'ensemble",
         "charts_tab": "📈 Graphiques & Tendances",
@@ -195,6 +197,7 @@ MACHINE_TRANSLATIONS = {
         "all_machines": "🏭 Alle Maschinen",
         "type_filter": "⚙️ Maschinentyp",
         "all_types": "📋 Alle Typen",
+        "all_sites": "🏢 Alle Standorte",
         "search_placeholder": "🔍 Maschine suchen...",
         "data_tab": "📊 Übersicht",
         "charts_tab": "📈 Diagramme & Trends",
@@ -522,8 +525,8 @@ class MachineKPIDialog(BaseKPIDialog):
         
         all_filters_layout.addWidget(period_group)
         
-        # === CADRE 2 : FILTRES MACHINE ET TYPE COMBINÉS ===
-        machine_type_group = QGroupBox("Machine & Type")
+        # === CADRE 2 : FILTRES MACHINE, TYPE ET SITES COMBINÉS ===
+        machine_type_group = QGroupBox("Machine Type Sites")
         machine_type_layout = QVBoxLayout(machine_type_group)
         
         # Ligne Machine
@@ -545,6 +548,16 @@ class MachineKPIDialog(BaseKPIDialog):
         self.type_combo.setMinimumWidth(150)
         type_layout.addWidget(self.type_combo)
         machine_type_layout.addLayout(type_layout)
+        
+        # Ligne Site
+        site_layout = QHBoxLayout()
+        site_layout.addWidget(QLabel("Site:"))
+        self.site_combo = QComboBox()
+        self.site_combo.addItem(get_machine_text("all_sites"))
+        self.site_combo.currentTextChanged.connect(self.on_filter_changed)
+        self.site_combo.setMinimumWidth(150)
+        site_layout.addWidget(self.site_combo)
+        machine_type_layout.addLayout(site_layout)
         
         all_filters_layout.addWidget(machine_type_group)
         
@@ -1036,6 +1049,7 @@ class MachineKPIDialog(BaseKPIDialog):
         """
         self.type_combo.blockSignals(True)
         self.machine_combo.blockSignals(True)
+        self.site_combo.blockSignals(True)
 
         # Remplir les types
         self.type_combo.clear()
@@ -1049,8 +1063,15 @@ class MachineKPIDialog(BaseKPIDialog):
         machines = sorted(set(m["machine_name"] for m in self.machines_data))
         self.machine_combo.addItems(machines)
 
+        # Remplir les sites
+        self.site_combo.clear()
+        self.site_combo.addItem(get_machine_text("all_sites"))
+        sites = sorted(set(m.get("site", "") for m in self.machines_data if m.get("site", "")))
+        self.site_combo.addItems(sites)
+
         self.type_combo.blockSignals(False)
         self.machine_combo.blockSignals(False)
+        self.site_combo.blockSignals(False)
 
     def apply_filters_and_update_views(self):
         """
@@ -1069,7 +1090,12 @@ class MachineKPIDialog(BaseKPIDialog):
         if selected_machine != get_machine_text("all_machines"):
             filtered_data = [m for m in filtered_data if m["machine_name"] == selected_machine]
         
-        # === FILTRE 3: Statut ===
+        # === FILTRE 3: Site ===
+        selected_site = self.site_combo.currentText()
+        if selected_site != get_machine_text("all_sites"):
+            filtered_data = [m for m in filtered_data if m.get("site", "") == selected_site]
+        
+        # === FILTRE 4: Statut ===
         selected_status = getattr(self, 'status_combo', None)
         if selected_status and selected_status.currentText() != get_machine_text("all_statuses"):
             status_text = selected_status.currentText()
@@ -1082,12 +1108,12 @@ class MachineKPIDialog(BaseKPIDialog):
             internal_status = status_mapping.get(status_text, status_text)
             filtered_data = [m for m in filtered_data if m["status"] == internal_status]
         
-        # === FILTRE 4: Machines critiques uniquement ===
+        # === FILTRE 5: Machines critiques uniquement ===
         critical_only = getattr(self, 'critical_only_checkbox', None)
         if critical_only and critical_only.isChecked():
             filtered_data = [m for m in filtered_data if m["status"] == "Attention"]
         
-        # === FILTRE 5: Limite de résultats ===
+        # === FILTRE 6: Limite de résultats ===
         limit = getattr(self, 'limit_slider', None)
         if limit:
             max_results = limit.value()
@@ -1142,6 +1168,20 @@ class MachineKPIDialog(BaseKPIDialog):
             self.machine_combo.setCurrentText(current_machine)
         
         self.machine_combo.blockSignals(False)
+        
+        # Mise à jour du filtre site
+        self.site_combo.blockSignals(True)
+        current_site = self.site_combo.currentText()
+        self.site_combo.clear()
+        self.site_combo.addItem(get_machine_text("all_sites"))
+        
+        available_sites = sorted(set(m.get("site", "") for m in filtered_data if m.get("site", "")))
+        self.site_combo.addItems(available_sites)
+        
+        if current_site in available_sites:
+            self.site_combo.setCurrentText(current_site)
+        
+        self.site_combo.blockSignals(False)
 
     def update_data_view(self):
         """Met à jour la vue de données avec le nouveau tableau amélioré."""
