@@ -20,6 +20,7 @@ class KPIQueryBuilder:
         machine_ids: Optional[List[int]] = None,
         type_machine: Optional[str] = None,
         site_id: Optional[int] = None,
+        equipe_id: Optional[int] = None,
         limite: Optional[int] = None
     ) -> tuple[str, Dict[str, Any]]:
         """
@@ -33,7 +34,8 @@ class KPIQueryBuilder:
             'end_date': periode_fin,
             'machine_ids': machine_ids,
             'type_machine': type_machine,
-            'site_id': site_id
+            'site_id': site_id,
+            'equipe_id': equipe_id
         }
 
         sql_query = """
@@ -64,6 +66,7 @@ class KPIQueryBuilder:
                 tm.nom AS type_nom,
                 m.criticite AS machine_criticite,
                 s.nom AS site_nom,
+                e_ranked.equipe_nom AS equipe_nom,
                 COALESCE(kpi.cout_total_periode, 0) AS cout_total,
                 COALESCE(kpi.nb_interventions_total, 0) AS nb_interventions_total,
                 COALESCE(kpi.nb_preventif, 0) AS nb_preventif,
@@ -111,10 +114,24 @@ class KPIQueryBuilder:
                 site s ON m.site_id = s.id_site
             LEFT JOIN
                 MachineKPI kpi ON m.id_machine = kpi.machine_id
+            LEFT JOIN (
+                SELECT 
+                    m2.machine_id,
+                    e.nom as equipe_nom,
+                    COUNT(*) as nb_interventions_equipe,
+                    ROW_NUMBER() OVER (PARTITION BY m2.machine_id ORDER BY COUNT(*) DESC, MAX(m2.date_debut_reelle) DESC) as rn
+                FROM maintenance m2
+                LEFT JOIN technicien t ON m2.technicien_id = t.id_technicien
+                LEFT JOIN equipe e ON t.equipe_id = e.id_equipe
+                WHERE m2.date_debut_reelle::date BETWEEN %(start_date)s AND %(end_date)s
+                  AND e.nom IS NOT NULL
+                GROUP BY m2.machine_id, e.nom
+            ) e_ranked ON m.id_machine = e_ranked.machine_id AND e_ranked.rn = 1
             WHERE
                 (%(machine_ids)s IS NULL OR m.id_machine = ANY(%(machine_ids)s))
                 AND (%(type_machine)s IS NULL OR tm.nom = %(type_machine)s)
                 AND (%(site_id)s IS NULL OR m.site_id = %(site_id)s)
+                AND (%(equipe_id)s IS NULL OR e_ranked.equipe_nom = %(equipe_id)s)
             ORDER BY
                 COALESCE(kpi.cout_total_periode, 0) DESC
         """
@@ -421,3 +438,145 @@ class KPIQueryBuilder:
         
         params = [nb_periodes - 1, machine_id, nb_periodes - 1, nb_periodes]
         return sql, params
+
+    @staticmethod
+    def build_all_teams_with_data_query(
+        periode_debut: Union[str, date], 
+        periode_fin: Union[str, date]
+    ) -> tuple[str, List[Any]]:
+        """
+        Construit la requête pour récupérer toutes les équipes ayant des données 
+        d'interventions sur la période, incluant celles moins actives comme shift01.
+        """
+        sql = """
+            SELECT DISTINCT
+                e.id_equipe,
+                e.nom as equipe_nom,
+                e.domaine_expertise,
+                COUNT(m.id_maintenance) as nb_interventions_periode,
+                COALESCE(SUM(m.cout_total), 0) as cout_total_periode
+            FROM equipe e
+            LEFT JOIN technicien t ON e.id_equipe = t.equipe_id
+            LEFT JOIN maintenance m ON t.id_technicien = m.technicien_id
+            WHERE (m.date_debut_reelle::date BETWEEN %s AND %s OR m.date_debut_reelle IS NULL)
+                AND e.nom IS NOT NULL
+            GROUP BY e.id_equipe, e.nom, e.domaine_expertise
+            HAVING COUNT(m.id_maintenance) > 0 OR e.nom IS NOT NULL
+            ORDER BY e.nom
+        """
+        
+        params = [periode_debut, periode_fin]
+        return sql, params
+
+    @staticmethod
+    def build_machine_kpi_query_all_teams(
+        periode_debut: Union[str, date], 
+        periode_fin: Union[str, date],
+        machine_ids: Optional[List[int]] = None,
+        type_machine: Optional[str] = None,
+        site_id: Optional[int] = None,
+        equipe_id: Optional[int] = None,
+        limite: Optional[int] = None
+    ) -> tuple[str, Dict[str, Any]]:
+        """
+        Version alternative qui retourne plusieurs lignes par machine si elle a été 
+        maintenue par plusieurs équipes. Utile pour ne pas perdre les équipes moins actives.
+        """
+        params = {
+            'start_date': periode_debut,
+            'end_date': periode_fin,
+            'machine_ids': machine_ids,
+            'type_machine': type_machine,
+            'site_id': site_id,
+            'equipe_id': equipe_id
+        }
+
+        sql_query = """
+            WITH MachineEquipeKPI AS (
+                SELECT
+                    m.machine_id,
+                    e.nom as equipe_nom,
+                    COUNT(*) as nb_interventions_total,
+                    COUNT(CASE WHEN m.type_reel = 'Preventif' THEN 1 END) as nb_preventif,
+                    COUNT(CASE WHEN m.type_reel = 'Correctif' THEN 1 END) as nb_correctif,
+                    COUNT(CASE WHEN m.type_reel = 'Urgence' THEN 1 END) as nb_urgence,
+                    COALESCE(SUM(m.cout_total), 0) as cout_total_periode,
+                    COALESCE(SUM(m.cout_main_oeuvre), 0) as cout_mo_periode,
+                    COALESCE(SUM(m.cout_pieces_internes), 0) as cout_pieces_periode,
+                    COALESCE(SUM(m.cout_pieces_externes + m.cout_autres_frais), 0) as cout_externes_periode,
+                    COALESCE(SUM(m.duree_intervention_h), 0) as duree_totale
+                FROM maintenance m
+                LEFT JOIN technicien t ON m.technicien_id = t.id_technicien
+                LEFT JOIN equipe e ON t.equipe_id = e.id_equipe
+                WHERE
+                    m.date_debut_reelle::date BETWEEN %(start_date)s AND %(end_date)s
+                    AND m.machine_id IS NOT NULL
+                    AND e.nom IS NOT NULL
+                GROUP BY
+                    m.machine_id, e.nom
+            )
+            SELECT
+                ma.id_machine AS machine_id,
+                ma.nom AS machine_nom,
+                ma.serial AS machine_serial,
+                tm.nom AS type_nom,
+                ma.criticite AS machine_criticite,
+                s.nom AS site_nom,
+                kpi.equipe_nom AS equipe_nom,
+                COALESCE(kpi.cout_total_periode, 0) AS cout_total,
+                COALESCE(kpi.nb_interventions_total, 0) AS nb_interventions_total,
+                COALESCE(kpi.nb_preventif, 0) AS nb_preventif,
+                COALESCE(kpi.nb_correctif, 0) AS nb_correctif,
+                COALESCE(kpi.nb_urgence, 0) AS nb_urgence,
+                CASE
+                    WHEN COALESCE(kpi.nb_interventions_total, 0) > 0 THEN
+                        COALESCE(kpi.cout_total_periode, 0) / kpi.nb_interventions_total
+                    ELSE 0
+                END AS cout_moyen_intervention,
+                COALESCE(kpi.cout_mo_periode, 0) AS cout_main_oeuvre,
+                COALESCE(kpi.cout_pieces_periode, 0) AS cout_pieces_internes,
+                COALESCE(kpi.cout_externes_periode, 0) AS cout_frais_externes,
+                CASE
+                    WHEN COALESCE(kpi.nb_correctif, 0) > 0 THEN
+                        COALESCE(kpi.nb_preventif, 0)::FLOAT / kpi.nb_correctif
+                    ELSE 0
+                END AS ratio_preventif_curatif,
+                CASE
+                    WHEN COALESCE(kpi.cout_total_periode, 0) > 0 THEN
+                        COALESCE(kpi.cout_mo_periode, 0) * 100.0 / kpi.cout_total_periode
+                    ELSE 0
+                END AS pourcentage_mod,
+                CASE
+                    WHEN COALESCE(kpi.cout_total_periode, 0) > 0 THEN
+                        COALESCE(kpi.cout_pieces_periode, 0) * 100.0 / kpi.cout_total_periode
+                    ELSE 0
+                END AS pourcentage_pieces,
+                CASE
+                    WHEN COALESCE(kpi.cout_total_periode, 0) > 0 THEN
+                        COALESCE(kpi.cout_externes_periode, 0) * 100.0 / kpi.cout_total_periode
+                    ELSE 0
+                END AS pourcentage_frais_externes,
+                COALESCE(kpi.duree_totale, 0) AS duree_intervention_totale,
+                CASE
+                    WHEN COALESCE(kpi.nb_interventions_total, 0) > 0 THEN
+                        COALESCE(kpi.duree_totale, 0) / kpi.nb_interventions_total
+                    ELSE 0
+                END AS duree_intervention_moyenne
+            FROM machine ma
+            LEFT JOIN type_machine tm ON ma.type_machine_id = tm.id_type_machine
+            LEFT JOIN site s ON ma.site_id = s.id_site
+            INNER JOIN MachineEquipeKPI kpi ON ma.id_machine = kpi.machine_id
+            WHERE
+                (%(machine_ids)s IS NULL OR ma.id_machine = ANY(%(machine_ids)s))
+                AND (%(type_machine)s IS NULL OR tm.nom = %(type_machine)s)
+                AND (%(site_id)s IS NULL OR ma.site_id = %(site_id)s)
+                AND (%(equipe_id)s IS NULL OR kpi.equipe_nom = %(equipe_id)s)
+            ORDER BY
+                COALESCE(kpi.cout_total_periode, 0) DESC, ma.nom, kpi.equipe_nom
+        """
+
+        if limite:
+            sql_query += " LIMIT %(limite)s"
+            params['limite'] = limite
+
+        return sql_query, params

@@ -51,6 +51,9 @@ MACHINE_TRANSLATIONS = {
         "all_machines": "🏭 All machines",
         "type_filter": "⚙️ Machine Type",
         "all_types": "📋 All types",
+        "all_sites": "🏢 All sites",
+        "team_filter": "👥 Team",
+        "all_teams": "👥 All teams",
         "search_placeholder": "🔍 Search for a machine...",
         "data_tab": "📊 Overview",
         "charts_tab": "📈 Charts & Trends",
@@ -123,6 +126,9 @@ MACHINE_TRANSLATIONS = {
         "all_machines": "🏭 Toutes les machines",
         "type_filter": "⚙️ Type de Machine",
         "all_types": "📋 Tous les types",
+        "all_sites": "🏢 Tous les sites",
+        "team_filter": "👥 Équipe",
+        "all_teams": "👥 Toutes les équipes",
         "search_placeholder": "🔍 Rechercher une machine...",
         "data_tab": "📊 Vue d'ensemble",
         "charts_tab": "📈 Graphiques & Tendances",
@@ -195,6 +201,9 @@ MACHINE_TRANSLATIONS = {
         "all_machines": "🏭 Alle Maschinen",
         "type_filter": "⚙️ Maschinentyp",
         "all_types": "📋 Alle Typen",
+        "all_sites": "🏢 Alle Standorte",
+        "team_filter": "👥 Team",
+        "all_teams": "👥 Alle Teams",
         "search_placeholder": "🔍 Maschine suchen...",
         "data_tab": "📊 Übersicht",
         "charts_tab": "📈 Diagramme & Trends",
@@ -273,6 +282,18 @@ def get_machine_text(key: str) -> str:
 
 
 class MachineKPIDialog(BaseKPIDialog):
+    def refresh_data(self):
+        """Actualise la vue Overview : reset complet avant rechargement."""
+        try:
+            if hasattr(self, 'data_table'):
+                self.data_table.setRowCount(0)
+            self.filtered_data = []
+            self.machines_data = []
+            self.set_status("Rafraîchissement en cours...", success=True)
+        except Exception as e:
+            logger.error(f"Erreur lors du reset de la vue Overview : {e}")
+        super().refresh_data()
+
     """
     Dialog d'analyse KPI par machine - Version améliorée.
     
@@ -522,8 +543,8 @@ class MachineKPIDialog(BaseKPIDialog):
         
         all_filters_layout.addWidget(period_group)
         
-        # === CADRE 2 : FILTRES MACHINE ET TYPE COMBINÉS ===
-        machine_type_group = QGroupBox("Machine & Type")
+        # === CADRE 2 : FILTRES MACHINE, TYPE, SITES ET ÉQUIPES COMBINÉS ===
+        machine_type_group = QGroupBox("Machine Type Sites Équipes")
         machine_type_layout = QVBoxLayout(machine_type_group)
         
         # Ligne Machine
@@ -545,6 +566,26 @@ class MachineKPIDialog(BaseKPIDialog):
         self.type_combo.setMinimumWidth(150)
         type_layout.addWidget(self.type_combo)
         machine_type_layout.addLayout(type_layout)
+        
+        # Ligne Site
+        site_layout = QHBoxLayout()
+        site_layout.addWidget(QLabel("Site:"))
+        self.site_combo = QComboBox()
+        self.site_combo.addItem(get_machine_text("all_sites"))
+        self.site_combo.currentTextChanged.connect(self.on_filter_changed)
+        self.site_combo.setMinimumWidth(150)
+        site_layout.addWidget(self.site_combo)
+        machine_type_layout.addLayout(site_layout)
+        
+        # Ligne Équipe
+        team_layout = QHBoxLayout()
+        team_layout.addWidget(QLabel("Équipe:"))
+        self.team_combo = QComboBox()
+        self.team_combo.addItem(get_machine_text("all_teams"))
+        self.team_combo.currentTextChanged.connect(self.on_filter_changed)
+        self.team_combo.setMinimumWidth(150)
+        team_layout.addWidget(self.team_combo)
+        machine_type_layout.addLayout(team_layout)
         
         all_filters_layout.addWidget(machine_type_group)
         
@@ -612,6 +653,25 @@ class MachineKPIDialog(BaseKPIDialog):
             }
         """)
         actions_layout.addWidget(btn_refresh)
+        
+        # Bouton pour charger toutes les équipes (y compris shift01)
+        btn_all_teams = QPushButton("🔄 Toutes équipes")
+        btn_all_teams.clicked.connect(lambda: self.load_data(include_all_teams=True))
+        btn_all_teams.setToolTip("Charge les données en incluant toutes les équipes, même les moins actives (shift01, etc.)")
+        btn_all_teams.setStyleSheet("""
+            QPushButton {
+                background-color: #ffc107;
+                color: black;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #e0a800;
+            }
+        """)
+        actions_layout.addWidget(btn_all_teams)
         
         btn_export = QPushButton(get_shared_text("export"))
         btn_export.clicked.connect(self.export_data)
@@ -873,11 +933,17 @@ class MachineKPIDialog(BaseKPIDialog):
         
         self.tab_widget.addTab(charts_widget, tab_title)
         self.charts_widget = charts_widget
-    
-    def load_data(self):
-        """Charge les données des machines depuis la base de données."""
-        self.set_status(get_machine_text("loading_machines"))
         
+    def load_data(self, include_all_teams: bool = False):
+        """
+        Charge les données des machines depuis la base de données.
+        
+        Args:
+            include_all_teams: Si True, utilise la requête qui inclut toutes les équipes
+                              (peut retourner plusieurs lignes par machine)
+        """
+        self.set_status(get_machine_text("loading_machines"))
+
         try:
             start_date, end_date = self.get_date_range()
             
@@ -885,14 +951,29 @@ class MachineKPIDialog(BaseKPIDialog):
             if not self.kpi_service:
                 raise Exception("Service KPI non initialisé")
                 
-            # Récupérer les données KPI machines
-            raw_kpi_data = self.kpi_service.get_couts_par_machine(
-                periode_debut=start_date,
-                periode_fin=end_date,
-                machine_ids=None,
-                type_machine=None,
-                limite=100  # Limiter pour les performances
-            )
+            # Choisir la méthode selon le paramètre include_all_teams
+            if include_all_teams:
+                # Utiliser la nouvelle méthode qui inclut toutes les équipes
+                raw_kpi_data = self.kpi_service.get_couts_par_machine_toutes_equipes(
+                    periode_debut=start_date,
+                    periode_fin=end_date,
+                    machine_ids=None,
+                    type_machine=None,
+                    site_id=None,
+                    equipe_id=None,
+                    limite=200  # Augmenter la limite car on peut avoir plusieurs lignes par machine
+                )
+                logger.info("Données chargées avec toutes les équipes (mode exhaustif)")
+            else:
+                # Utiliser la méthode standard (une équipe par machine)
+                raw_kpi_data = self.kpi_service.get_couts_par_machine(
+                    periode_debut=start_date,
+                    periode_fin=end_date,
+                    machine_ids=None,
+                    type_machine=None,
+                    limite=100  # Limiter pour les performances
+                )
+                logger.info("Données chargées avec équipe principale par machine (mode standard)")
             
             # Convertir au format UI
             self.machines_data = self._convert_kpi_to_ui_format(raw_kpi_data)
@@ -931,6 +1012,7 @@ class MachineKPIDialog(BaseKPIDialog):
                 "serial": str(item.get('machine_serial', 'N/A')),
                 "type": str(item.get('type_nom', 'N/A')),
                 "site": str(item.get('site_nom', 'N/A')),  # Ajout du site
+                "equipe_nom": str(item.get('equipe_nom', 'N/A')),  # Ajout de l'équipe
                 "criticite": str(item.get('machine_criticite', 'Standard')),
                 "total_cost": self._safe_float(item.get('cout_total', 0)),
                 "interventions": self._safe_int(item.get('nb_interventions_total', 0)),
@@ -1036,6 +1118,8 @@ class MachineKPIDialog(BaseKPIDialog):
         """
         self.type_combo.blockSignals(True)
         self.machine_combo.blockSignals(True)
+        self.site_combo.blockSignals(True)
+        self.team_combo.blockSignals(True)
 
         # Remplir les types
         self.type_combo.clear()
@@ -1049,8 +1133,41 @@ class MachineKPIDialog(BaseKPIDialog):
         machines = sorted(set(m["machine_name"] for m in self.machines_data))
         self.machine_combo.addItems(machines)
 
+        # Remplir les sites
+        self.site_combo.clear()
+        self.site_combo.addItem(get_machine_text("all_sites"))
+        sites = sorted(set(m.get("site", "") for m in self.machines_data if m.get("site", "")))
+        self.site_combo.addItems(sites)
+        
+        # Remplir les équipes - récupérer toutes les équipes ayant des données sur la période
+        self.team_combo.clear()
+        self.team_combo.addItem(get_machine_text("all_teams"))
+        try:
+            # Utiliser la nouvelle méthode qui récupère les équipes avec des données sur la période
+            start_date, end_date = self.get_date_range()
+            all_teams = self.kpi_service.get_teams_with_data(start_date, end_date)
+            teams = [team['equipe_nom'] for team in all_teams if team.get('equipe_nom')]
+            teams = sorted(set(teams))  # Éliminer les doublons et trier
+            self.team_combo.addItems(teams)
+            logger.info(f"Équipes chargées avec données: {len(teams)} équipes trouvées, incluant: {teams}")
+        except Exception as e:
+            logger.error(f"Erreur récupération équipes avec données: {e}")
+            # Fallback: utiliser get_all_teams()
+            try:
+                all_teams = self.kpi_service.get_all_teams()
+                teams = [team['equipe_nom'] for team in all_teams if team.get('equipe_nom')]
+                teams = sorted(set(teams))
+                self.team_combo.addItems(teams)
+            except Exception as e2:
+                logger.error(f"Erreur fallback récupération équipes: {e2}")
+                # Dernier fallback: utiliser les équipes des données machines
+                teams = sorted(set(m.get("equipe_nom", "") for m in self.machines_data if m.get("equipe_nom", "")))
+                self.team_combo.addItems(teams)
+
         self.type_combo.blockSignals(False)
         self.machine_combo.blockSignals(False)
+        self.site_combo.blockSignals(False)
+        self.team_combo.blockSignals(False)
 
     def apply_filters_and_update_views(self):
         """
@@ -1069,7 +1186,17 @@ class MachineKPIDialog(BaseKPIDialog):
         if selected_machine != get_machine_text("all_machines"):
             filtered_data = [m for m in filtered_data if m["machine_name"] == selected_machine]
         
-        # === FILTRE 3: Statut ===
+        # === FILTRE 3: Site ===
+        selected_site = self.site_combo.currentText()
+        if selected_site != get_machine_text("all_sites"):
+            filtered_data = [m for m in filtered_data if m.get("site", "") == selected_site]
+        
+        # === FILTRE 4: Équipe ===
+        selected_team = self.team_combo.currentText()
+        if selected_team != get_machine_text("all_teams"):
+            filtered_data = [m for m in filtered_data if m.get("equipe_nom", "") == selected_team]
+        
+        # === FILTRE 5: Statut ===
         selected_status = getattr(self, 'status_combo', None)
         if selected_status and selected_status.currentText() != get_machine_text("all_statuses"):
             status_text = selected_status.currentText()
@@ -1082,12 +1209,12 @@ class MachineKPIDialog(BaseKPIDialog):
             internal_status = status_mapping.get(status_text, status_text)
             filtered_data = [m for m in filtered_data if m["status"] == internal_status]
         
-        # === FILTRE 4: Machines critiques uniquement ===
+        # === FILTRE 6: Machines critiques uniquement ===
         critical_only = getattr(self, 'critical_only_checkbox', None)
         if critical_only and critical_only.isChecked():
             filtered_data = [m for m in filtered_data if m["status"] == "Attention"]
         
-        # === FILTRE 5: Limite de résultats ===
+        # === FILTRE 7: Limite de résultats ===
         limit = getattr(self, 'limit_slider', None)
         if limit:
             max_results = limit.value()
@@ -1142,6 +1269,34 @@ class MachineKPIDialog(BaseKPIDialog):
             self.machine_combo.setCurrentText(current_machine)
         
         self.machine_combo.blockSignals(False)
+        
+        # Mise à jour du filtre site
+        self.site_combo.blockSignals(True)
+        current_site = self.site_combo.currentText()
+        self.site_combo.clear()
+        self.site_combo.addItem(get_machine_text("all_sites"))
+        
+        available_sites = sorted(set(m.get("site", "") for m in filtered_data if m.get("site", "")))
+        self.site_combo.addItems(available_sites)
+        
+        if current_site in available_sites:
+            self.site_combo.setCurrentText(current_site)
+        
+        self.site_combo.blockSignals(False)
+        
+        # Mise à jour du filtre équipe
+        self.team_combo.blockSignals(True)
+        current_team = self.team_combo.currentText()
+        self.team_combo.clear()
+        self.team_combo.addItem(get_machine_text("all_teams"))
+        
+        available_teams = sorted(set(m.get("equipe_nom", "") for m in filtered_data if m.get("equipe_nom", "")))
+        self.team_combo.addItems(available_teams)
+        
+        if current_team in available_teams:
+            self.team_combo.setCurrentText(current_team)
+        
+        self.team_combo.blockSignals(False)
 
     def update_data_view(self):
         """Met à jour la vue de données avec le nouveau tableau amélioré."""
@@ -1233,9 +1388,10 @@ class MachineKPIDialog(BaseKPIDialog):
             sites = sorted(set(m.get('site', 'N/A') for m in self.machines_data if m.get('site')))
             machines = sorted(set(m['machine_name'] for m in self.machines_data))
             types = sorted(set(m['type'] for m in self.machines_data))
+            teams = sorted(set(m.get('equipe_nom', 'N/A') for m in self.machines_data if m.get('equipe_nom')))
             
             # Configurer les données du widget
-            self.chart_widget.set_data(sites, machines, types)
+            self.chart_widget.set_data(sites, machines, types, teams)
             
             # Calculer et envoyer les données du graphique
             self.calculate_and_send_chart_data();
@@ -1263,6 +1419,9 @@ class MachineKPIDialog(BaseKPIDialog):
             
             if filters.get('type'):
                 filtered_data = [m for m in filtered_data if m['type'] == filters['type']]
+            
+            if filters.get('team'):
+                filtered_data = [m for m in filtered_data if m.get('equipe_nom') == filters['team']]
             
             # Générer les données temporelles selon le type de période
             chart_data = self.generate_time_series_data(filtered_data, filters)

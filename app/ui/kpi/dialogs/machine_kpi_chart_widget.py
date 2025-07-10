@@ -80,6 +80,7 @@ class MachineKPIChartWidget(QWidget):
         self.sites_data = []
         self.machines_data = []
         self.types_data = []
+        self.teams_data = []
         
         # Interface
         self.setup_ui()
@@ -159,6 +160,22 @@ class MachineKPIChartWidget(QWidget):
         type_layout.addWidget(type_label)
         type_layout.addWidget(self.type_combo)
         filters_layout.addWidget(type_container)
+        
+        # === FILTRE ÉQUIPE ===
+        team_container = QFrame()
+        team_layout = QVBoxLayout(team_container)
+        team_layout.setSpacing(5)
+        
+        team_label = QLabel(get_chart_text("team_filter_chart"))
+        team_label.setFont(QFont("Arial", 9, QFont.Bold))
+        
+        self.team_combo = QComboBox()
+        self.team_combo.addItem(get_chart_text("all_teams_chart"))
+        self.team_combo.setMinimumWidth(150)
+        
+        team_layout.addWidget(team_label)
+        team_layout.addWidget(self.team_combo)
+        filters_layout.addWidget(team_container)
         
         # Stretch pour répartir l'espace
         filters_layout.addStretch()
@@ -326,6 +343,7 @@ class MachineKPIChartWidget(QWidget):
         self.site_combo.currentTextChanged.connect(self.on_filters_changed)
         self.machine_combo.currentTextChanged.connect(self.on_filters_changed)
         self.type_combo.currentTextChanged.connect(self.on_filters_changed)
+        self.team_combo.currentTextChanged.connect(self.on_filters_changed)
         
         # Contrôles de période
         self.period_button_group.buttonClicked.connect(self.on_period_changed)
@@ -381,11 +399,12 @@ class MachineKPIChartWidget(QWidget):
         
         self.refresh_chart()
     
-    def set_data(self, sites: List[str], machines: List[str], types: List[str]):
+    def set_data(self, sites: List[str], machines: List[str], types: List[str], teams: List[str] = None):
         """Configure les données pour les filtres."""
         self.sites_data = sites
         self.machines_data = machines
         self.types_data = types
+        self.teams_data = teams or []
         
         # Mettre à jour les combos
         self.update_filter_combos()
@@ -396,6 +415,7 @@ class MachineKPIChartWidget(QWidget):
         self.site_combo.blockSignals(True)
         self.machine_combo.blockSignals(True)
         self.type_combo.blockSignals(True)
+        self.team_combo.blockSignals(True)
         
         # Site
         self.site_combo.clear()
@@ -412,10 +432,16 @@ class MachineKPIChartWidget(QWidget):
         self.type_combo.addItem(get_chart_text("all_types_chart"))
         self.type_combo.addItems(self.types_data)
         
+        # Équipe
+        self.team_combo.clear()
+        self.team_combo.addItem(get_chart_text("all_teams_chart"))
+        self.team_combo.addItems(self.teams_data)
+        
         # Réactiver les signaux
         self.site_combo.blockSignals(False)
         self.machine_combo.blockSignals(False)
         self.type_combo.blockSignals(False)
+        self.team_combo.blockSignals(False)
     
     def get_current_filters(self) -> Dict[str, Any]:
         """Retourne les filtres actuels."""
@@ -423,6 +449,7 @@ class MachineKPIChartWidget(QWidget):
             'site': self.site_combo.currentText() if self.site_combo.currentText() != get_chart_text("all_sites") else None,
             'machine': self.machine_combo.currentText() if self.machine_combo.currentText() != get_chart_text("all_machines_chart") else None,
             'type': self.type_combo.currentText() if self.type_combo.currentText() != get_chart_text("all_types_chart") else None,
+            'team': self.team_combo.currentText() if self.team_combo.currentText() != get_chart_text("all_teams_chart") else None,
             'start_date': self.start_date_edit.date().toPython(),
             'end_date': self.end_date_edit.date().toPython(),
             'period_type': self.current_period_type.value,
