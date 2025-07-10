@@ -282,6 +282,18 @@ def get_machine_text(key: str) -> str:
 
 
 class MachineKPIDialog(BaseKPIDialog):
+    def refresh_data(self):
+        """Actualise la vue Overview : reset complet avant rechargement."""
+        try:
+            if hasattr(self, 'data_table'):
+                self.data_table.setRowCount(0)
+            self.filtered_data = []
+            self.machines_data = []
+            self.set_status("Rafraîchissement en cours...", success=True)
+        except Exception as e:
+            logger.error(f"Erreur lors du reset de la vue Overview : {e}")
+        super().refresh_data()
+
     """
     Dialog d'analyse KPI par machine - Version améliorée.
     
