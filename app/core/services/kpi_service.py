@@ -36,7 +36,7 @@ class KPIService:
 
     def get_couts_par_machine(self, periode_debut: Union[str, date], periode_fin: Union[str, date],
                              machine_ids: Optional[List[int]] = None, type_machine: Optional[str] = None,
-                             site_id: Optional[int] = None,
+                             site_id: Optional[int] = None, equipe_nom: Optional[str] = None,
                              limite: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Récupère les coûts agrégés par machine sur une période.
@@ -47,6 +47,7 @@ class KPIService:
             machine_ids: Filtre par une liste d'IDs de machine (optionnel)
             type_machine: Filtre par type de machine (optionnel)
             site_id: Filtre par ID de site (optionnel)
+            equipe_nom: Filtre par nom d'équipe (optionnel)
             limite: Nombre max de résultats (optionnel)
 
         Returns:
@@ -60,6 +61,7 @@ class KPIService:
                 machine_ids=machine_ids,
                 type_machine=type_machine,
                 site_id=site_id,
+                equipe_id=equipe_nom,
                 limite=limite
             )
 

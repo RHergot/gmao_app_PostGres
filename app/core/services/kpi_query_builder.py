@@ -20,6 +20,7 @@ class KPIQueryBuilder:
         machine_ids: Optional[List[int]] = None,
         type_machine: Optional[str] = None,
         site_id: Optional[int] = None,
+        equipe_id: Optional[int] = None,
         limite: Optional[int] = None
     ) -> tuple[str, Dict[str, Any]]:
         """
@@ -33,7 +34,8 @@ class KPIQueryBuilder:
             'end_date': periode_fin,
             'machine_ids': machine_ids,
             'type_machine': type_machine,
-            'site_id': site_id
+            'site_id': site_id,
+            'equipe_id': equipe_id
         }
 
         sql_query = """
@@ -64,6 +66,7 @@ class KPIQueryBuilder:
                 tm.nom AS type_nom,
                 m.criticite AS machine_criticite,
                 s.nom AS site_nom,
+                e_main.equipe_nom AS equipe_nom,
                 COALESCE(kpi.cout_total_periode, 0) AS cout_total,
                 COALESCE(kpi.nb_interventions_total, 0) AS nb_interventions_total,
                 COALESCE(kpi.nb_preventif, 0) AS nb_preventif,
@@ -111,10 +114,21 @@ class KPIQueryBuilder:
                 site s ON m.site_id = s.id_site
             LEFT JOIN
                 MachineKPI kpi ON m.id_machine = kpi.machine_id
+            LEFT JOIN (
+                SELECT DISTINCT 
+                    m2.machine_id,
+                    e.nom as equipe_nom
+                FROM maintenance m2
+                LEFT JOIN technicien t ON m2.technicien_id = t.id_technicien
+                LEFT JOIN equipe e ON t.equipe_id = e.id_equipe
+                WHERE m2.date_debut_reelle::date BETWEEN %(start_date)s AND %(end_date)s
+                  AND e.nom IS NOT NULL
+            ) e_main ON m.id_machine = e_main.machine_id
             WHERE
                 (%(machine_ids)s IS NULL OR m.id_machine = ANY(%(machine_ids)s))
                 AND (%(type_machine)s IS NULL OR tm.nom = %(type_machine)s)
                 AND (%(site_id)s IS NULL OR m.site_id = %(site_id)s)
+                AND (%(equipe_id)s IS NULL OR e_main.equipe_nom = %(equipe_id)s)
             ORDER BY
                 COALESCE(kpi.cout_total_periode, 0) DESC
         """

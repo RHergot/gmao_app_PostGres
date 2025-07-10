@@ -52,6 +52,8 @@ MACHINE_TRANSLATIONS = {
         "type_filter": "⚙️ Machine Type",
         "all_types": "📋 All types",
         "all_sites": "🏢 All sites",
+        "team_filter": "👥 Team",
+        "all_teams": "👥 All teams",
         "search_placeholder": "🔍 Search for a machine...",
         "data_tab": "📊 Overview",
         "charts_tab": "📈 Charts & Trends",
@@ -125,6 +127,8 @@ MACHINE_TRANSLATIONS = {
         "type_filter": "⚙️ Type de Machine",
         "all_types": "📋 Tous les types",
         "all_sites": "🏢 Tous les sites",
+        "team_filter": "👥 Équipe",
+        "all_teams": "👥 Toutes les équipes",
         "search_placeholder": "🔍 Rechercher une machine...",
         "data_tab": "📊 Vue d'ensemble",
         "charts_tab": "📈 Graphiques & Tendances",
@@ -198,6 +202,8 @@ MACHINE_TRANSLATIONS = {
         "type_filter": "⚙️ Maschinentyp",
         "all_types": "📋 Alle Typen",
         "all_sites": "🏢 Alle Standorte",
+        "team_filter": "👥 Team",
+        "all_teams": "👥 Alle Teams",
         "search_placeholder": "🔍 Maschine suchen...",
         "data_tab": "📊 Übersicht",
         "charts_tab": "📈 Diagramme & Trends",
@@ -525,8 +531,8 @@ class MachineKPIDialog(BaseKPIDialog):
         
         all_filters_layout.addWidget(period_group)
         
-        # === CADRE 2 : FILTRES MACHINE, TYPE ET SITES COMBINÉS ===
-        machine_type_group = QGroupBox("Machine Type Sites")
+        # === CADRE 2 : FILTRES MACHINE, TYPE, SITES ET ÉQUIPES COMBINÉS ===
+        machine_type_group = QGroupBox("Machine Type Sites Équipes")
         machine_type_layout = QVBoxLayout(machine_type_group)
         
         # Ligne Machine
@@ -558,6 +564,16 @@ class MachineKPIDialog(BaseKPIDialog):
         self.site_combo.setMinimumWidth(150)
         site_layout.addWidget(self.site_combo)
         machine_type_layout.addLayout(site_layout)
+        
+        # Ligne Équipe
+        team_layout = QHBoxLayout()
+        team_layout.addWidget(QLabel("Équipe:"))
+        self.team_combo = QComboBox()
+        self.team_combo.addItem(get_machine_text("all_teams"))
+        self.team_combo.currentTextChanged.connect(self.on_filter_changed)
+        self.team_combo.setMinimumWidth(150)
+        team_layout.addWidget(self.team_combo)
+        machine_type_layout.addLayout(team_layout)
         
         all_filters_layout.addWidget(machine_type_group)
         
@@ -944,6 +960,7 @@ class MachineKPIDialog(BaseKPIDialog):
                 "serial": str(item.get('machine_serial', 'N/A')),
                 "type": str(item.get('type_nom', 'N/A')),
                 "site": str(item.get('site_nom', 'N/A')),  # Ajout du site
+                "equipe_nom": str(item.get('equipe_nom', 'N/A')),  # Ajout de l'équipe
                 "criticite": str(item.get('machine_criticite', 'Standard')),
                 "total_cost": self._safe_float(item.get('cout_total', 0)),
                 "interventions": self._safe_int(item.get('nb_interventions_total', 0)),
@@ -1050,6 +1067,7 @@ class MachineKPIDialog(BaseKPIDialog):
         self.type_combo.blockSignals(True)
         self.machine_combo.blockSignals(True)
         self.site_combo.blockSignals(True)
+        self.team_combo.blockSignals(True)
 
         # Remplir les types
         self.type_combo.clear()
@@ -1068,10 +1086,17 @@ class MachineKPIDialog(BaseKPIDialog):
         self.site_combo.addItem(get_machine_text("all_sites"))
         sites = sorted(set(m.get("site", "") for m in self.machines_data if m.get("site", "")))
         self.site_combo.addItems(sites)
+        
+        # Remplir les équipes
+        self.team_combo.clear()
+        self.team_combo.addItem(get_machine_text("all_teams"))
+        teams = sorted(set(m.get("equipe_nom", "") for m in self.machines_data if m.get("equipe_nom", "")))
+        self.team_combo.addItems(teams)
 
         self.type_combo.blockSignals(False)
         self.machine_combo.blockSignals(False)
         self.site_combo.blockSignals(False)
+        self.team_combo.blockSignals(False)
 
     def apply_filters_and_update_views(self):
         """
@@ -1095,7 +1120,12 @@ class MachineKPIDialog(BaseKPIDialog):
         if selected_site != get_machine_text("all_sites"):
             filtered_data = [m for m in filtered_data if m.get("site", "") == selected_site]
         
-        # === FILTRE 4: Statut ===
+        # === FILTRE 4: Équipe ===
+        selected_team = self.team_combo.currentText()
+        if selected_team != get_machine_text("all_teams"):
+            filtered_data = [m for m in filtered_data if m.get("equipe_nom", "") == selected_team]
+        
+        # === FILTRE 5: Statut ===
         selected_status = getattr(self, 'status_combo', None)
         if selected_status and selected_status.currentText() != get_machine_text("all_statuses"):
             status_text = selected_status.currentText()
@@ -1108,12 +1138,12 @@ class MachineKPIDialog(BaseKPIDialog):
             internal_status = status_mapping.get(status_text, status_text)
             filtered_data = [m for m in filtered_data if m["status"] == internal_status]
         
-        # === FILTRE 5: Machines critiques uniquement ===
+        # === FILTRE 6: Machines critiques uniquement ===
         critical_only = getattr(self, 'critical_only_checkbox', None)
         if critical_only and critical_only.isChecked():
             filtered_data = [m for m in filtered_data if m["status"] == "Attention"]
         
-        # === FILTRE 6: Limite de résultats ===
+        # === FILTRE 7: Limite de résultats ===
         limit = getattr(self, 'limit_slider', None)
         if limit:
             max_results = limit.value()
@@ -1182,6 +1212,20 @@ class MachineKPIDialog(BaseKPIDialog):
             self.site_combo.setCurrentText(current_site)
         
         self.site_combo.blockSignals(False)
+        
+        # Mise à jour du filtre équipe
+        self.team_combo.blockSignals(True)
+        current_team = self.team_combo.currentText()
+        self.team_combo.clear()
+        self.team_combo.addItem(get_machine_text("all_teams"))
+        
+        available_teams = sorted(set(m.get("equipe_nom", "") for m in filtered_data if m.get("equipe_nom", "")))
+        self.team_combo.addItems(available_teams)
+        
+        if current_team in available_teams:
+            self.team_combo.setCurrentText(current_team)
+        
+        self.team_combo.blockSignals(False)
 
     def update_data_view(self):
         """Met à jour la vue de données avec le nouveau tableau amélioré."""
