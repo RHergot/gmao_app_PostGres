@@ -287,9 +287,12 @@ class MachineKPIDialog(BaseKPIDialog):
         try:
             if hasattr(self, 'data_table'):
                 self.data_table.setRowCount(0)
+                self.data_table.viewport().update()
+                self.data_table.repaint()
             self.filtered_data = []
             self.machines_data = []
             self.set_status("Rafraîchissement en cours...", success=True)
+            self.repaint()
         except Exception as e:
             logger.error(f"Erreur lors du reset de la vue Overview : {e}")
         super().refresh_data()
@@ -1304,6 +1307,9 @@ class MachineKPIDialog(BaseKPIDialog):
 
         # === MISE À JOUR DU TABLEAU PRINCIPAL ===
         self.data_table.setRowCount(len(filtered_data))
+        self.data_table.viewport().update()
+        self.data_table.repaint()
+        self.repaint()
         
         for row, machine in enumerate(filtered_data):
             # Colonnes de base
