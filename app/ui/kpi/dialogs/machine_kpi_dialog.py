@@ -642,6 +642,25 @@ class MachineKPIDialog(BaseKPIDialog):
         """)
         actions_layout.addWidget(btn_refresh)
         
+        # Bouton pour charger toutes les équipes (y compris shift01)
+        btn_all_teams = QPushButton("🔄 Toutes équipes")
+        btn_all_teams.clicked.connect(lambda: self.load_data(include_all_teams=True))
+        btn_all_teams.setToolTip("Charge les données en incluant toutes les équipes, même les moins actives (shift01, etc.)")
+        btn_all_teams.setStyleSheet("""
+            QPushButton {
+                background-color: #ffc107;
+                color: black;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #e0a800;
+            }
+        """)
+        actions_layout.addWidget(btn_all_teams)
+        
         btn_export = QPushButton(get_shared_text("export"))
         btn_export.clicked.connect(self.export_data)
         btn_export.setStyleSheet("""
@@ -902,11 +921,17 @@ class MachineKPIDialog(BaseKPIDialog):
         
         self.tab_widget.addTab(charts_widget, tab_title)
         self.charts_widget = charts_widget
-    
-    def load_data(self):
-        """Charge les données des machines depuis la base de données."""
-        self.set_status(get_machine_text("loading_machines"))
         
+    def load_data(self, include_all_teams: bool = False):
+        """
+        Charge les données des machines depuis la base de données.
+        
+        Args:
+            include_all_teams: Si True, utilise la requête qui inclut toutes les équipes
+                              (peut retourner plusieurs lignes par machine)
+        """
+        self.set_status(get_machine_text("loading_machines"))
+
         try:
             start_date, end_date = self.get_date_range()
             
@@ -914,14 +939,29 @@ class MachineKPIDialog(BaseKPIDialog):
             if not self.kpi_service:
                 raise Exception("Service KPI non initialisé")
                 
-            # Récupérer les données KPI machines
-            raw_kpi_data = self.kpi_service.get_couts_par_machine(
-                periode_debut=start_date,
-                periode_fin=end_date,
-                machine_ids=None,
-                type_machine=None,
-                limite=100  # Limiter pour les performances
-            )
+            # Choisir la méthode selon le paramètre include_all_teams
+            if include_all_teams:
+                # Utiliser la nouvelle méthode qui inclut toutes les équipes
+                raw_kpi_data = self.kpi_service.get_couts_par_machine_toutes_equipes(
+                    periode_debut=start_date,
+                    periode_fin=end_date,
+                    machine_ids=None,
+                    type_machine=None,
+                    site_id=None,
+                    equipe_id=None,
+                    limite=200  # Augmenter la limite car on peut avoir plusieurs lignes par machine
+                )
+                logger.info("Données chargées avec toutes les équipes (mode exhaustif)")
+            else:
+                # Utiliser la méthode standard (une équipe par machine)
+                raw_kpi_data = self.kpi_service.get_couts_par_machine(
+                    periode_debut=start_date,
+                    periode_fin=end_date,
+                    machine_ids=None,
+                    type_machine=None,
+                    limite=100  # Limiter pour les performances
+                )
+                logger.info("Données chargées avec équipe principale par machine (mode standard)")
             
             # Convertir au format UI
             self.machines_data = self._convert_kpi_to_ui_format(raw_kpi_data)
@@ -1087,11 +1127,30 @@ class MachineKPIDialog(BaseKPIDialog):
         sites = sorted(set(m.get("site", "") for m in self.machines_data if m.get("site", "")))
         self.site_combo.addItems(sites)
         
-        # Remplir les équipes
+        # Remplir les équipes - récupérer toutes les équipes ayant des données sur la période
         self.team_combo.clear()
         self.team_combo.addItem(get_machine_text("all_teams"))
-        teams = sorted(set(m.get("equipe_nom", "") for m in self.machines_data if m.get("equipe_nom", "")))
-        self.team_combo.addItems(teams)
+        try:
+            # Utiliser la nouvelle méthode qui récupère les équipes avec des données sur la période
+            start_date, end_date = self.get_date_range()
+            all_teams = self.kpi_service.get_teams_with_data(start_date, end_date)
+            teams = [team['equipe_nom'] for team in all_teams if team.get('equipe_nom')]
+            teams = sorted(set(teams))  # Éliminer les doublons et trier
+            self.team_combo.addItems(teams)
+            logger.info(f"Équipes chargées avec données: {len(teams)} équipes trouvées, incluant: {teams}")
+        except Exception as e:
+            logger.error(f"Erreur récupération équipes avec données: {e}")
+            # Fallback: utiliser get_all_teams()
+            try:
+                all_teams = self.kpi_service.get_all_teams()
+                teams = [team['equipe_nom'] for team in all_teams if team.get('equipe_nom')]
+                teams = sorted(set(teams))
+                self.team_combo.addItems(teams)
+            except Exception as e2:
+                logger.error(f"Erreur fallback récupération équipes: {e2}")
+                # Dernier fallback: utiliser les équipes des données machines
+                teams = sorted(set(m.get("equipe_nom", "") for m in self.machines_data if m.get("equipe_nom", "")))
+                self.team_combo.addItems(teams)
 
         self.type_combo.blockSignals(False)
         self.machine_combo.blockSignals(False)
@@ -1317,9 +1376,10 @@ class MachineKPIDialog(BaseKPIDialog):
             sites = sorted(set(m.get('site', 'N/A') for m in self.machines_data if m.get('site')))
             machines = sorted(set(m['machine_name'] for m in self.machines_data))
             types = sorted(set(m['type'] for m in self.machines_data))
+            teams = sorted(set(m.get('equipe_nom', 'N/A') for m in self.machines_data if m.get('equipe_nom')))
             
             # Configurer les données du widget
-            self.chart_widget.set_data(sites, machines, types)
+            self.chart_widget.set_data(sites, machines, types, teams)
             
             # Calculer et envoyer les données du graphique
             self.calculate_and_send_chart_data();
@@ -1347,6 +1407,9 @@ class MachineKPIDialog(BaseKPIDialog):
             
             if filters.get('type'):
                 filtered_data = [m for m in filtered_data if m['type'] == filters['type']]
+            
+            if filters.get('team'):
+                filtered_data = [m for m in filtered_data if m.get('equipe_nom') == filters['team']]
             
             # Générer les données temporelles selon le type de période
             chart_data = self.generate_time_series_data(filtered_data, filters)

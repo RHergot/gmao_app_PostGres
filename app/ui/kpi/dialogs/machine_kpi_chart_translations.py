@@ -20,6 +20,8 @@ CHART_TRANSLATIONS = {
         "all_machines_chart": "🏭 All machines",
         "type_filter_chart": "⚙️ Machine Type",
         "all_types_chart": "📋 All types",
+        "team_filter_chart": "👥 Team",
+        "all_teams_chart": "👥 All teams",
         
         # Contrôles de périodicité
         "period_controls": "📅 Period Controls",
@@ -88,6 +90,8 @@ CHART_TRANSLATIONS = {
         "all_machines_chart": "🏭 Toutes les machines", 
         "type_filter_chart": "⚙️ Type de Machine",
         "all_types_chart": "📋 Tous les types",
+        "team_filter_chart": "👥 Équipe",
+        "all_teams_chart": "👥 Toutes les équipes",
         
         # Contrôles de périodicité
         "period_controls": "📅 Contrôles de Période",
@@ -156,6 +160,8 @@ CHART_TRANSLATIONS = {
         "all_machines_chart": "🏭 Alle Maschinen",
         "type_filter_chart": "⚙️ Maschinentyp",
         "all_types_chart": "📋 Alle Typen",
+        "team_filter_chart": "👥 Team",
+        "all_teams_chart": "👥 Alle Teams",
         
         # Contrôles de périodicité
         "period_controls": "📅 Zeitraum-Kontrollen",

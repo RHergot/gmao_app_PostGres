@@ -1041,4 +1041,131 @@ class KPIService:
             
         except Exception as e:
             logger.error(f"Erreur récupération sites: {e}")
-            return []
+            raise
+    
+    def get_all_teams(self) -> List[Dict[str, Any]]:
+        """
+        Récupère toutes les équipes disponibles dans la base de données.
+        
+        Returns:
+            Liste des équipes avec leurs informations de base
+        """
+        try:
+            sql = """
+                SELECT DISTINCT
+                    e.id_equipe,
+                    e.nom as equipe_nom,
+                    e.domaine_expertise
+                FROM equipe e
+                WHERE e.nom IS NOT NULL
+                ORDER BY e.nom
+            """
+            
+            logger.debug("Récupération de toutes les équipes")
+            rows = fetch_all(sql, [])
+            
+            results = []
+            for row in rows:
+                results.append(dict(row))
+            
+            logger.info(f"Équipes récupérées: {len(results)} équipes")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Erreur récupération équipes: {e}")
+            raise
+
+    def get_teams_with_data(self, periode_debut: Union[str, date], periode_fin: Union[str, date]) -> List[Dict[str, Any]]:
+        """
+        Récupère toutes les équipes ayant des données d'interventions sur la période donnée.
+        Cette méthode permet de s'assurer qu'aucune équipe (comme shift01) n'est oubliée.
+        
+        Args:
+            periode_debut: Date de début
+            periode_fin: Date de fin
+            
+        Returns:
+            Liste des équipes avec leurs KPI de base sur la période
+        """
+        try:
+            # Utilisation du query builder pour générer la requête SQL
+            sql_query, params = KPIQueryBuilder.build_all_teams_with_data_query(
+                periode_debut=periode_debut,
+                periode_fin=periode_fin
+            )
+
+            logger.debug(f"Récupération équipes avec données - Période: {periode_debut} à {periode_fin}")
+            rows = fetch_all(sql_query, params)
+
+            results = []
+            for row in rows:
+                result = dict(row)
+                # Conversion des Decimal en float pour la sérialisation JSON
+                for key, value in result.items():
+                    if isinstance(value, Decimal):
+                        result[key] = float(value)
+                results.append(result)
+
+            logger.info(f"Équipes avec données récupérées: {len(results)} équipes sur période {periode_debut}-{periode_fin}")
+            return results
+
+        except DatabaseError as e:
+            logger.error(f"Erreur récupération équipes avec données: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Erreur inattendue équipes avec données: {e}")
+            raise
+
+    def get_couts_par_machine_toutes_equipes(self, periode_debut: Union[str, date], periode_fin: Union[str, date],
+                                            machine_ids: Optional[List[int]] = None, type_machine: Optional[str] = None,
+                                            site_id: Optional[int] = None, equipe_id: Optional[int] = None,
+                                            limite: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Version alternative de get_couts_par_machine qui retourne toutes les équipes,
+        même les moins actives comme shift01. Peut retourner plusieurs lignes par machine.
+        
+        Args:
+            periode_debut: Date de début
+            periode_fin: Date de fin
+            machine_ids: Filtre par une liste d'IDs de machine (optionnel)
+            type_machine: Filtre par type de machine (optionnel)
+            site_id: Filtre par ID de site (optionnel)
+            equipe_id: Filtre par équipe (optionnel)
+            limite: Nombre max de résultats (optionnel)
+
+        Returns:
+            Liste des machines avec leurs KPI financiers par équipe
+        """
+        try:
+            # Utilisation du query builder pour générer la requête SQL
+            sql_query, params = KPIQueryBuilder.build_machine_kpi_query_all_teams(
+                periode_debut=periode_debut,
+                periode_fin=periode_fin,
+                machine_ids=machine_ids,
+                type_machine=type_machine,
+                site_id=site_id,
+                equipe_id=equipe_id,
+                limite=limite
+            )
+
+            logger.debug(f"Exécution requête KPI machines toutes équipes - Période: {periode_debut} à {periode_fin}")
+            rows = fetch_all(sql_query, params)
+
+            results = []
+            for row in rows:
+                result = dict(row)
+                # Conversion des Decimal en float pour la sérialisation JSON
+                for key, value in result.items():
+                    if isinstance(value, Decimal):
+                        result[key] = float(value)
+                results.append(result)
+
+            logger.info(f"KPI machines toutes équipes récupérés: {len(results)} résultats sur période {periode_debut}-{periode_fin}")
+            return results
+
+        except DatabaseError as e:
+            logger.error(f"Erreur récupération KPI machines toutes équipes: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Erreur inattendue KPI machines toutes équipes: {e}")
+            raise
