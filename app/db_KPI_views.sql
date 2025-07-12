@@ -134,6 +134,7 @@ SELECT
     SUM(cout_pieces_internes) AS cout_pieces_jour,
     SUM(cout_pieces_externes + cout_autres_frais) AS cout_frais_externes_jour,
     AVG(cout_total) AS cout_moyen_intervention,
+    SUM(duree_intervention_h) AS duree_totale,  -- Durée totale des interventions
     AVG(duree_intervention_h) AS duree_moyenne_h,
     AVG(cout_par_heure) AS cout_moyen_par_heure,
     MIN(cout_total) AS cout_min,

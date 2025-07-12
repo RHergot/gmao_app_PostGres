@@ -1,9 +1,13 @@
 import os
 import pandas as pd
-from app.data.introspect_db_structure import get_db_connection
+import warnings
+from app.data.introspect_db_structure import get_db_connection, DB_CONFIG
 
 class KPIService:
     def __init__(self):
+        # Supprimer le warning pandas SQLAlchemy (on utilise psycopg2 comme le reste de l'app)
+        warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy connectable')
+        # Connexion psycopg2 standard (cohérent avec le reste de l'application)
         self.conn = get_db_connection()
 
     def get_kpi_all_machines_by_period(self, date_start, date_end):
@@ -42,6 +46,7 @@ class KPIService:
             'cout_pieces_jour': 'sum',
             'cout_frais_externes_jour': 'sum',
             'cout_moyen_intervention': 'mean',
+            'duree_totale': 'sum',  # Temps total des interventions
             'duree_moyenne_h': 'mean',
             'cout_moyen_par_heure': 'mean',
             'cout_min': 'min',
@@ -83,6 +88,7 @@ class KPIService:
             'cout_pieces_jour': 'sum',
             'cout_frais_externes_jour': 'sum',
             'cout_moyen_intervention': 'mean',
+            'duree_totale': 'sum',  # Temps total des interventions
             'duree_moyenne_h': 'mean',
             'cout_moyen_par_heure': 'mean',
             'cout_min': 'min',
@@ -132,5 +138,27 @@ class KPIService:
         query = "SELECT id_site, nom FROM site ORDER BY nom;"
         return pd.read_sql(query, self.conn)
 
+    def get_temporal_kpi_data(self, date_start, date_end):
+        """
+        Retourne les données KPI temporelles (par jour) depuis v_kpi_machine_jour
+        pour les courbes temporelles (trends)
+        """
+        query = f"""
+            SELECT 
+                jour,
+                machine_nom,
+                type_nom,
+                site_nom,
+                equipe_nom,
+                cout_total_jour,
+                nb_interventions,
+                duree_totale
+            FROM v_kpi_machine_jour
+            WHERE jour >= '{date_start}' AND jour <= '{date_end}'
+            ORDER BY jour ASC
+        """
+        return pd.read_sql(query, self.conn)
+
     def close(self):
-        self.conn.close()
+        if hasattr(self, 'conn'):
+            self.conn.close()
