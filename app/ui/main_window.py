@@ -938,6 +938,11 @@ class MainWindow(QMainWindow):
         self.kpi_dashboard_action.setStatusTip(self.tr("Accéder aux indicateurs de performance financiers"))
         self.kpi_dashboard_action.triggered.connect(self.show_kpi_dashboard)
 
+        # Action pour KPI Machines (nouvelle version)
+        self.machine_kpi_action = QAction(self.tr("KPI Machines"), self)
+        self.machine_kpi_action.setStatusTip(self.tr("Analyse des performances machines avec graphiques et tendances"))
+        self.machine_kpi_action.triggered.connect(self.show_machine_kpi_dialog)
+
         # Les actions pour les KPI spécialisés ont été supprimées pour ne garder que le dashboard.
 
     def create_menu_bar(self):
@@ -1037,6 +1042,10 @@ class MainWindow(QMainWindow):
             
             # Seul le dashboard principal est ajouté au menu.
             kpi_menu.addAction(self.kpi_dashboard_action)
+            
+            # KPI Machines (nouvelle version avec graphiques)
+            if hasattr(self, 'machine_kpi_action') and self.machine_kpi_action:
+                kpi_menu.addAction(self.machine_kpi_action)
         
         # --- Menu Configuration (menu principal) ---
         # Ce menu regroupe tous les paramètres système et référentiels
@@ -1213,6 +1222,26 @@ class MainWindow(QMainWindow):
             self.show_popup("Erreur", f"Impossible d'ouvrir le dashboard KPI:\n{str(e)}", QMessageBox.Critical)
         except Exception as e:
             logger.error(f"Erreur lors de l'ouverture du dashboard KPI: {e}")
+            self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
+
+    def show_machine_kpi_dialog(self):
+        """Affiche le dialog KPI Machines (nouvelle version avec graphiques et tendances)."""
+        try:
+            from app.kpi.dialogs.machine_kpi_dialog_new import MachineKPIDialogNew
+            
+            # Créer et afficher le dialog KPI Machines modal
+            machine_kpi_dialog = MachineKPIDialogNew(parent=self)
+            
+            # Dialog modal - la méthode exec() bloque jusqu'à ce que la fenêtre soit fermée
+            result = machine_kpi_dialog.exec()
+            
+            logger.info("Dialog KPI Machines fermé")
+            
+        except ImportError as e:
+            logger.error(f"Erreur d'import du dialog KPI Machines: {e}")
+            self.show_popup("Erreur", f"Impossible d'ouvrir le dialog KPI Machines:\n{str(e)}", QMessageBox.Critical)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ouverture du dialog KPI Machines: {e}")
             self.show_popup("Erreur", f"Erreur inattendue:\n{str(e)}", QMessageBox.Critical)
 
     # Les méthodes show_kpi_* spécialisées ont été supprimées.

@@ -124,10 +124,10 @@ kpi/
 ## 5. Points de consolidation (pauses/test)
 
 - [x] Après extraction SQL → DataFrame
-- [ ] Après chaque fonction de filtrage/calcul pandas
-- [ ] Après préparation des données pour l’UI
+- [X] Après chaque fonction de filtrage/calcul pandas
+- [X] Après préparation des données pour l’UI
 - [ ] Après génération des graphiques (matplotlib)
-- [ ] Après intégration des tableaux
+- [X] Après intégration des tableaux
 
 ---
 Après intégration complète MVC veuiller à ce que le .venv soit bien activé dans app\ et accessible par KPI

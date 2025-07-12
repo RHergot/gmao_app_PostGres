@@ -23,6 +23,15 @@ from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 from datetime import datetime
 
+# Import conditionnel de pandas
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    print("[WARNING] Pandas not available. Some features may be limited.")
+    PANDAS_AVAILABLE = False
+    pd = None
+
 import importlib.util
 import os
 
@@ -398,6 +407,7 @@ class MachineKPIDialogNew(QDialog):
         try:
             # print("[KPI Dialog] Début refresh_data...")
             self.fill_table_overview()
+            self.update_stats()
             self.update_chart()
             self.update_trends()
             # print("[KPI Dialog] refresh_data terminé avec succès")
@@ -406,6 +416,7 @@ class MachineKPIDialogNew(QDialog):
             # En cas d'erreur, on essaie au moins de remplir le tableau
             try:
                 self.fill_table_overview()
+                self.update_stats()
             except Exception as e2:
                 print(f"[KPI Dialog] Erreur critique dans fill_table_overview: {e2}")
 
@@ -596,53 +607,6 @@ class MachineKPIDialogNew(QDialog):
             print(f"[KPI Dialog] Erreur lors du peuplement des combos: {e}")
             QMessageBox.warning(self, self.tr("Error"), f"Error loading filters: {str(e)}")
 
-    def setup_connections(self):
-        """Configure les connexions des signaux pour l'interface"""
-        try:
-            # Connexions pour les boutons
-            self.btn_reset.clicked.connect(self.reset_and_reload)
-            self.btn_export.clicked.connect(self.export_data)
-            self.btn_close.clicked.connect(self.close)
-            
-            # Connexions pour les changements de dates
-            # Recalculer les données et stats quand l'utilisateur change les dates
-            self.date_start.dateChanged.connect(self.on_date_changed)
-            self.date_end.dateChanged.connect(self.on_date_changed)
-            
-            # Connexions pour les filtres (ComboBox)
-            self.combo_machine.currentIndexChanged.connect(self.on_filter_changed)
-            self.combo_type.currentIndexChanged.connect(self.on_filter_changed)
-            self.combo_team.currentIndexChanged.connect(self.on_filter_changed)
-            self.combo_site.currentIndexChanged.connect(self.on_filter_changed)
-            
-            # Connexion pour le clic sur une ligne du tableau
-            self.data_table.cellClicked.connect(self.on_machine_clicked)
-            
-        except Exception as e:
-            print(f"[KPI Dialog] Erreur lors de la configuration des connexions: {e}")
-
-    def on_date_changed(self):
-        """Appelé quand l'utilisateur change une date - recalcule les données et stats"""
-        try:
-            print("[KPI Dialog] Changement de date détecté - rechargement des données...")
-            # Recharger les données avec la nouvelle période
-            self.fill_table_overview()
-            # Recalculer les statistiques avec les nouvelles données
-            self.update_stats()
-        except Exception as e:
-            print(f"[KPI Dialog] Erreur lors du changement de date: {e}")
-
-    def on_filter_changed(self):
-        """Appelé quand l'utilisateur change un filtre - recalcule les données et stats"""
-        try:
-            print("[KPI Dialog] Changement de filtre détecté - rechargement des données...")
-            # Recharger les données avec les nouveaux filtres
-            self.fill_table_overview()
-            # Recalculer les statistiques avec les nouvelles données
-            self.update_stats()
-        except Exception as e:
-            print(f"[KPI Dialog] Erreur lors du changement de filtre: {e}")
-
     def reset_and_reload(self):
         """Remet à zéro tous les filtres et recharge les données"""
         try:
@@ -690,16 +654,14 @@ class MachineKPIDialogNew(QDialog):
         """Force le rechargement des données (utilisé après reset)"""
         try:
             print("[KPI Dialog] Force refresh des données...")
-            self.fill_table_overview()
+            # Utiliser refresh_data() pour mettre à jour TOUT (tableau + graphiques + statistiques)
+            self.refresh_data()
             
             # Réactiver le tri après le rechargement
             self.data_table.setSortingEnabled(True)
             
             # Forcer un tri par défaut sur la colonne Machine (ascendant)
             self.data_table.sortItems(0, Qt.AscendingOrder)
-            
-            # Mettre à jour les statistiques synthétiques
-            self.update_stats()
             
             print("[KPI Dialog] Force refresh terminé")
         except Exception as e:
@@ -837,6 +799,18 @@ class MachineKPIDialogNew(QDialog):
     def update_trends(self):
         """Met à jour les courbes temporelles selon la granularité sélectionnée"""
         try:
+            # Vérifier si pandas est disponible
+            if not PANDAS_AVAILABLE:
+                # Afficher un message d'erreur si pandas n'est pas disponible
+                self.trends_figure.clear()
+                ax = self.trends_figure.add_subplot(111)
+                ax.text(0.5, 0.5, 'Pandas library is required for trends analysis.\nPlease install pandas: pip install pandas',
+                       horizontalalignment='center', verticalalignment='center',
+                       transform=ax.transAxes, fontsize=14, color='red')
+                ax.set_title(self.tr('Trends Analysis - Missing Dependency'))
+                self.trends_canvas.draw()
+                return
+            
             # Effacer le graphique précédent
             self.trends_figure.clear()
             
@@ -844,23 +818,24 @@ class MachineKPIDialogNew(QDialog):
             start_date = self.date_start.date().toPython()
             end_date = self.date_end.date().toPython()
             
-            # Récupérer les données KPI avec filtres appliqués (même logique que Overview)
-            df = self.kpi_service.get_kpi_all_machines_by_period(start_date, end_date)
+            # Récupérer les données temporelles (par jour) depuis v_kpi_machine_jour
+            df = self.kpi_service.get_temporal_kpi_data(start_date, end_date)
             
             if not df.empty:
-                # Appliquer les filtres
-                machine_filter = self.combo_machine.currentData() if self.combo_machine.currentData() != "all" else None
-                type_filter = self.combo_type.currentData() if self.combo_type.currentData() != "all" else None
-                team_filter = self.combo_team.currentData() if self.combo_team.currentData() != "all" else None
-                site_filter = self.combo_site.currentData() if self.combo_site.currentData() != "all" else None
+                # Appliquer les filtres - utiliser le TEXTE et non l'ID pour filtrer les DataFrame
+                machine_filter = self.combo_machine.currentText()
+                type_filter = self.combo_type.currentText()
+                team_filter = self.combo_team.currentText()
+                site_filter = self.combo_site.currentText()
                 
-                if machine_filter:
+                # Appliquer les filtres par NOM (pas par ID)
+                if machine_filter and machine_filter != self.tr("All machines"):
                     df = df[df['machine_nom'] == machine_filter]
-                if type_filter:
+                if type_filter and type_filter != self.tr("All types"):
                     df = df[df['type_nom'] == type_filter]
-                if team_filter:
+                if team_filter and team_filter != self.tr("All teams"):
                     df = df[df['equipe_nom'] == team_filter]
-                if site_filter:
+                if site_filter and site_filter != self.tr("All sites"):
                     df = df[df['site_nom'] == site_filter]
             
             if df.empty:
@@ -884,48 +859,38 @@ class MachineKPIDialogNew(QDialog):
                 granularity = 'M'  # Monthly
                 title_suffix = self.tr('(Monthly)')
             
-            # Préparer les données temporelles
-            # Note: nous devons d'abord récupérer les données détaillées par jour
-            # puis les agréger selon la granularité demandée
+            # Traitement des vraies données temporelles
             
-            # Pour l'instant, simulons des données temporelles
-            # TODO: Implémenter la récupération des données par jour depuis la vue v_kpi_machine_jour
-            import pandas as pd
-            from datetime import datetime, timedelta
+            # Convertir la colonne 'jour' en datetime
+            df['jour'] = pd.to_datetime(df['jour'])
             
-            # Créer une série temporelle de test
-            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+            # Agréger les données par jour (somme de toutes les machines pour chaque jour)
+            daily_df = df.groupby('jour').agg({
+                'cout_total_jour': 'sum',
+                'nb_interventions': 'sum', 
+                'duree_totale': 'sum'
+            }).reset_index()
             
-            # Agréger les données selon la granularité
-            if len(date_range) > 0:
-                # Simuler des données pour démonstration
-                total_cost = df['cout_total_jour'].sum() if 'cout_total_jour' in df.columns else 1000
-                total_interventions = df['nb_interventions'].sum() if 'nb_interventions' in df.columns else 50
-                total_duration = df['duree_totale'].sum() if 'duree_totale' in df.columns else 100
-                
-                # Répartir sur la période
-                days_count = len(date_range)
-                daily_cost = [total_cost / days_count * (0.8 + 0.4 * (i % 7) / 7) for i in range(days_count)]
-                daily_interventions = [total_interventions / days_count * (0.7 + 0.6 * ((i + 2) % 5) / 5) for i in range(days_count)]
-                daily_duration = [total_duration / days_count * (0.9 + 0.2 * ((i + 1) % 3) / 3) for i in range(days_count)]
-                
-                # Créer le DataFrame temporel
-                temp_df = pd.DataFrame({
-                    'date': date_range,
-                    'total_cost': daily_cost,
-                    'interventions': daily_interventions,
-                    'duration': daily_duration
-                })
-                
-                # Agréger selon la granularité
-                if granularity != 'D':
-                    temp_df = temp_df.set_index('date').resample(granularity).agg({
-                        'total_cost': 'sum',
-                        'interventions': 'sum',
-                        'duration': 'sum'
-                    }).reset_index()
-                
-                # Créer les 3 sous-graphiques
+            # Renommer les colonnes pour cohérence
+            daily_df = daily_df.rename(columns={
+                'jour': 'date',
+                'cout_total_jour': 'total_cost',
+                'nb_interventions': 'interventions',
+                'duree_totale': 'duration'
+            })
+            
+            # Agréger selon la granularité sélectionnée
+            if granularity != 'D' and not daily_df.empty:
+                temp_df = daily_df.set_index('date').resample(granularity).agg({
+                    'total_cost': 'sum',
+                    'interventions': 'sum',
+                    'duration': 'sum'
+                }).reset_index()
+            else:
+                temp_df = daily_df
+            
+            # Créer les 3 sous-graphiques (si on a des données)
+            if not temp_df.empty:
                 fig = self.trends_figure
                 
                 # Graphique 1: Total Cost
@@ -959,19 +924,6 @@ class MachineKPIDialogNew(QDialog):
         except Exception as e:
             print(f"[KPI Dialog] Erreur dans update_trends: {e}")
             QMessageBox.warning(self, self.tr("Error"), f"Trends error: {str(e)}")
-
-    def update_chart(self):
-        """Met à jour le graphique selon le type sélectionné"""
-        try:
-            # Pour l'instant, juste un placeholder
-            chart_type = "Bar Chart" if self.radio_bars.isChecked() else "Line Chart"
-            self.chart_placeholder.setText(
-                self.tr(f"{chart_type} will be displayed here\n\n") +
-                self.tr("Chart implementation with matplotlib/plotly coming soon...")
-            )
-            
-        except Exception as e:
-            print(f"[KPI Dialog] Erreur lors de la mise à jour du graphique: {e}")
 
     def on_machine_clicked(self, row, column):
         """Affiche une synthèse détaillée de la machine sélectionnée"""
@@ -1063,20 +1015,20 @@ class MachineKPIDialogNew(QDialog):
             
             # Appliquer les filtres (même logique que fill_table_overview)
             if not df.empty:
-                # Récupérer les filtres
-                machine_filter = self.combo_machine.currentData() if self.combo_machine.currentData() != "all" else None
-                type_filter = self.combo_type.currentData() if self.combo_type.currentData() != "all" else None
-                team_filter = self.combo_team.currentData() if self.combo_team.currentData() != "all" else None
-                site_filter = self.combo_site.currentData() if self.combo_site.currentData() != "all" else None
+                # Récupérer les filtres - utiliser le TEXTE et non l'ID pour filtrer les DataFrame
+                machine_filter = self.combo_machine.currentText()
+                type_filter = self.combo_type.currentText()
+                team_filter = self.combo_team.currentText()
+                site_filter = self.combo_site.currentText()
                 
-                # Appliquer les filtres
-                if machine_filter:
+                # Appliquer les filtres par NOM (pas par ID)
+                if machine_filter and machine_filter != self.tr("All machines"):
                     df = df[df['machine_nom'] == machine_filter]
-                if type_filter:
+                if type_filter and type_filter != self.tr("All types"):
                     df = df[df['type_nom'] == type_filter]
-                if team_filter:
+                if team_filter and team_filter != self.tr("All teams"):
                     df = df[df['equipe_nom'] == team_filter]
-                if site_filter:
+                if site_filter and site_filter != self.tr("All sites"):
                     df = df[df['site_nom'] == site_filter]
                 
                 # Réinitialiser les index après filtrage
