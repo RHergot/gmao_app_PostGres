@@ -46,26 +46,26 @@ logger = logging.getLogger(__name__)
 # === TRADUCTIONS SPÉCIFIQUES ===
 MACHINE_TRANSLATIONS = {
     Language.ENGLISH: {
-        "title": " Machine KPI Analysis",
-        "machine_filter": " Filter by Machine",
-        "all_machines": " All machines",
+        "title": "📊 Machine KPI Analysis",
+        "machine_filter": "🔍 Filter by Machine",
+        "all_machines": "🏭 All machines",
         "type_filter": "⚙️ Machine Type",
-        "all_types": " All types",
-        "all_sites": " All sites",
-        "team_filter": " Team",
-        "all_teams": " All teams",
-        "search_placeholder": " Search for a machine...",
-        "data_tab": " Overview",
-        "charts_tab": " Charts & Trends",
-        "details_tab": " Technical Details",
+        "all_types": "📋 All types",
+        "all_sites": "🏢 All sites",
+        "team_filter": "👥 Team",
+        "all_teams": "👥 All teams",
+        "search_placeholder": "🔍 Search for a machine...",
+        "data_tab": "📊 Overview",
+        "charts_tab": "📈 Charts & Trends",
+        "details_tab": "🔧 Technical Details",
         "performance_tab": "⚡ Performance",
-        "top_machines": " Top Machines by Cost",
+        "top_machines": "🔝 Top Machines by Cost",
         "machine_performance": "⚡ Key Indicators",
-        "summary_totals": " Global Summary",
-        "machine_cards": " Machine Cards",
-        "grand_total_cost": " Total Cost:",
-        "grand_avg_cost": " Average Cost:",
-        "cost_evolution": " Cost Evolution",
+        "summary_totals": "📊 Global Summary",
+        "machine_cards": "🏭 Machine Cards",
+        "grand_total_cost": "💰 Total Cost:",
+        "grand_avg_cost": "📊 Average Cost:",
+        "cost_evolution": "📈 Cost Evolution",
         "machine_name": "Machine",
         "total_cost": "Total Cost (€)",
         "interventions": "Interventions",
@@ -77,70 +77,70 @@ MACHINE_TRANSLATIONS = {
         "critical_machines": "⚠️ Critical Machines",
         "active_machines": "✅ Active Machines", 
         "inactive_machines": "⏸️ Inactive Machines",
-        "total_machines": " Total Machines",
+        "total_machines": "🏭 Total Machines",
         "total_intervention_time": "⏱️ Total Time (h)",
         "avg_intervention_time": "⏱️ Average Time (h)",
-        "preventive_ratio": "️ Preventive Ratio",
-        "corrective_ratio": " Corrective Ratio",
-        "urgency_ratio": " Urgency Ratio",
+        "preventive_ratio": "🛡️ Preventive Ratio",
+        "corrective_ratio": "🔧 Corrective Ratio",
+        "urgency_ratio": "🚨 Urgency Ratio",
         "maintenance_efficiency": "⚡ Maintenance Efficiency",
         "no_data_message": "No machine data available for this period",
         "loading_machines": "Loading machine data...",
         "export_success": "Machine data exported successfully",
-        "filter_by_status": "️ Filter by Status",
+        "filter_by_status": "🎚️ Filter by Status",
         "filter_by_criticality": "⚠️ Filter by Criticality",
         "show_only_critical": "Critical machines only",
-        "show_charts": " Show charts",
-        "refresh_data": " Refresh",
-        "export_excel": " Excel",
-        "export_pdf": " PDF",
-        "export_csv": " CSV",
-        "advanced_filters": "️ Advanced Filters",
+        "show_charts": "📊 Show charts",
+        "refresh_data": "🔄 Refresh",
+        "export_excel": "📄 Excel",
+        "export_pdf": "📑 PDF",
+        "export_csv": "📝 CSV",
+        "advanced_filters": "🎚️ Advanced Filters",
         "status_filter": "Status:",
         "limit_filter": "Limit:",
-        "statistics_selection": " Selection Statistics",
-        "chart_options": " Chart Options",
+        "statistics_selection": "📊 Selection Statistics",
+        "chart_options": "📊 Chart Options",
         "chart_type": "Chart type:",
-        "show_details": " Show details",
+        "show_details": "📈 Show details",
         "charts_in_development": "Charts under development",
         "visualizations_coming_soon": "Visualizations will be available soon",
         "machine_details": "Details",
         "type": "Type:",
         "status": "Status:",
         "criticality": "Criticality:",
-        "total_cost_detail": " Total Cost:",
-        "interventions_detail": " Interventions:",
-        "preventive_detail": "️ Preventive:",
-        "corrective_detail": " Corrective:",
-        "urgency_detail": " Urgency:",
+        "total_cost_detail": "💰 Total Cost:",
+        "interventions_detail": "🔧 Interventions:",
+        "preventive_detail": "🛡️ Preventive:",
+        "corrective_detail": "🔧 Corrective:",
+        "urgency_detail": "🚨 Urgency:",
         "total_time_detail": "⏱️ Total Time:",
-        "avg_cost_detail": " Avg Cost:",
+        "avg_cost_detail": "📊 Avg Cost:",
         "all_statuses": "All statuses",
         "active_status": "Active",
         "attention_status": "Attention",
         "inactive_status": "Inactive"
     },
     Language.FRENCH: {
-        "title": " Analyse KPI par Machine",
-        "machine_filter": " Filtrer par Machine",
-        "all_machines": " Toutes les machines",
+        "title": "📊 Analyse KPI par Machine",
+        "machine_filter": "🔍 Filtrer par Machine",
+        "all_machines": "🏭 Toutes les machines",
         "type_filter": "⚙️ Type de Machine",
-        "all_types": " Tous les types",
-        "all_sites": " Tous les sites",
-        "team_filter": " Équipe",
-        "all_teams": " Toutes les équipes",
-        "search_placeholder": " Rechercher une machine...",
-        "data_tab": " Vue d'ensemble",
-        "charts_tab": " Graphiques & Tendances",
-        "details_tab": " Détails techniques",
+        "all_types": "📋 Tous les types",
+        "all_sites": "🏢 Tous les sites",
+        "team_filter": "👥 Équipe",
+        "all_teams": "👥 Toutes les équipes",
+        "search_placeholder": "🔍 Rechercher une machine...",
+        "data_tab": "📊 Vue d'ensemble",
+        "charts_tab": "📈 Graphiques & Tendances",
+        "details_tab": "🔧 Détails techniques",
         "performance_tab": "⚡ Performance",
-        "top_machines": " Top Machines par Coût",
+        "top_machines": "🔝 Top Machines par Coût",
         "machine_performance": "⚡ Indicateurs Clés",
-        "summary_totals": " Résumé Global",
-        "machine_cards": " Cartes Machines",
-        "grand_total_cost": " Coût Total:",
-        "grand_avg_cost": " Coût Moyen:",
-        "cost_evolution": " Évolution des Coûts",
+        "summary_totals": "📊 Résumé Global",
+        "machine_cards": "🏭 Cartes Machines",
+        "grand_total_cost": "💰 Coût Total:",
+        "grand_avg_cost": "📊 Coût Moyen:",
+        "cost_evolution": "📈 Évolution des Coûts",
         "machine_name": "Machine",
         "total_cost": "Coût Total (€)",
         "interventions": "Interventions",
@@ -152,70 +152,70 @@ MACHINE_TRANSLATIONS = {
         "critical_machines": "⚠️ Machines Critiques",
         "active_machines": "✅ Machines Actives", 
         "inactive_machines": "⏸️ Machines Inactives",
-        "total_machines": " Total Machines",
+        "total_machines": "🏭 Total Machines",
         "total_intervention_time": "⏱️ Temps Total (h)",
         "avg_intervention_time": "⏱️ Temps Moyen (h)",
-        "preventive_ratio": "️ Ratio Préventif",
-        "corrective_ratio": " Ratio Correctif",
-        "urgency_ratio": " Ratio Urgence",
+        "preventive_ratio": "🛡️ Ratio Préventif",
+        "corrective_ratio": "🔧 Ratio Correctif",
+        "urgency_ratio": "🚨 Ratio Urgence",
         "maintenance_efficiency": "⚡ Efficacité Maintenance",
         "no_data_message": "Aucune donnée de machine disponible pour cette période",
         "loading_machines": "Chargement des données machines...",
         "export_success": "Données machines exportées avec succès",
-        "filter_by_status": "️ Filtrer par Statut",
+        "filter_by_status": "🎚️ Filtrer par Statut",
         "filter_by_criticality": "⚠️ Filtrer par Criticité",
         "show_only_critical": "Machines critiques uniquement",
-        "show_charts": " Afficher graphiques",
-        "refresh_data": " Actualiser",
-        "export_excel": " Excel",
-        "export_pdf": " PDF",
-        "export_csv": " CSV",
-        "advanced_filters": "️ Filtres Avancés",
+        "show_charts": "📊 Afficher graphiques",
+        "refresh_data": "🔄 Actualiser",
+        "export_excel": "📄 Excel",
+        "export_pdf": "📑 PDF",
+        "export_csv": "📝 CSV",
+        "advanced_filters": "🎚️ Filtres Avancés",
         "status_filter": "Statut:",
         "limit_filter": "Limite:",
-        "statistics_selection": " Statistiques de la Sélection",
-        "chart_options": " Options des Graphiques",
+        "statistics_selection": "📊 Statistiques de la Sélection",
+        "chart_options": "📊 Options des Graphiques",
         "chart_type": "Type de graphique:",
-        "show_details": " Afficher détails",
+        "show_details": "📈 Afficher détails",
         "charts_in_development": "Graphiques en cours de développement",
         "visualizations_coming_soon": "Les visualisations seront bientôt disponibles",
         "machine_details": "Détails",
         "type": "Type:",
         "status": "Statut:",
         "criticality": "Criticité:",
-        "total_cost_detail": " Coût Total:",
-        "interventions_detail": " Interventions:",
-        "preventive_detail": "️ Préventif:",
-        "corrective_detail": " Correctif:",
-        "urgency_detail": " Urgence:",
+        "total_cost_detail": "💰 Coût Total:",
+        "interventions_detail": "🔧 Interventions:",
+        "preventive_detail": "🛡️ Préventif:",
+        "corrective_detail": "🔧 Correctif:",
+        "urgency_detail": "🚨 Urgence:",
         "total_time_detail": "⏱️ Temps Total:",
-        "avg_cost_detail": " Coût Moyen:",
+        "avg_cost_detail": "📊 Coût Moyen:",
         "all_statuses": "Tous les statuts",
         "active_status": "Actif",
         "attention_status": "Attention", 
         "inactive_status": "Inactif"
     },
     Language.GERMAN: {
-        "title": " Maschinen-KPI-Analyse",
-        "machine_filter": " Nach Maschine filtern",
-        "all_machines": " Alle Maschinen",
+        "title": "📊 Maschinen-KPI-Analyse",
+        "machine_filter": "🔍 Nach Maschine filtern",
+        "all_machines": "🏭 Alle Maschinen",
         "type_filter": "⚙️ Maschinentyp",
-        "all_types": " Alle Typen",
-        "all_sites": " Alle Standorte",
-        "team_filter": " Team",
-        "all_teams": " Alle Teams",
-        "search_placeholder": " Maschine suchen...",
-        "data_tab": " Übersicht",
-        "charts_tab": " Diagramme & Trends",
-        "details_tab": " Technische Details",
+        "all_types": "📋 Alle Typen",
+        "all_sites": "🏢 Alle Standorte",
+        "team_filter": "👥 Team",
+        "all_teams": "👥 Alle Teams",
+        "search_placeholder": "🔍 Maschine suchen...",
+        "data_tab": "📊 Übersicht",
+        "charts_tab": "📈 Diagramme & Trends",
+        "details_tab": "🔧 Technische Details",
         "performance_tab": "⚡ Leistung",
-        "top_machines": " Top Maschinen nach Kosten",
+        "top_machines": "🔝 Top Maschinen nach Kosten",
         "machine_performance": "⚡ Kennzahlen",
-        "summary_totals": " Globale Zusammenfassung",
-        "machine_cards": " Maschinenkarten",
-        "grand_total_cost": " Gesamtkosten:",
-        "grand_avg_cost": " Durchschnittskosten:",
-        "cost_evolution": " Kostenentwicklung",
+        "summary_totals": "📊 Globale Zusammenfassung",
+        "machine_cards": "🏭 Maschinenkarten",
+        "grand_total_cost": "💰 Gesamtkosten:",
+        "grand_avg_cost": "📊 Durchschnittskosten:",
+        "cost_evolution": "📈 Kostenentwicklung",
         "machine_name": "Maschine",
         "total_cost": "Gesamtkosten (€)",
         "interventions": "Interventionen",
@@ -227,44 +227,44 @@ MACHINE_TRANSLATIONS = {
         "critical_machines": "⚠️ Kritische Maschinen",
         "active_machines": "✅ Aktive Maschinen", 
         "inactive_machines": "⏸️ Inaktive Maschinen",
-        "total_machines": " Maschinen Gesamt",
+        "total_machines": "🏭 Maschinen Gesamt",
         "total_intervention_time": "⏱️ Gesamtzeit (h)",
         "avg_intervention_time": "⏱️ Durchschnitt Zeit (h)",
-        "preventive_ratio": "️ Präventiv-Verhältnis",
-        "corrective_ratio": " Korrektiv-Verhältnis",
-        "urgency_ratio": " Notfall-Verhältnis",
+        "preventive_ratio": "🛡️ Präventiv-Verhältnis",
+        "corrective_ratio": "🔧 Korrektiv-Verhältnis",
+        "urgency_ratio": "🚨 Notfall-Verhältnis",
         "maintenance_efficiency": "⚡ Wartungseffizienz",
         "no_data_message": "Keine Maschinendaten für diesen Zeitraum verfügbar",
         "loading_machines": "Lade Maschinendaten...",
         "export_success": "Maschinendaten erfolgreich exportiert",
-        "filter_by_status": "️ Nach Status filtern",
+        "filter_by_status": "🎚️ Nach Status filtern",
         "filter_by_criticality": "⚠️ Nach Kritikalität filtern",
         "show_only_critical": "Nur kritische Maschinen",
-        "show_charts": " Diagramme anzeigen",
-        "refresh_data": " Aktualisieren",
-        "export_excel": " Excel",
-        "export_pdf": " PDF",
-        "export_csv": " CSV",
-        "advanced_filters": "️ Erweiterte Filter",
+        "show_charts": "📊 Diagramme anzeigen",
+        "refresh_data": "🔄 Aktualisieren",
+        "export_excel": "📄 Excel",
+        "export_pdf": "📑 PDF",
+        "export_csv": "📝 CSV",
+        "advanced_filters": "🎚️ Erweiterte Filter",
         "status_filter": "Status:",
         "limit_filter": "Limit:",
-        "statistics_selection": " Auswahlstatistiken",
-        "chart_options": " Diagrammoptionen",
+        "statistics_selection": "📊 Auswahlstatistiken",
+        "chart_options": "📊 Diagrammoptionen",
         "chart_type": "Diagrammtyp:",
-        "show_details": " Details anzeigen",
+        "show_details": "📈 Details anzeigen",
         "charts_in_development": "Diagramme in Entwicklung",
         "visualizations_coming_soon": "Visualisierungen werden bald verfügbar sein",
         "machine_details": "Details",
         "type": "Typ:",
         "status": "Status:",
         "criticality": "Kritikalität:",
-        "total_cost_detail": " Gesamtkosten:",
-        "interventions_detail": " Interventionen:",
-        "preventive_detail": "️ Präventiv:",
-        "corrective_detail": " Korrektiv:",
-        "urgency_detail": " Dringend:",
+        "total_cost_detail": "💰 Gesamtkosten:",
+        "interventions_detail": "🔧 Interventionen:",
+        "preventive_detail": "🛡️ Präventiv:",
+        "corrective_detail": "🔧 Korrektiv:",
+        "urgency_detail": "🚨 Dringend:",
         "total_time_detail": "⏱️ Gesamtzeit:",
-        "avg_cost_detail": " Ø Kosten:",
+        "avg_cost_detail": "📊 Ø Kosten:",
         "all_statuses": "Alle Status",
         "active_status": "Aktiv",
         "attention_status": "Achtung",
@@ -327,8 +327,8 @@ class MachineKPIDialog(BaseKPIDialog):
         QTimer.singleShot(100, self.configure_scroll_policies)
         
         # Configurer une taille optimale pour éviter les problèmes de scroll
-        self.resize(1600, 900)  # Taille plus adaptée aux écrans modernes
-        self.setMinimumSize(1600, 900)  # Taille minimale pour assurer une bonne visibilité
+        self.resize(1440, 900)  # Taille plus adaptée aux écrans modernes
+        self.setMinimumSize(1300, 800)  # Taille minimale pour assurer une bonne visibilité
         
         logger.info("Initialisation du MachineKPIDialog - Version améliorée")
     
@@ -658,7 +658,7 @@ class MachineKPIDialog(BaseKPIDialog):
         actions_layout.addWidget(btn_refresh)
         
         # Bouton pour charger toutes les équipes (y compris shift01)
-        btn_all_teams = QPushButton(" Toutes équipes")
+        btn_all_teams = QPushButton("🔄 Toutes équipes")
         btn_all_teams.clicked.connect(lambda: self.load_data(include_all_teams=True))
         btn_all_teams.setToolTip("Charge les données en incluant toutes les équipes, même les moins actives (shift01, etc.)")
         btn_all_teams.setStyleSheet("""
@@ -703,11 +703,11 @@ class MachineKPIDialog(BaseKPIDialog):
         
         self.selection_stats_labels = {}
         stats_items = [
-            ("total_machines", get_machine_text("total_machines"), ""),
-            ("total_cost", get_machine_text("total_cost"), ""),
-            ("avg_cost", get_machine_text("avg_cost"), ""),
-            ("total_interventions", get_machine_text("interventions"), ""),
-            ("preventive_ratio", get_machine_text("preventive_ratio"), "️"),
+            ("total_machines", get_machine_text("total_machines"), "🏭"),
+            ("total_cost", get_machine_text("total_cost"), "💰"),
+            ("avg_cost", get_machine_text("avg_cost"), "📊"),
+            ("total_interventions", get_machine_text("interventions"), "🔧"),
+            ("preventive_ratio", get_machine_text("preventive_ratio"), "🛡️"),
             ("efficiency", get_machine_text("efficiency"), "⚡")
         ]
         
@@ -842,7 +842,7 @@ class MachineKPIDialog(BaseKPIDialog):
             details_dialog.setIcon(QMessageBox.Information)
             
             details_text = f"""
-            <h3> {machine['machine_name']}</h3>
+            <h3>🏭 {machine['machine_name']}</h3>
             <p><b>{get_machine_text('type')}</b> {machine['type']}</p>
             <p><b>{get_machine_text('status')}</b> {machine['status']}</p>
             <p><b>{get_machine_text('criticality')}</b> {machine.get('criticite', 'N/A')}</p>
@@ -907,7 +907,7 @@ class MachineKPIDialog(BaseKPIDialog):
             """)
             placeholder_layout = QVBoxLayout(placeholder_frame)
             
-            icon_label = QLabel("")
+            icon_label = QLabel("📈")
             icon_label.setAlignment(Qt.AlignCenter)
             icon_label.setStyleSheet("font-size: 48px; color: #95a5a6; margin: 20px;")
             
@@ -980,10 +980,6 @@ class MachineKPIDialog(BaseKPIDialog):
             
             # Convertir au format UI
             self.machines_data = self._convert_kpi_to_ui_format(raw_kpi_data)
-            print("\n====== DEBUG: machines_data après conversion ======")
-            for m in self.machines_data:
-                print(m)
-            print(f"Total machines: {len(self.machines_data)}\n===============================\n")
             self.filtered_data = self.machines_data.copy()
 
             # RÉINITIALISER TOUS LES FILTRES AVANT DE METTRE À JOUR
@@ -1185,35 +1181,23 @@ class MachineKPIDialog(BaseKPIDialog):
         
         # === FILTRE 1: Type de machine ===
         selected_type = self.type_combo.currentText()
-        all_types = get_machine_text("all_types")
-        print(f"[DEBUG] FILTRE TYPE: selected_type={selected_type!r}, all_types={all_types!r}, taille_avant={len(filtered_data)}")
-        if selected_type != all_types:
+        if selected_type != get_machine_text("all_types"):
             filtered_data = [m for m in filtered_data if m["type"] == selected_type]
-        print(f"[DEBUG] FILTRE TYPE: taille_après={len(filtered_data)}")
 
-        # === FILTRE 2: Machine ===
+        # === FILTRE 2: Machine spécifique ===
         selected_machine = self.machine_combo.currentText()
-        all_machines = get_machine_text("all_machines")
-        print(f"[DEBUG] FILTRE MACHINE: selected_machine={selected_machine!r}, all_machines={all_machines!r}, taille_avant={len(filtered_data)}")
-        if selected_machine != all_machines:
+        if selected_machine != get_machine_text("all_machines"):
             filtered_data = [m for m in filtered_data if m["machine_name"] == selected_machine]
-        print(f"[DEBUG] FILTRE MACHINE: taille_après={len(filtered_data)}")
         
         # === FILTRE 3: Site ===
         selected_site = self.site_combo.currentText()
-        all_sites = get_machine_text("all_sites")
-        print(f"[DEBUG] FILTRE SITE: selected_site={selected_site!r}, all_sites={all_sites!r}, taille_avant={len(filtered_data)}")
-        if selected_site != all_sites:
+        if selected_site != get_machine_text("all_sites"):
             filtered_data = [m for m in filtered_data if m.get("site", "") == selected_site]
-        print(f"[DEBUG] FILTRE SITE: taille_après={len(filtered_data)}")
         
         # === FILTRE 4: Équipe ===
         selected_team = self.team_combo.currentText()
-        all_teams = get_machine_text("all_teams")
-        print(f"[DEBUG] FILTRE TEAM: selected_team={selected_team!r}, all_teams={all_teams!r}, taille_avant={len(filtered_data)}")
-        if selected_team != all_teams:
+        if selected_team != get_machine_text("all_teams"):
             filtered_data = [m for m in filtered_data if m.get("equipe_nom", "") == selected_team]
-        print(f"[DEBUG] FILTRE TEAM: taille_après={len(filtered_data)}")
         
         # === FILTRE 5: Statut ===
         selected_status = getattr(self, 'status_combo', None)
@@ -1286,9 +1270,7 @@ class MachineKPIDialog(BaseKPIDialog):
         
         if current_machine in available_machines:
             self.machine_combo.setCurrentText(current_machine)
-        else:
-            self.machine_combo.setCurrentText(get_machine_text("all_machines"))
-        print(f"[DEBUG] machine_combo sélectionné: {self.machine_combo.currentText()!r}")
+        
         self.machine_combo.blockSignals(False)
         
         # Mise à jour du filtre site
@@ -1302,9 +1284,7 @@ class MachineKPIDialog(BaseKPIDialog):
         
         if current_site in available_sites:
             self.site_combo.setCurrentText(current_site)
-        else:
-            self.site_combo.setCurrentText(get_machine_text("all_sites"))
-        print(f"[DEBUG] site_combo sélectionné: {self.site_combo.currentText()!r}")
+        
         self.site_combo.blockSignals(False)
         
         # Mise à jour du filtre équipe
@@ -1318,14 +1298,11 @@ class MachineKPIDialog(BaseKPIDialog):
         
         if current_team in available_teams:
             self.team_combo.setCurrentText(current_team)
-        else:
-            self.team_combo.setCurrentText(get_machine_text("all_teams"))
-        print(f"[DEBUG] team_combo sélectionné: {self.team_combo.currentText()!r}")
+        
         self.team_combo.blockSignals(False)
 
     def update_data_view(self):
         """Met à jour la vue de données avec le nouveau tableau amélioré."""
-        print(f"\n====== DEBUG: update_data_view - nb lignes à afficher: {len(self.filtered_data)} ======")
         filtered_data = self.filtered_data
 
         # === MISE À JOUR DU TABLEAU PRINCIPAL ===
@@ -1335,7 +1312,6 @@ class MachineKPIDialog(BaseKPIDialog):
         self.repaint()
         
         for row, machine in enumerate(filtered_data):
-            print(f"DEBUG: Remplissage ligne {row} - {machine}")
             # Colonnes de base
             self.data_table.setItem(row, 0, QTableWidgetItem(machine["machine_name"]))
             self.data_table.setItem(row, 1, QTableWidgetItem(machine["type"]))
@@ -1369,9 +1345,6 @@ class MachineKPIDialog(BaseKPIDialog):
         # === MISE À JOUR DES STATISTIQUES ===
         if hasattr(self, 'selection_stats_labels'):
             self._update_selection_stats(filtered_data)
-        self.data_table.viewport().update()
-        self.data_table.repaint()
-        self.repaint()
     
     def _update_selection_stats(self, filtered_data):
         """Met à jour les statistiques de sélection."""

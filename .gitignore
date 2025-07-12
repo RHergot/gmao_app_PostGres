@@ -140,7 +140,7 @@ gmao_data.db
 gmao_default.db
 
 # PostgreSQL dumps
-# *.sql
+*.sql
 *.dump
 pgdump_*
 
