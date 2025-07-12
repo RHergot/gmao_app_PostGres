@@ -123,7 +123,7 @@ kpi/
 
 ## 5. Points de consolidation (pauses/test)
 
-- [ ] Après extraction SQL → DataFrame
+- [x] Après extraction SQL → DataFrame
 - [ ] Après chaque fonction de filtrage/calcul pandas
 - [ ] Après préparation des données pour l’UI
 - [ ] Après génération des graphiques (matplotlib)

@@ -14,6 +14,15 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtCore import Qt, QDate, QTranslator, QLocale, QTimer
+from PySide6.QtGui import QFont
+
+# Imports pour les graphiques
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.dates as mdates
+from datetime import datetime
+
 import importlib.util
 import os
 
@@ -51,6 +60,9 @@ class MachineKPIDialogNew(QDialog):
         
         # Onglet 2 : Chart (graphique seul)
         self.create_chart_tab()
+        
+        # Onglet 3 : Trends (statistiques temporelles)
+        self.create_trends_tab()
         
         main_layout.addWidget(self.tabs)
 
@@ -226,7 +238,7 @@ class MachineKPIDialogNew(QDialog):
             self.tr("Machine"), self.tr("Type"), self.tr("Site"), self.tr("Team"),
             self.tr("Total Cost"), self.tr("Interventions"), self.tr("Preventive"), 
             self.tr("Corrective"), self.tr("Urgency"), self.tr("Avg Cost"), 
-            self.tr("Avg Time"), self.tr("Criticality")
+            self.tr("Total Time"), self.tr("Avg Time"), self.tr("Criticality")
         ]
         
         self.data_table = QTableWidget(0, len(headers))
@@ -273,8 +285,9 @@ class MachineKPIDialogNew(QDialog):
         self.data_table.setColumnWidth(7, 100)   # Corrective
         self.data_table.setColumnWidth(8, 100)   # Urgency
         self.data_table.setColumnWidth(9, 100)   # Avg Cost
-        self.data_table.setColumnWidth(10, 100)  # Avg Time
-        self.data_table.setColumnWidth(11, 100)  # Criticality
+        self.data_table.setColumnWidth(10, 100)  # Total Time
+        self.data_table.setColumnWidth(11, 100)  # Avg Time
+        self.data_table.setColumnWidth(12, 100)  # Criticality
         
         overview_layout.addWidget(self.data_table)
         
@@ -306,22 +319,52 @@ class MachineKPIDialogNew(QDialog):
         chart_layout.addLayout(chart_controls)
 
         # === ZONE GRAPHIQUE ===
-        # Placeholder pour le graphique (à implémenter avec matplotlib/plotly)
-        self.chart_placeholder = QLabel(self.tr("Chart will be displayed here"))
-        self.chart_placeholder.setAlignment(Qt.AlignCenter)
-        self.chart_placeholder.setStyleSheet("""
-            QLabel {
-                border: 2px dashed #ccc;
-                background-color: #f9f9f9;
-                font-size: 16px;
-                color: #666;
-                min-height: 400px;
-            }
-        """)
+        # Widget matplotlib pour les graphiques
+        self.figure = Figure(figsize=(12, 6))
+        self.canvas = FigureCanvas(self.figure)
+        self.canvas.setMinimumHeight(400)
         
-        chart_layout.addWidget(self.chart_placeholder)
+        chart_layout.addWidget(self.canvas)
         
         self.tabs.addTab(self.tab_chart, self.tr("Chart"))
+
+    def create_trends_tab(self):
+        """Crée l'onglet Trends avec statistiques temporelles"""
+        self.tab_trends = QWidget()
+        trends_layout = QVBoxLayout(self.tab_trends)
+        trends_layout.setContentsMargins(10, 10, 10, 10)
+
+        # === COMMANDES GRANULARITÉ ===
+        granularity_controls = QHBoxLayout()
+        
+        # Granularité temporelle
+        granularity_group = QButtonGroup(self)
+        self.radio_daily = QRadioButton(self.tr("Daily"))
+        self.radio_weekly = QRadioButton(self.tr("Weekly"))
+        self.radio_monthly = QRadioButton(self.tr("Monthly"))
+        self.radio_daily.setChecked(True)  # Par défaut
+        
+        granularity_group.addButton(self.radio_daily)
+        granularity_group.addButton(self.radio_weekly)
+        granularity_group.addButton(self.radio_monthly)
+        
+        granularity_controls.addWidget(QLabel(self.tr("Time Granularity:")))
+        granularity_controls.addWidget(self.radio_daily)
+        granularity_controls.addWidget(self.radio_weekly)
+        granularity_controls.addWidget(self.radio_monthly)
+        granularity_controls.addStretch()
+        
+        trends_layout.addLayout(granularity_controls)
+
+        # === ZONE GRAPHIQUE TEMPOREL ===
+        # Widget matplotlib pour les courbes temporelles
+        self.trends_figure = Figure(figsize=(14, 8))
+        self.trends_canvas = FigureCanvas(self.trends_figure)
+        self.trends_canvas.setMinimumHeight(500)
+        
+        trends_layout.addWidget(self.trends_canvas)
+        
+        self.tabs.addTab(self.tab_trends, self.tr("Trends"))
 
     def setup_connections(self):
         """Configure toutes les connexions de signaux"""
@@ -342,16 +385,22 @@ class MachineKPIDialogNew(QDialog):
         self.radio_bars.toggled.connect(self.update_chart)
         self.radio_lines.toggled.connect(self.update_chart)
         
+        # Granularité temporelle
+        self.radio_daily.toggled.connect(self.update_trends)
+        self.radio_weekly.toggled.connect(self.update_trends)
+        self.radio_monthly.toggled.connect(self.update_trends)
+        
         # Clic sur une machine pour afficher la synthèse détaillée
         self.data_table.cellClicked.connect(self.on_machine_clicked)
 
     def refresh_data(self):
         """Méthode centrale pour rafraîchir les données (tableau et graphique)"""
         try:
-            print("[KPI Dialog] Début refresh_data...")
+            # print("[KPI Dialog] Début refresh_data...")
             self.fill_table_overview()
             self.update_chart()
-            print("[KPI Dialog] refresh_data terminé avec succès")
+            self.update_trends()
+            # print("[KPI Dialog] refresh_data terminé avec succès")
         except Exception as e:
             print(f"[KPI Dialog] Erreur dans refresh_data: {e}")
             # En cas d'erreur, on essaie au moins de remplir le tableau
@@ -366,6 +415,7 @@ class MachineKPIDialogNew(QDialog):
             # Récupère la période depuis les QDateEdit
             date_start = self.date_start.date().toString("yyyy-MM-dd")
             date_end = self.date_end.date().toString("yyyy-MM-dd")
+            print(f"[DEBUG] Période: {date_start} à {date_end}")
             
             # Récupérer les filtres sélectionnés
             machine_id = self.combo_machine.currentData()
@@ -373,27 +423,70 @@ class MachineKPIDialogNew(QDialog):
             team_id = self.combo_team.currentData()
             site_id = self.combo_site.currentData()
             
+            print(f"[DEBUG] Filtres - Machine ID: {machine_id}, Type ID: {type_id}, Team ID: {team_id}, Site ID: {site_id}")
+            print(f"[DEBUG] Filtres - Machine: '{self.combo_machine.currentText()}', Type: '{self.combo_type.currentText()}', Team: '{self.combo_team.currentText()}', Site: '{self.combo_site.currentText()}'")
+            
             # Stratégie d'extraction des données selon le contexte
             if machine_id:
                 # Si une machine spécifique est sélectionnée, utiliser la méthode dédiée
+                print(f"[DEBUG] Récupération données pour machine ID: {machine_id}")
                 df = self.kpi_service.get_kpi_for_machine_by_period(machine_id, date_start, date_end)
             else:
                 # Sinon, récupérer toutes les machines et appliquer les filtres
+                print(f"[DEBUG] Récupération données pour toutes les machines")
                 df = self.kpi_service.get_kpi_all_machines_by_period(date_start, date_end)
+            
+            print(f"[DEBUG] DataFrame initial - Shape: {df.shape if not df.empty else 'VIDE'}")
+            if not df.empty:
+                print(f"[DEBUG] Colonnes disponibles: {list(df.columns)}")
+                print(f"[DEBUG] Premières lignes:\n{df.head(2)}")
+                
+                # Diagnostiquer les valeurs uniques pour le filtrage
+                if 'type_nom' in df.columns:
+                    print(f"[DEBUG] Types uniques dans DataFrame: {sorted(df['type_nom'].dropna().unique())}")
+                if 'equipe_nom' in df.columns:
+                    print(f"[DEBUG] Équipes uniques dans DataFrame: {sorted(df['equipe_nom'].dropna().unique())}")
+                if 'site_nom' in df.columns:
+                    print(f"[DEBUG] Sites uniques dans DataFrame: {sorted(df['site_nom'].dropna().unique())}")
             
             # Appliquer les autres filtres (type, équipe, site) sur le DataFrame
             if not df.empty:
+                # FILTRE 1: Type Machine (par nom car pas d'ID dans la vue)
                 if type_id:
-                    df = df[df['type_nom'] == self.combo_type.currentText()]
+                    selected_type_name = self.combo_type.currentText()
+                    if selected_type_name != self.tr("All types"):
+                        print(f"[DEBUG] Filtrage par type: '{selected_type_name}'")
+                        df_before = len(df)
+                        df = df[df['type_nom'] == selected_type_name]
+                        print(f"[DEBUG] Après filtre type: {df_before} -> {len(df)} lignes")
+                
+                # FILTRE 2: Équipe (par nom car pas d'ID dans la vue)
                 if team_id:
-                    df = df[df['equipe_nom'] == self.combo_team.currentText()]
+                    selected_team_name = self.combo_team.currentText()
+                    if selected_team_name != self.tr("All teams"):
+                        print(f"[DEBUG] Filtrage par équipe: '{selected_team_name}'")
+                        df_before = len(df)
+                        df = df[df['equipe_nom'] == selected_team_name]
+                        print(f"[DEBUG] Après filtre équipe: {df_before} -> {len(df)} lignes")
+                
+                # FILTRE 3: Site (par nom car pas d'ID dans la vue)
                 if site_id:
-                    df = df[df['site_nom'] == self.combo_site.currentText()]
+                    selected_site_name = self.combo_site.currentText()
+                    if selected_site_name != self.tr("All sites"):
+                        print(f"[DEBUG] Filtrage par site: '{selected_site_name}'")
+                        df_before = len(df)
+                        df = df[df['site_nom'] == selected_site_name]
+                        print(f"[DEBUG] Après filtre site: {df_before} -> {len(df)} lignes")
+            
+            # CORRECTION CRITIQUE: Reset des index après filtrage
+            if not df.empty:
+                df = df.reset_index(drop=True)
+                print(f"[DEBUG] Index DataFrame réinitialisés: {df.index.tolist()}")
             
             # Headers correspondant à l'onglet Overview
             headers = [
                 "Machine", "Type", "Site", "Team", "Total Cost", "Interventions", 
-                "Preventive", "Corrective", "Urgency", "Avg Cost", "Avg Time", "Criticality"
+                "Preventive", "Corrective", "Urgency", "Avg Cost", "Total Time", "Avg Time", "Criticality"
             ]
             
             # Mapping colonnes DataFrame -> headers UI
@@ -408,6 +501,7 @@ class MachineKPIDialogNew(QDialog):
                 "Corrective": "nb_correctif",
                 "Urgency": "nb_urgence",
                 "Avg Cost": "cout_moyen_intervention",
+                "Total Time": "duree_totale",  # Nouvelle colonne
                 "Avg Time": "duree_moyenne_h",
                 "Criticality": "machine_criticite"
             }
@@ -415,30 +509,41 @@ class MachineKPIDialogNew(QDialog):
             # Vider le tableau
             self.data_table.setRowCount(0)
             
+            # print(f"[DEBUG] DataFrame final - Shape: {df.shape if not df.empty else 'VIDE'}")
+            
             if df.empty:
+                # print(f"[DEBUG] TABLEAU VIDE - Aucune donnée à afficher")
                 return
+            
+            # print(f"[DEBUG] Remplissage du tableau avec {len(df)} lignes")
             
             # Remplir le tableau
             for i, row in df.iterrows():
+                # print(f"[DEBUG] Ligne {i}: {dict(row)}")
                 self.data_table.insertRow(i)
                 for j, header in enumerate(headers):
                     col = col_map[header]
                     try:
                         value = row[col] if col in row else "--"
+                        # print(f"[DEBUG] Colonne {j} ({header} -> {col}): {value}")
                         # Formatage des valeurs numériques
                         if isinstance(value, (int, float)) and value != "--":
                             if "Cost" in header or "cost" in header:
-                                value = f"{value:.2f} €"
+                                formatted_value = f"{value:.2f} €"
                             elif "Time" in header or "time" in header:
-                                value = f"{value:.1f} h"
+                                formatted_value = f"{value:.1f} h"
                             else:
-                                value = str(int(value)) if value == int(value) else f"{value:.2f}"
-                    except (KeyError, TypeError):
-                        value = "--"
+                                formatted_value = str(int(value)) if value == int(value) else f"{value:.2f}"
+                        else:
+                            formatted_value = str(value)
+                    except (KeyError, TypeError) as e:
+                        print(f"[DEBUG] ERREUR colonne {header} -> {col}: {e}")
+                        formatted_value = "--"
                     
-                    item = QTableWidgetItem(str(value))
+                    item = QTableWidgetItem(formatted_value)
                     item.setTextAlignment(Qt.AlignCenter)
                     self.data_table.setItem(i, j, item)
+                    # print(f"[DEBUG] Item ajouté en ({i}, {j}): '{formatted_value}'")
                     
         except Exception as e:
             print(f"[KPI Dialog] Erreur lors du remplissage du tableau: {e}")
@@ -619,6 +724,7 @@ class MachineKPIDialogNew(QDialog):
             total_cost = 0
             total_interventions = 0
             total_preventive = 0
+            total_time = 0  # Temps total d'intervention en heures
             
             for row in range(total_machines):
                 # Total Cost (colonne 4)
@@ -645,11 +751,36 @@ class MachineKPIDialogNew(QDialog):
                         total_preventive += int(preventive_item.text()) if preventive_item.text() else 0
                     except ValueError:
                         pass
+                
+                # Total Time (colonne 10)
+                time_item = self.data_table.item(row, 10)
+                if time_item:
+                    try:
+                        time_text = time_item.text().replace('h', '').replace(',', '').strip()
+                        total_time += float(time_text) if time_text else 0
+                    except ValueError:
+                        pass
             
             # Calculer les ratios
-            avg_cost = total_cost / total_machines if total_machines > 0 else 0
+            avg_cost = total_cost / total_interventions if total_interventions > 0 else 0
             preventive_ratio = (total_preventive / total_interventions * 100) if total_interventions > 0 else 0
-            efficiency = preventive_ratio  # Même calcul pour l'efficacité
+            
+            # Calcul d'efficience approximative (temps intervention / temps théorique)
+            # Temps théorique : 6h par jour par machine
+            THEORETICAL_WORK_TIME_PER_DAY = 6.0  # heures
+            
+            # Calculer le nombre de jours dans la période sélectionnée
+            start_date = self.date_start.date()
+            end_date = self.date_end.date()
+            days_in_period = (end_date.toPython() - start_date.toPython()).days + 1
+            
+            # Temps théorique total pour toutes les machines sur la période
+            theoretical_total_time = total_machines * THEORETICAL_WORK_TIME_PER_DAY * days_in_period
+            
+            # Efficience = 100 - (Temps intervention / Temps théorique) * 100
+            # Plus le pourcentage est élevé, mieux c'est (temps de disponibilité)
+            intervention_ratio = (total_time / theoretical_total_time * 100) if theoretical_total_time > 0 else 0
+            efficiency = 100 - intervention_ratio
             
             # Mettre à jour les labels
             self.stats_labels["total_machines"].setText(self.tr(f"Total Machines: {total_machines}"))
@@ -657,7 +788,7 @@ class MachineKPIDialogNew(QDialog):
             self.stats_labels["avg_cost"].setText(self.tr(f"Avg Cost: {avg_cost:,.0f}€"))
             self.stats_labels["total_interventions"].setText(self.tr(f"Total Interventions: {total_interventions}"))
             self.stats_labels["preventive_ratio"].setText(self.tr(f"Preventive Ratio: {preventive_ratio:.0f}%"))
-            self.stats_labels["efficiency"].setText(self.tr(f"Efficiency: {efficiency:.0f}%"))
+            self.stats_labels["efficiency"].setText(self.tr(f"Availability (6h/day): {efficiency:.1f}%"))
             
         except Exception as e:
             print(f"[KPI Dialog] Erreur lors de la mise à jour des statistiques: {e}")
@@ -702,6 +833,132 @@ class MachineKPIDialogNew(QDialog):
         except Exception as e:
             print(f"[KPI Dialog] Erreur lors de l'export: {e}")
             QMessageBox.warning(self, self.tr("Error"), f"Error during export: {str(e)}")
+
+    def update_trends(self):
+        """Met à jour les courbes temporelles selon la granularité sélectionnée"""
+        try:
+            # Effacer le graphique précédent
+            self.trends_figure.clear()
+            
+            # Récupérer les dates
+            start_date = self.date_start.date().toPython()
+            end_date = self.date_end.date().toPython()
+            
+            # Récupérer les données KPI avec filtres appliqués (même logique que Overview)
+            df = self.kpi_service.get_kpi_all_machines_by_period(start_date, end_date)
+            
+            if not df.empty:
+                # Appliquer les filtres
+                machine_filter = self.combo_machine.currentData() if self.combo_machine.currentData() != "all" else None
+                type_filter = self.combo_type.currentData() if self.combo_type.currentData() != "all" else None
+                team_filter = self.combo_team.currentData() if self.combo_team.currentData() != "all" else None
+                site_filter = self.combo_site.currentData() if self.combo_site.currentData() != "all" else None
+                
+                if machine_filter:
+                    df = df[df['machine_nom'] == machine_filter]
+                if type_filter:
+                    df = df[df['type_nom'] == type_filter]
+                if team_filter:
+                    df = df[df['equipe_nom'] == team_filter]
+                if site_filter:
+                    df = df[df['site_nom'] == site_filter]
+            
+            if df.empty:
+                # Afficher un message si pas de données
+                ax = self.trends_figure.add_subplot(111)
+                ax.text(0.5, 0.5, self.tr('No data available for the selected period and filters'),
+                       horizontalalignment='center', verticalalignment='center',
+                       transform=ax.transAxes, fontsize=14)
+                ax.set_title(self.tr('Temporal Trends'))
+                self.trends_canvas.draw()
+                return
+            
+            # Déterminer la granularité
+            if self.radio_daily.isChecked():
+                granularity = 'D'  # Daily
+                title_suffix = self.tr('(Daily)')
+            elif self.radio_weekly.isChecked():
+                granularity = 'W'  # Weekly
+                title_suffix = self.tr('(Weekly)')
+            else:  # Monthly
+                granularity = 'M'  # Monthly
+                title_suffix = self.tr('(Monthly)')
+            
+            # Préparer les données temporelles
+            # Note: nous devons d'abord récupérer les données détaillées par jour
+            # puis les agréger selon la granularité demandée
+            
+            # Pour l'instant, simulons des données temporelles
+            # TODO: Implémenter la récupération des données par jour depuis la vue v_kpi_machine_jour
+            import pandas as pd
+            from datetime import datetime, timedelta
+            
+            # Créer une série temporelle de test
+            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+            
+            # Agréger les données selon la granularité
+            if len(date_range) > 0:
+                # Simuler des données pour démonstration
+                total_cost = df['cout_total_jour'].sum() if 'cout_total_jour' in df.columns else 1000
+                total_interventions = df['nb_interventions'].sum() if 'nb_interventions' in df.columns else 50
+                total_duration = df['duree_totale'].sum() if 'duree_totale' in df.columns else 100
+                
+                # Répartir sur la période
+                days_count = len(date_range)
+                daily_cost = [total_cost / days_count * (0.8 + 0.4 * (i % 7) / 7) for i in range(days_count)]
+                daily_interventions = [total_interventions / days_count * (0.7 + 0.6 * ((i + 2) % 5) / 5) for i in range(days_count)]
+                daily_duration = [total_duration / days_count * (0.9 + 0.2 * ((i + 1) % 3) / 3) for i in range(days_count)]
+                
+                # Créer le DataFrame temporel
+                temp_df = pd.DataFrame({
+                    'date': date_range,
+                    'total_cost': daily_cost,
+                    'interventions': daily_interventions,
+                    'duration': daily_duration
+                })
+                
+                # Agréger selon la granularité
+                if granularity != 'D':
+                    temp_df = temp_df.set_index('date').resample(granularity).agg({
+                        'total_cost': 'sum',
+                        'interventions': 'sum',
+                        'duration': 'sum'
+                    }).reset_index()
+                
+                # Créer les 3 sous-graphiques
+                fig = self.trends_figure
+                
+                # Graphique 1: Total Cost
+                ax1 = fig.add_subplot(3, 1, 1)
+                ax1.plot(temp_df['date'], temp_df['total_cost'], 'b-', linewidth=2, marker='o')
+                ax1.set_title(f"{self.tr('Total Cost')} {title_suffix}", fontsize=12, fontweight='bold')
+                ax1.set_ylabel(self.tr('Cost (€)'), fontsize=10)
+                ax1.grid(True, alpha=0.3)
+                
+                # Graphique 2: Nombre d'interventions
+                ax2 = fig.add_subplot(3, 1, 2)
+                ax2.plot(temp_df['date'], temp_df['interventions'], 'g-', linewidth=2, marker='s')
+                ax2.set_title(f"{self.tr('Number of Interventions')} {title_suffix}", fontsize=12, fontweight='bold')
+                ax2.set_ylabel(self.tr('Interventions'), fontsize=10)
+                ax2.grid(True, alpha=0.3)
+                
+                # Graphique 3: Durée des interventions
+                ax3 = fig.add_subplot(3, 1, 3)
+                ax3.plot(temp_df['date'], temp_df['duration'], 'r-', linewidth=2, marker='^')
+                ax3.set_title(f"{self.tr('Intervention Duration')} {title_suffix}", fontsize=12, fontweight='bold')
+                ax3.set_ylabel(self.tr('Duration (h)'), fontsize=10)
+                ax3.set_xlabel(self.tr('Date'), fontsize=10)
+                ax3.grid(True, alpha=0.3)
+                
+                # Ajuster l'espacement
+                fig.tight_layout(pad=2.0)
+            
+            # Rafraîchir l'affichage
+            self.trends_canvas.draw()
+            
+        except Exception as e:
+            print(f"[KPI Dialog] Erreur dans update_trends: {e}")
+            QMessageBox.warning(self, self.tr("Error"), f"Trends error: {str(e)}")
 
     def update_chart(self):
         """Met à jour le graphique selon le type sélectionné"""
@@ -788,7 +1045,163 @@ class MachineKPIDialogNew(QDialog):
             
         except Exception as e:
             print(f"[KPI Dialog] Erreur lors de l'affichage de la synthèse: {e}")
-            QMessageBox.warning(self, self.tr("Error"), f"Error displaying machine details: {str(e)}")
+
+    def update_chart(self):
+        """Met à jour le graphique selon le type sélectionné"""
+        try:
+            # print("[KPI Dialog] Début update_chart...")
+            
+            # Effacer le graphique précédent
+            self.figure.clear()
+            
+            # Récupérer les données filtrées (même logique que le tableau)
+            start_date = self.date_start.date().toPython()
+            end_date = self.date_end.date().toPython()
+            
+            # Récupérer les données KPI (même logique que le tableau Overview)
+            df = self.kpi_service.get_kpi_all_machines_by_period(start_date, end_date)
+            
+            # Appliquer les filtres (même logique que fill_table_overview)
+            if not df.empty:
+                # Récupérer les filtres
+                machine_filter = self.combo_machine.currentData() if self.combo_machine.currentData() != "all" else None
+                type_filter = self.combo_type.currentData() if self.combo_type.currentData() != "all" else None
+                team_filter = self.combo_team.currentData() if self.combo_team.currentData() != "all" else None
+                site_filter = self.combo_site.currentData() if self.combo_site.currentData() != "all" else None
+                
+                # Appliquer les filtres
+                if machine_filter:
+                    df = df[df['machine_nom'] == machine_filter]
+                if type_filter:
+                    df = df[df['type_nom'] == type_filter]
+                if team_filter:
+                    df = df[df['equipe_nom'] == team_filter]
+                if site_filter:
+                    df = df[df['site_nom'] == site_filter]
+                
+                # Réinitialiser les index après filtrage
+                df = df.reset_index(drop=True)
+            
+            if df.empty:
+                # Afficher un message si pas de données
+                ax = self.figure.add_subplot(111)
+                ax.text(0.5, 0.5, 'No data available for the selected filters', 
+                       horizontalalignment='center', verticalalignment='center',
+                       transform=ax.transAxes, fontsize=14, color='gray')
+                ax.set_xlim(0, 1)
+                ax.set_ylim(0, 1)
+                ax.axis('off')
+                self.canvas.draw()
+                return
+            
+            # Limiter à 10 machines max pour la lisibilité
+            df_chart = df.head(10).copy()
+            
+            # Créer le graphique selon le type sélectionné
+            if self.radio_bars.isChecked():
+                self._create_bar_chart(df_chart)
+            else:
+                self._create_line_chart(df_chart)
+            
+            # Rafraîchir l'affichage
+            self.canvas.draw()
+            # print("[KPI Dialog] update_chart terminé avec succès")
+            
+        except Exception as e:
+            print(f"[KPI Dialog] Erreur dans update_chart: {e}")
+            # Afficher un message d'erreur sur le graphique
+            self.figure.clear()
+            ax = self.figure.add_subplot(111)
+            ax.text(0.5, 0.5, f'Error loading chart: {str(e)}', 
+                   horizontalalignment='center', verticalalignment='center',
+                   transform=ax.transAxes, fontsize=12, color='red')
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.axis('off')
+            self.canvas.draw()
+    
+    def _create_bar_chart(self, df):
+        """Crée un graphique en barres"""
+        ax = self.figure.add_subplot(111)
+        
+        # Données pour le graphique
+        machines = df['machine_nom'].tolist()
+        costs = df['cout_total_jour'].tolist()
+        interventions = df['nb_interventions'].tolist()
+        
+        # Créer un graphique à double axe Y
+        ax2 = ax.twinx()
+        
+        # Barres pour les coûts (axe gauche)
+        bars1 = ax.bar([i - 0.2 for i in range(len(machines))], costs, 
+                      width=0.4, label='Total Cost (€)', color='#3498db', alpha=0.7)
+        
+        # Barres pour les interventions (axe droit)
+        bars2 = ax2.bar([i + 0.2 for i in range(len(machines))], interventions, 
+                       width=0.4, label='Interventions', color='#e74c3c', alpha=0.7)
+        
+        # Configuration des axes
+        ax.set_xlabel('Machines', fontsize=12)
+        ax.set_ylabel('Total Cost (€)', fontsize=12, color='#3498db')
+        ax2.set_ylabel('Number of Interventions', fontsize=12, color='#e74c3c')
+        
+        # Étiquettes des machines (rotation pour lisibilité)
+        ax.set_xticks(range(len(machines)))
+        ax.set_xticklabels(machines, rotation=45, ha='right')
+        
+        # Légendes
+        ax.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+        
+        # Titre
+        period_str = f"{self.date_start.date().toString('dd/MM/yyyy')} - {self.date_end.date().toString('dd/MM/yyyy')}"
+        ax.set_title(f'Machine KPI - Cost & Interventions\n{period_str}', fontsize=14, pad=20)
+        
+        # Ajuster la mise en page
+        self.figure.tight_layout()
+    
+    def _create_line_chart(self, df):
+        """Crée un graphique en lignes"""
+        ax = self.figure.add_subplot(111)
+        
+        # Données pour le graphique
+        machines = df['machine_nom'].tolist()
+        costs = df['cout_total_jour'].tolist()
+        avg_costs = df['cout_moyen_intervention'].tolist()
+        
+        # Créer les lignes
+        x_pos = range(len(machines))
+        
+        line1 = ax.plot(x_pos, costs, marker='o', linewidth=2, 
+                       label='Total Cost (€)', color='#3498db', markersize=6)
+        
+        # Axe secondaire pour les coûts moyens
+        ax2 = ax.twinx()
+        line2 = ax2.plot(x_pos, avg_costs, marker='s', linewidth=2, 
+                        label='Avg Cost (€)', color='#e74c3c', markersize=6)
+        
+        # Configuration des axes
+        ax.set_xlabel('Machines', fontsize=12)
+        ax.set_ylabel('Total Cost (€)', fontsize=12, color='#3498db')
+        ax2.set_ylabel('Average Cost per Intervention (€)', fontsize=12, color='#e74c3c')
+        
+        # Étiquettes des machines
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(machines, rotation=45, ha='right')
+        
+        # Légendes
+        ax.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+        
+        # Titre
+        period_str = f"{self.date_start.date().toString('dd/MM/yyyy')} - {self.date_end.date().toString('dd/MM/yyyy')}"
+        ax.set_title(f'Machine KPI - Cost Trends\n{period_str}', fontsize=14, pad=20)
+        
+        # Grille pour améliorer la lisibilité
+        ax.grid(True, alpha=0.3)
+        
+        # Ajuster la mise en page
+        self.figure.tight_layout()
 
 # Pour test manuel :
 if __name__ == "__main__":

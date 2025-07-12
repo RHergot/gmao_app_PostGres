@@ -42,6 +42,7 @@ class KPIService:
             'cout_pieces_jour': 'sum',
             'cout_frais_externes_jour': 'sum',
             'cout_moyen_intervention': 'mean',
+            'duree_totale': 'sum',  # Temps total des interventions
             'duree_moyenne_h': 'mean',
             'cout_moyen_par_heure': 'mean',
             'cout_min': 'min',
@@ -83,6 +84,7 @@ class KPIService:
             'cout_pieces_jour': 'sum',
             'cout_frais_externes_jour': 'sum',
             'cout_moyen_intervention': 'mean',
+            'duree_totale': 'sum',  # Temps total des interventions
             'duree_moyenne_h': 'mean',
             'cout_moyen_par_heure': 'mean',
             'cout_min': 'min',
