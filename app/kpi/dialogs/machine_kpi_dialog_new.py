@@ -44,8 +44,8 @@ class MachineKPIDialogNew(QDialog):
         # --- Setup QTranslator (en anglais par défaut) ---
         self.translator = QTranslator(self)
         self.setWindowTitle(self.tr("KPI Machines"))
-        self.setFixedSize(1600, 900)
-        
+        # self.setFixedSize(1600, 900)
+        self.setGeometry(100, 100, 1920, 1080)  # Positionner la fenêtre au centre de l'écran
         # Layout principal
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(10)
