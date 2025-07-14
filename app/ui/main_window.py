@@ -933,17 +933,10 @@ class MainWindow(QMainWindow):
         self.demande_intervention_action = QAction(self.tr("Demande Intervention"), self)
         self.demande_intervention_action.setStatusTip(self.tr("Accéder au formulaire de demande d'intervention"))
 
-        # Action pour Dashboard KPI Financiers
-        self.kpi_dashboard_action = QAction(self.tr("Dashboard KPI"), self)
-        self.kpi_dashboard_action.setStatusTip(self.tr("Accéder aux indicateurs de performance financiers"))
-        self.kpi_dashboard_action.triggered.connect(self.show_kpi_dashboard)
-
         # Action pour KPI Machines (nouvelle version)
         self.machine_kpi_action = QAction(self.tr("KPI Machines"), self)
         self.machine_kpi_action.setStatusTip(self.tr("Analyse des performances machines avec graphiques et tendances"))
         self.machine_kpi_action.triggered.connect(self.show_machine_kpi_dialog)
-
-        # Les actions pour les KPI spécialisés ont été supprimées pour ne garder que le dashboard.
 
     def create_menu_bar(self):
         """
@@ -1036,14 +1029,11 @@ class MainWindow(QMainWindow):
 
         # --- Menu KPI & Analyses (menu principal) ---
         # Ce menu regroupe tous les tableaux de bord et analyses de performance
-        if hasattr(self, 'kpi_dashboard_action') and self.kpi_dashboard_action:
+        if hasattr(self, 'machine_kpi_action') and self.machine_kpi_action:
             kpi_menu = menu_bar.addMenu(self.tr(" KPI & Analyses"))
             kpi_menu.setStatusTip("Accéder aux tableaux de bord et analyses de performance")
             
-            # Seul le dashboard principal est ajouté au menu.
-            kpi_menu.addAction(self.kpi_dashboard_action)
-            
-            # KPI Machines (nouvelle version avec graphiques)
+            # KPI Machines (nouvelle version avec graphiques et tendances)
             if hasattr(self, 'machine_kpi_action') and self.machine_kpi_action:
                 kpi_menu.addAction(self.machine_kpi_action)
         
