@@ -1036,6 +1036,13 @@ class MainWindow(QMainWindow):
             # KPI Machines (nouvelle version avec graphiques et tendances)
             if hasattr(self, 'machine_kpi_action') and self.machine_kpi_action:
                 kpi_menu.addAction(self.machine_kpi_action)
+            # Ajout du sous-menu BI Reporting
+            # from PySide6.QtWidgets import QAction
+            bi_reporting_action = QAction(self.tr("BI Reporting"), self)
+            bi_reporting_action.setStatusTip(self.tr("Ouvrir le module de reporting BI"))
+            bi_reporting_action.triggered.connect(self.launch_bi_reporting)
+            kpi_menu.addSeparator()
+            kpi_menu.addAction(bi_reporting_action)
         
         # --- Menu Configuration (menu principal) ---
         # Ce menu regroupe tous les paramètres système et référentiels
@@ -1180,6 +1187,20 @@ class MainWindow(QMainWindow):
         if ok:
             dialog = MaintenanceDetailDialog(maintenance_id, maintenance_service=self.maintenance_service, parent=self)
             dialog.exec()
+
+    def launch_bi_reporting(self):
+        """Lance l'application de reporting BI dans un environnement séparé."""
+        import subprocess
+        import os
+        from PySide6.QtWidgets import QMessageBox
+
+        # Définir le chemin vers le script principal du BI Reporting
+        bi_reporting_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../Projets/Graph/main.py"))
+        try:
+            subprocess.Popen(["python", bi_reporting_path])
+            self.show_popup("BI Reporting", "L'application de reporting BI a été lancée.", QMessageBox.Information)
+        except Exception as e:
+            self.show_popup("Erreur", f"Impossible de lancer l'application BI Reporting: {str(e)}", QMessageBox.Critical)
 
     def show_about_dialog(self):
         """Affiche une boîte de dialogue avec les informations sur l'application."""
