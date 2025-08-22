@@ -1,3 +1,0 @@
-[flake8]
-exclude = .venv,migrations
-ignore = E501, W503
