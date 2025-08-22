@@ -20,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-xfixes0 \
     libxcb-randr0 \
     libxcb-util1 \
-    libgl1-mesa-glx \
     build-essential \
     libpq-dev \
     locales \

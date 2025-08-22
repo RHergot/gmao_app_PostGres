@@ -1,3 +1,4 @@
+
 # gmao_app/main.py
 """
 Point d'entrée principal de l'application GMAO.

@@ -925,9 +925,12 @@ class MainWindow(QMainWindow):
             self.manage_techniciens_action.setEnabled(False)
 
         # Action pour Gérer les Compteurs
-        self.manage_compteurs_action = QAction(self.tr("Gérer les Compteurs"), self)
-        self.manage_compteurs_action.setStatusTip(self.tr("Accéder à la gestion des compteurs"))
-        self.manage_compteurs_action.triggered.connect(self.show_compteur_dialog)
+        if can_access("Gérer les Compteurs", self.user_role):
+            self.manage_compteurs_action = QAction(self.tr("Gérer les Compteurs"), self)
+            self.manage_compteurs_action.setStatusTip(self.tr("Accéder à la gestion des compteurs"))
+            self.manage_compteurs_action.triggered.connect(self.show_compteur_dialog)
+        else:
+            self.manage_compteurs_action = None
 
         # Action pour Demande Intervention
         self.demande_intervention_action = QAction(self.tr("Demande Intervention"), self)
@@ -1079,6 +1082,11 @@ class MainWindow(QMainWindow):
                 config_menu.addAction(self.manage_equipes_action)
             if hasattr(self, 'manage_techniciens_action') and self.manage_techniciens_action:
                 config_menu.addAction(self.manage_techniciens_action)
+                
+            # Action pour gérer les compteurs des machines
+            if hasattr(self, 'manage_compteurs_action') and self.manage_compteurs_action:
+                config_menu.addSeparator()
+                config_menu.addAction(self.manage_compteurs_action)
 
         # --- Menu Aide ---
         # Ce menu contient les actions d'assistance et d'information sur l'application

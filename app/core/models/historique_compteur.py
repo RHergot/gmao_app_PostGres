@@ -42,7 +42,7 @@ class HistoriqueCompteur:
         try:
             hist_id = row['id_historique']
             if hist_id is None:
-                 logger.error(f"Erreur critique: id_historique est NULL dans DB pour ligne: {dict(row) if hasattr(row, "keys") else row}")
+                 logger.error(f"Erreur critique: id_historique est NULL dans DB pour ligne: {dict(row) if hasattr(row, 'keys') else row}")
                  return None
 
             # Conversion du timestamp
@@ -66,7 +66,7 @@ class HistoriqueCompteur:
             return instance
 
         except KeyError as e:
-             logger.error(f"Clé manquante '{e}' lors création HistoriqueCompteur (ID log: {hist_id_for_log}). Colonnes: {row.keys() if hasattr(row, "keys") else 'N/A'}")
+             logger.error(f"Clé manquante '{e}' lors création HistoriqueCompteur (ID log: {hist_id_for_log}). Colonnes: {row.keys() if hasattr(row, 'keys') else 'N/A'}")
              return None
         except (ValueError, TypeError) as e:
             logger.error(f"Erreur type/conversion création HistoriqueCompteur ID {hist_id_for_log} depuis DB: {e}", exc_info=True)

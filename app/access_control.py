@@ -10,6 +10,7 @@ MENU_RIGHTS = {
     "Gérer les Machines":          {"Admin": True, "Responsable": True, "Technicien": False,  "Gestionnaire Stock": False, "Lecteur": False},
     "Gérer les Fabricants":        {"Admin": True, "Responsable": True, "Technicien": False, "Gestionnaire Stock": False, "Lecteur": False},
     "Gérer les Équipes":           {"Admin": True, "Responsable": True, "Technicien": False, "Gestionnaire Stock": False, "Lecteur": False},
+    "Gérer les Compteurs":         {"Admin": True, "Responsable": True, "Technicien": False, "Gestionnaire Stock": False, "Lecteur": False},
     "Gérer le Stock":              {"Admin": True, "Responsable": True, "Technicien": False, "Gestionnaire Stock": True,  "Lecteur": False},
     "Gérer les Fournisseurs":      {"Admin": True, "Responsable": True, "Technicien": True,  "Gestionnaire Stock": True,  "Lecteur": False},
     "Configuration":               {"Admin": True, "Responsable": True, "Technicien": False, "Gestionnaire Stock": False, "Lecteur": False},
