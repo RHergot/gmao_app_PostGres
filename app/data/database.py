@@ -6,6 +6,7 @@ import psycopg2
 import psycopg2.extras
 import logging
 import os
+import socket
 from contextlib import contextmanager
 from app.config import (
     DATABASE_TYPE,
@@ -54,13 +55,27 @@ def get_connection():  # type: ignore
             print("="*50 + "\n")
             # --- Fin DEBUG ---
 
+            # Validation proactive du nom d'hôte (message d'erreur plus clair que psycopg2)
+            try:
+                resolved_ip = socket.gethostbyname(POSTGRES_HOST)
+                logger.debug(f"Résolution DNS: {POSTGRES_HOST} -> {resolved_ip}")
+            except Exception as dns_err:
+                hint = ""
+                if POSTGRES_HOST in ("db", "postgres"):
+                    hint = (
+                        "Astuce: 'db'/'postgres' ne résout que dans un réseau Docker où un service Postgres porte ce nom. "
+                        "Si vous exécutez l'application hors Docker ou sans service Postgres dans docker-compose, indiquez l'IP/hostname réel dans .env."
+                    )
+                logger.error(f"Impossible de résoudre le nom d'hôte '{POSTGRES_HOST}': {dns_err}")
+                raise DatabaseError(f"Nom d'hôte PostgreSQL invalide: {POSTGRES_HOST}. {hint}") from dns_err
+
             logger.info(f"Tentative de connexion à la base PostgreSQL sur {POSTGRES_HOST}:{POSTGRES_PORT}...")
             _connection = psycopg2.connect(
                 dbname=POSTGRES_DB,
                 user=POSTGRES_USER,
                 password=POSTGRES_PASSWORD,
                 host=POSTGRES_HOST,
-                port=POSTGRES_PORT,
+                port=int(POSTGRES_PORT) if isinstance(POSTGRES_PORT, str) and POSTGRES_PORT.isdigit() else POSTGRES_PORT,
                 cursor_factory=psycopg2.extras.RealDictCursor
             )
             logger.info("Connexion à la base PostgreSQL réussie.")
