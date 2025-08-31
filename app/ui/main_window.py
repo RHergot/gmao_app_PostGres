@@ -925,13 +925,14 @@ class MainWindow(QMainWindow):
             self.manage_techniciens_action.setEnabled(False)
 
         # Action pour Gérer les Compteurs
+        '''
         if can_access("Gérer les Compteurs", self.user_role):
             self.manage_compteurs_action = QAction(self.tr("Gérer les Compteurs"), self)
             self.manage_compteurs_action.setStatusTip(self.tr("Accéder à la gestion des compteurs"))
             self.manage_compteurs_action.triggered.connect(self.show_compteur_dialog)
         else:
             self.manage_compteurs_action = None
-
+        '''
         # Action pour Demande Intervention
         self.demande_intervention_action = QAction(self.tr("Demande Intervention"), self)
         self.demande_intervention_action.setStatusTip(self.tr("Accéder au formulaire de demande d'intervention"))
