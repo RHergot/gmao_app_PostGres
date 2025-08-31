@@ -399,3 +399,4 @@ test_*.py
 debug_*.py
 
 # === Fin ===
+.env
