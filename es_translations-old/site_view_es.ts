@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -102,7 +102,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/site_view.py" line="203"/>
-        <source>Le site n'existe plus.</source>
+        <source>Le site n&apos;existe plus.</source>
         <translation>El sitio ya no existe.</translation>
     </message>
     <message>
@@ -137,8 +137,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/site_view.py" line="240"/>
-        <source>Êtes-vous sûr de vouloir supprimer le site '{nom}' ?</source>
-        <translation>¿Estás seguro de querer borrar el sitio '{name}'?</translation>
+        <source>Êtes-vous sûr de vouloir supprimer le site &apos;{nom}&apos; ?</source>
+        <translation>¿Estás seguro de querer borrar el sitio &apos;{name}&apos;?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/site_view.py" line="250"/>

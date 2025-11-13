@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -99,8 +99,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="195"/>
-        <source>Équipe '%1' créée.</source>
-        <translation>El equipo '%1' creó.</translation>
+        <source>Équipe &apos;%1&apos; créée.</source>
+        <translation>El equipo &apos;%1&apos; creó.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="198"/>
@@ -123,13 +123,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="212"/>
-        <source>Équipe n'existe plus.</source>
+        <source>Équipe n&apos;existe plus.</source>
         <translation>El equipo ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="221"/>
-        <source>Équipe '%1' mise à jour.</source>
-        <translation>Actualización del equipo '@P0@@'.</translation>
+        <source>Équipe &apos;%1&apos; mise à jour.</source>
+        <translation>Actualización del equipo &apos;@P0@@&apos;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="224"/>
@@ -164,13 +164,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="241"/>
-        <source>Supprimer l'équipe '%1'?</source>
-        <translation>Eliminar el equipo '@P0@@@'?</translation>
+        <source>Supprimer l&apos;équipe &apos;%1&apos;?</source>
+        <translation>Eliminar el equipo &apos;@P0@@@&apos;?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="248"/>
-        <source>Équipe '%1' supprimée.</source>
-        <translation>Equipo '@P0@@' eliminado.</translation>
+        <source>Équipe &apos;%1&apos; supprimée.</source>
+        <translation>Equipo &apos;@P0@@&apos; eliminado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/equipe_view.py" line="251"/>

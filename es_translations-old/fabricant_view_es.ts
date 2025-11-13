@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -105,8 +105,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="178"/>
-        <source>Fabricant '{0}' créé.</source>
-        <translation>Fabricante '{0}' creado.</translation>
+        <source>Fabricant &apos;{0}&apos; créé.</source>
+        <translation>Fabricante &apos;{0}&apos; creado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="181"/>
@@ -128,13 +128,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="194"/>
-        <source>Fabricant n'existe plus.</source>
+        <source>Fabricant n&apos;existe plus.</source>
         <translation>El fabricante ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="204"/>
-        <source>Fabricant '{0}' mis à jour.</source>
-        <translation>Fabricante '{0}' actualizado.</translation>
+        <source>Fabricant &apos;{0}&apos; mis à jour.</source>
+        <translation>Fabricante &apos;{0}&apos; actualizado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="207"/>
@@ -162,15 +162,15 @@
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="231"/>
-        <source>Supprimer le fabricant '{0}'?
+        <source>Supprimer le fabricant &apos;{0}&apos;?
 (Impossible si des machines y sont associées).</source>
-        <translation>Quitar el fabricante '{0}'?
+        <translation>Quitar el fabricante &apos;{0}&apos;?
 (Imposible si las máquinas asociadas).</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="240"/>
-        <source>Fabricant '{0}' supprimé.</source>
-        <translation>Fabricante '{0}' eliminado.</translation>
+        <source>Fabricant &apos;{0}&apos; supprimé.</source>
+        <translation>Fabricante &apos;{0}&apos; eliminado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fabricant_view.py" line="243"/>

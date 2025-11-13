@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -35,7 +35,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="98"/>
-        <source>Démarrer, Suspendre ou Reprendre l'OT sélectionné</source>
+        <source>Démarrer, Suspendre ou Reprendre l&apos;OT sélectionné</source>
         <translation>Inicio, Suspend o Reto Selecto OT</translation>
     </message>
     <message>
@@ -102,7 +102,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="133"/>
-        <source>Imprimer le rapport d'intervention de l'OT sélectionné</source>
+        <source>Imprimer le rapport d&apos;intervention de l&apos;OT sélectionné</source>
         <translation>Imprimir el informe de intervención OT seleccionado</translation>
     </message>
     <message>
@@ -112,7 +112,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="139"/>
-        <source>Générer un PDF de l'OT sélectionné</source>
+        <source>Générer un PDF de l&apos;OT sélectionné</source>
         <translation>Generar OT PDF seleccionado</translation>
     </message>
     <message>
@@ -195,7 +195,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="287"/>
-        <source>Certaines données n'ont pas pu être chargées :</source>
+        <source>Certaines données n&apos;ont pas pu être chargées :</source>
         <translation>Algunos datos no se pueden cargar:</translation>
     </message>
     <message>
@@ -248,8 +248,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="572"/>
-        <source>OT n'existe plus.</source>
-        <translation>OT n'existe plus.</translation>
+        <source>OT n&apos;existe plus.</source>
+        <translation>OT n&apos;existe plus.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="601"/>
@@ -258,8 +258,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="601"/>
-        <source>Ne peut supprimer OT '%1'.</source>
-        <translation>No borre OT '@P0@@@'.</translation>
+        <source>Ne peut supprimer OT &apos;%1&apos;.</source>
+        <translation>No borre OT &apos;@P0@@@&apos;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="604"/>
@@ -269,8 +269,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="604"/>
-        <source>Supprimer OT '%1'?</source>
-        <translation>Supprimer OT '@P0@@'?</translation>
+        <source>Supprimer OT &apos;%1&apos;?</source>
+        <translation>Supprimer OT &apos;@P0@@&apos;?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="607"/>
@@ -282,8 +282,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="607"/>
-        <source>OT '%1' supprimé.</source>
-        <translation>OT '%1@' borrado.</translation>
+        <source>OT &apos;%1&apos; supprimé.</source>
+        <translation>OT &apos;%1@&apos; borrado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="615"/>
@@ -299,8 +299,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="690"/>
-        <source>Rapport de maintenance (ID: %1) enregistré pour l'OT %2.
-Statut de l'OT mis à jour.</source>
+        <source>Rapport de maintenance (ID: %1) enregistré pour l&apos;OT %2.
+Statut de l&apos;OT mis à jour.</source>
         <translation>Informe de mantenimiento (ID: %1@) grabado para OT %2@.
 Actualizado estado OT.</translation>
     </message>
@@ -381,7 +381,7 @@ Actualizado estado OT.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="797"/>
-        <source>Confirmer l'annulation de l'OT %1?</source>
+        <source>Confirmer l&apos;annulation de l&apos;OT %1?</source>
         <translation>Confirmación de cancelación de OT %1?</translation>
     </message>
     <message>
@@ -456,7 +456,7 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="992"/>
-        <source>Rapport de maintenance (ID: %1) mis à jour pour l'OT %2.</source>
+        <source>Rapport de maintenance (ID: %1) mis à jour pour l&apos;OT %2.</source>
         <translation>Informe de mantenimiento (ID: %1@) actualizado para OT %2@.</translation>
     </message>
     <message>
@@ -487,17 +487,17 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1012"/>
-        <source>Sélectionnez un OT pour l'impression.</source>
+        <source>Sélectionnez un OT pour l&apos;impression.</source>
         <translation>Seleccione un OT para imprimir.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1037"/>
-        <source>Erreur d'impression</source>
+        <source>Erreur d&apos;impression</source>
         <translation>Error de impresión</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1037"/>
-        <source>Erreur lors de l'impression : %1</source>
+        <source>Erreur lors de l&apos;impression : %1</source>
         <translation>Impresión de error: %1@</translation>
     </message>
     <message>
@@ -514,7 +514,7 @@ Todos los OT se muestran.</translation>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1051"/>
         <location filename="../app/ui/views/ot_view.py" line="1329"/>
-        <source>Aucun rapport de maintenance pour l'OT %1.</source>
+        <source>Aucun rapport de maintenance pour l&apos;OT %1.</source>
         <translation>No hay informe de mantenimiento para OT %1.</translation>
     </message>
     <message>
@@ -524,7 +524,7 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1109"/>
-        <source>Le rapport d'intervention a été envoyé à l'imprimante.</source>
+        <source>Le rapport d&apos;intervention a été envoyé à l&apos;imprimante.</source>
         <translation>El informe de intervención fue enviado a la impresora.</translation>
     </message>
     <message>
@@ -534,12 +534,12 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1111"/>
-        <source>L'impression a été annulée.</source>
+        <source>L&apos;impression a été annulée.</source>
         <translation>La huella fue cancelada.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1114"/>
-        <source>Erreur lors de l'impression du rapport : %1</source>
+        <source>Erreur lors de l&apos;impression du rapport : %1</source>
         <translation>Informe de impresión de error: %1@@</translation>
     </message>
     <message>
@@ -554,20 +554,20 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1203"/>
-        <source>Aucun rapport de maintenance n'existe pour cet OT. Voulez-vous en créer une?</source>
+        <source>Aucun rapport de maintenance n&apos;existe pour cet OT. Voulez-vous en créer une?</source>
         <translation>No existe ningún informe de mantenimiento para este OT. ¿Quieres crear uno?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1249"/>
-        <source>Impossible d'ouvrir les détails de maintenance:
+        <source>Impossible d&apos;ouvrir les détails de maintenance:
 %1</source>
         <translation>No podía abrir detalles de mantenimiento:
 %1@</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1307"/>
-        <source>OT '%1' créé par duplication.</source>
-        <translation>OT '%1@' creado por duplicación.</translation>
+        <source>OT &apos;%1&apos; créé par duplication.</source>
+        <translation>OT &apos;%1@&apos; creado por duplicación.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1311"/>
@@ -576,14 +576,14 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1311"/>
-        <source>Impossible de créer l'OT dupliqué :
+        <source>Impossible de créer l&apos;OT dupliqué :
 %1</source>
         <translation>Incapaz de crear duplicado OT:
 %1@</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1314"/>
-        <source>Erreur inattendue lors de la création de l'OT dupliqué :
+        <source>Erreur inattendue lors de la création de l&apos;OT dupliqué :
 %1</source>
         <translation>Error inesperado al crear duplicado OT:
 %1@</translation>
@@ -609,7 +609,7 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1339"/>
-        <source>Erreur lors de l'ouverture des détails de maintenance : %1</source>
+        <source>Erreur lors de l&apos;ouverture des détails de maintenance : %1</source>
         <translation>Detalles de apertura de errores: %1@@</translation>
     </message>
     <message>
@@ -620,22 +620,22 @@ Todos los OT se muestran.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1413"/>
-        <source>Seuls les OT avec le statut 'Terminé' peuvent être archivés.</source>
-        <translation>Sólo se pueden archivar los OT con el estado "Terminado".</translation>
+        <source>Seuls les OT avec le statut &apos;Terminé&apos; peuvent être archivés.</source>
+        <translation>Sólo se pueden archivar los OT con el estado &quot;Terminado&quot;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1419"/>
-        <source>Confirmation d'archivage</source>
-        <translation>Confirmación d'archivage</translation>
+        <source>Confirmation d&apos;archivage</source>
+        <translation>Confirmación d&apos;archivage</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1420"/>
-        <source>Êtes-vous sûr de vouloir archiver l'OT {0} ?
+        <source>Êtes-vous sûr de vouloir archiver l&apos;OT {0} ?
 
-Cette action changera son statut vers 'Archivé'.</source>
+Cette action changera son statut vers &apos;Archivé&apos;.</source>
         <translation>¿Seguro que quieres archivar el OT?
 
-Esta acción cambiará su estatus a 'Arquivado'.</translation>
+Esta acción cambiará su estatus a &apos;Arquivado&apos;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1436"/>
@@ -644,25 +644,25 @@ Esta acción cambiará su estatus a 'Arquivado'.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1437"/>
-        <source>L'OT {0} a été archivé avec succès.</source>
+        <source>L&apos;OT {0} a été archivé avec succès.</source>
         <translation>El OT fue archivado con éxito.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1447"/>
-        <source>Erreur d'archivage</source>
+        <source>Erreur d&apos;archivage</source>
         <translation>Error de archivo</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1448"/>
-        <source>Impossible d'archiver l'OT :
+        <source>Impossible d&apos;archiver l&apos;OT :
 {0}</source>
         <translation>Incapaz de archivar OT:
 {0}</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1464"/>
-        <source>Seuls les OT avec le statut 'Archivé' peuvent être désarchivés.</source>
-        <translation>Sólo los OT con el estatus 'Arquivado' pueden ser anarquistas.</translation>
+        <source>Seuls les OT avec le statut &apos;Archivé&apos; peuvent être désarchivés.</source>
+        <translation>Sólo los OT con el estatus &apos;Arquivado&apos; pueden ser anarquistas.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1470"/>
@@ -671,12 +671,12 @@ Esta acción cambiará su estatus a 'Arquivado'.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1471"/>
-        <source>Êtes-vous sûr de vouloir désarchiver l'OT {0} ?
+        <source>Êtes-vous sûr de vouloir désarchiver l&apos;OT {0} ?
 
-Cette action changera son statut vers 'Terminé'.</source>
+Cette action changera son statut vers &apos;Terminé&apos;.</source>
         <translation>¿Estás seguro de que quieres unarquista OT?
 
-Esta acción cambiará su estatus a 'Terminé'.</translation>
+Esta acción cambiará su estatus a &apos;Terminé&apos;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1487"/>
@@ -685,8 +685,8 @@ Esta acción cambiará su estatus a 'Terminé'.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1488"/>
-        <source>L'OT {0} a été désarchivé avec succès et son statut est maintenant 'Terminé'.</source>
-        <translation>The OT {0} was successfully unrchived and its status is now 'Terminated'.</translation>
+        <source>L&apos;OT {0} a été désarchivé avec succès et son statut est maintenant &apos;Terminé&apos;.</source>
+        <translation>The OT {0} was successfully unrchived and its status is now &apos;Terminated&apos;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1498"/>
@@ -695,7 +695,7 @@ Esta acción cambiará su estatus a 'Terminé'.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/ot_view.py" line="1499"/>
-        <source>Impossible de désarchiver l'OT :
+        <source>Impossible de désarchiver l&apos;OT :
 {0}</source>
         <translation>Inalcanzable para inalterable OT:
 {0}</translation>

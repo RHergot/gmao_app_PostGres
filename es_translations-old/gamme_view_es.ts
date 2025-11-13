@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -123,18 +123,18 @@
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="258"/>
-        <source>Gamme '{new_gamme.description}' créée.</source>
-        <translation>Rango '{new_gamme.description} creado.</translation>
+        <source>Gamme &apos;{new_gamme.description}&apos; créée.</source>
+        <translation>Rango &apos;{new_gamme.description} creado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="272"/>
-        <source>Gamme n'existe plus.</source>
+        <source>Gamme n&apos;existe plus.</source>
         <translation>El rango ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="290"/>
-        <source>Gamme '{updated.description}' mise à jour.</source>
-        <translation>Rango '{updated.description}' actualizado.</translation>
+        <source>Gamme &apos;{updated.description}&apos; mise à jour.</source>
+        <translation>Rango &apos;{updated.description}&apos; actualizado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="307"/>
@@ -143,13 +143,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="307"/>
-        <source>Supprimer gamme '{desc}' et toutes ses étapes/pièces liées?</source>
-        <translation>Quitar el rango '{desc}' y todos sus pasos/partes relacionados?</translation>
+        <source>Supprimer gamme &apos;{desc}&apos; et toutes ses étapes/pièces liées?</source>
+        <translation>Quitar el rango &apos;{desc}&apos; y todos sus pasos/partes relacionados?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="310"/>
-        <source>Gamme '{desc}' supprimée.</source>
-        <translation>Rango '{desc}' eliminado.</translation>
+        <source>Gamme &apos;{desc}&apos; supprimée.</source>
+        <translation>Rango &apos;{desc}&apos; eliminado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/gamme_view.py" line="322"/>

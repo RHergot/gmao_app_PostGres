@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -155,13 +155,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/piece_view.py" line="363"/>
-        <source>Supprimer pièce '{nom}'?</source>
+        <source>Supprimer pièce &apos;{nom}&apos;?</source>
         <translation>¿Supprimer pièce?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/piece_view.py" line="366"/>
-        <source>Pièce '{nom}' supprimée.</source>
-        <translation>Exhibición '{name}' eliminada.</translation>
+        <source>Pièce &apos;{nom}&apos; supprimée.</source>
+        <translation>Exhibición &apos;{name}&apos; eliminada.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/piece_view.py" line="368"/>

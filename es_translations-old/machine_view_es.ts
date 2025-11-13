@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -195,8 +195,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="531"/>
-        <source>Machine '{nom}' créée avec succès.</source>
-        <translation>La máquina '{name}' creó con éxito.</translation>
+        <source>Machine &apos;{nom}&apos; créée avec succès.</source>
+        <translation>La máquina &apos;{name}&apos; creó con éxito.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="534"/>
@@ -230,13 +230,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="552"/>
-        <source>La machine sélectionnée n'existe plus.</source>
+        <source>La machine sélectionnée n&apos;existe plus.</source>
         <translation>La máquina seleccionada ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="565"/>
-        <source>Machine '{nom}' mise à jour.</source>
-        <translation>Máquina '{name}' actualizada.</translation>
+        <source>Machine &apos;{nom}&apos; mise à jour.</source>
+        <translation>Máquina &apos;{name}&apos; actualizada.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="568"/>
@@ -269,15 +269,15 @@
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="597"/>
-        <source>Êtes-vous sûr de vouloir supprimer la machine '{nom}'?
+        <source>Êtes-vous sûr de vouloir supprimer la machine &apos;{nom}&apos;?
 Cette action peut échouer si elle est référencée (OT, Maintenance...).</source>
-        <translation>¿Estás seguro de querer borrar la máquina '{name}'?
+        <translation>¿Estás seguro de querer borrar la máquina &apos;{name}&apos;?
 Esta acción puede fallar si se refiere (OT, Mantenimiento...).</translation>
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="607"/>
-        <source>Machine '{nom}' supprimée.</source>
-        <translation>Máquina '{name}' borrada.</translation>
+        <source>Machine &apos;{nom}&apos; supprimée.</source>
+        <translation>Máquina &apos;{name}&apos; borrada.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="610"/>
@@ -313,7 +313,7 @@ Esta acción puede fallar si se refiere (OT, Mantenimiento...).</translation>
     </message>
     <message>
         <location filename="../app/ui/views/machine_view.py" line="664"/>
-        <source>Impossible d'ouvrir le dialogue des compteurs:
+        <source>Impossible d&apos;ouvrir le dialogue des compteurs:
 {err}</source>
         <translation>No se puede abrir el cuadro de diálogo:
 {err}</translation>

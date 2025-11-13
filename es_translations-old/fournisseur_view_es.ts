@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -84,8 +84,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="168"/>
-        <source>Fournisseur '{nom}' créé.</source>
-        <translation>Proveedor '{name}' creado.</translation>
+        <source>Fournisseur &apos;{nom}&apos; créé.</source>
+        <translation>Proveedor &apos;{name}&apos; creado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="170"/>
@@ -97,13 +97,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="178"/>
-        <source>Fourn. n'existe plus.</source>
+        <source>Fourn. n&apos;existe plus.</source>
         <translation>Cuatro, ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="185"/>
-        <source>Fournisseur '{nom}' mis à jour.</source>
-        <translation>Proveedor actualizado '{name}'.</translation>
+        <source>Fournisseur &apos;{nom}&apos; mis à jour.</source>
+        <translation>Proveedor actualizado &apos;{name}&apos;.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="197"/>
@@ -112,13 +112,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="197"/>
-        <source>Supprimer fournisseur '{nom}'?</source>
-        <translation>Eliminar proveedor '{name}'?</translation>
+        <source>Supprimer fournisseur &apos;{nom}&apos;?</source>
+        <translation>Eliminar proveedor &apos;{name}&apos;?</translation>
     </message>
     <message>
         <location filename="../app/ui/views/fournisseur_view.py" line="200"/>
-        <source>Fournisseur '{nom}' supprimé.</source>
-        <translation>Proveedor '{name}' eliminado.</translation>
+        <source>Fournisseur &apos;{nom}&apos; supprimé.</source>
+        <translation>Proveedor &apos;{name}&apos; eliminado.</translation>
     </message>
 </context>
 </TS>

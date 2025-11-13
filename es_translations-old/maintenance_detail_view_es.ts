@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -70,7 +70,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/maintenance_detail_view.py" line="147"/>
-        <source>Rapport d'intervention</source>
+        <source>Rapport d&apos;intervention</source>
         <translation>Informe de intervención</translation>
     </message>
     <message>
@@ -245,7 +245,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/maintenance_detail_view.py" line="472"/>
-        <source>Fonction d'impression à implémenter.</source>
+        <source>Fonction d&apos;impression à implémenter.</source>
         <translation>Función de impresión a implementar.</translation>
     </message>
     <message>
@@ -255,7 +255,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/maintenance_detail_view.py" line="475"/>
-        <source>Impossible d'imprimer le rapport:
+        <source>Impossible d&apos;imprimer le rapport:
 %1</source>
         <translation>No podía imprimir informe:
 %1@</translation>

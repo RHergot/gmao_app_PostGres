@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -119,8 +119,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="214"/>
-        <source>Technician '{tech_data.get('nom')}' created.</source>
-        <translation>Tecnico '{tech_data.get('nom')}' creado.</translation>
+        <source>Technician &apos;{tech_data.get(&apos;nom&apos;)}&apos; created.</source>
+        <translation>Tecnico &apos;{tech_data.get(&apos;nom&apos;)}&apos; creado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="217"/>
@@ -147,8 +147,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="239"/>
-        <source>Technician '{updated.nom_complet}' updated.</source>
-        <translation>Técnico '{updated.nom_complet}' actualizado.</translation>
+        <source>Technician &apos;{updated.nom_complet}&apos; updated.</source>
+        <translation>Técnico &apos;{updated.nom_complet}&apos; actualizado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="242"/>
@@ -176,15 +176,15 @@ e)</translation>
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="262"/>
-        <source>Delete technician '{nom}'?
+        <source>Delete technician &apos;{nom}&apos;?
 (Not possible if they have performed maintenance.)</source>
-        <translation>Eliminar técnico '{nom}'?
+        <translation>Eliminar técnico &apos;{nom}&apos;?
 (No es posible si han realizado mantenimiento.)</translation>
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="272"/>
-        <source>Technician '{nom}' deleted.</source>
-        <translation>Técnico '{nom}' eliminado.</translation>
+        <source>Technician &apos;{nom}&apos; deleted.</source>
+        <translation>Técnico &apos;{nom}&apos; eliminado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/technicien_view.py" line="275"/>

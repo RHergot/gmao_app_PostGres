@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -116,8 +116,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="183"/>
-        <source>Utilisateur '{user_data['login']}' créé avec succès.</source>
-        <translation>Usuario '{user_data['login']}' creado con éxito.</translation>
+        <source>Utilisateur &apos;{user_data[&apos;login&apos;]}&apos; créé avec succès.</source>
+        <translation>Usuario &apos;{user_data[&apos;login&apos;]}&apos; creado con éxito.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="186"/>
@@ -126,7 +126,7 @@
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="186"/>
-        <source>Impossible de créer l'utilisateur:
+        <source>Impossible de créer l&apos;utilisateur:
 {e}</source>
         <translation>No se puede crear usuario:
 {e}</translation>
@@ -144,13 +144,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="206"/>
-        <source>L'utilisateur sélectionné n'existe plus.</source>
+        <source>L&apos;utilisateur sélectionné n&apos;existe plus.</source>
         <translation>El usuario seleccionado ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="228"/>
-        <source>Utilisateur '{updated_user.login}' mis à jour avec succès.</source>
-        <translation>Usuario '{updated_user.login}' actualizado con éxito.</translation>
+        <source>Utilisateur &apos;{updated_user.login}&apos; mis à jour avec succès.</source>
+        <translation>Usuario &apos;{updated_user.login}&apos; actualizado con éxito.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="232"/>
@@ -159,14 +159,14 @@
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="232"/>
-        <source>Impossible de mettre à jour l'utilisateur:
+        <source>Impossible de mettre à jour l&apos;utilisateur:
 {e}</source>
         <translation>No puede actualizar el usuario:
 {e}</translation>
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="241"/>
-        <source>Impossible de charger l'utilisateur pour modification:
+        <source>Impossible de charger l&apos;utilisateur pour modification:
 {e}</source>
         <translation>No podía cargar usuario para la modificación:
 {e}</translation>
@@ -178,9 +178,9 @@
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="260"/>
-        <source>Êtes-vous sûr de vouloir supprimer l'utilisateur '{login}'?
+        <source>Êtes-vous sûr de vouloir supprimer l&apos;utilisateur &apos;{login}&apos;?
 Cette action est irréversible.</source>
-        <translation>¿Estás seguro de que quieres eliminar el usuario '{login}'?
+        <translation>¿Estás seguro de que quieres eliminar el usuario &apos;{login}&apos;?
 Esta acción es irreversible.</translation>
     </message>
     <message>
@@ -190,12 +190,12 @@ Esta acción es irreversible.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="274"/>
-        <source>Utilisateur '{login}' supprimé.</source>
-        <translation>Usuario '{login}' eliminado.</translation>
+        <source>Utilisateur &apos;{login}&apos; supprimé.</source>
+        <translation>Usuario &apos;{login}&apos; eliminado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/user_view.py" line="280"/>
-        <source>Impossible de supprimer l'utilisateur:
+        <source>Impossible de supprimer l&apos;utilisateur:
 {e}</source>
         <translation>No se puede borrar usuario:
 {e}</translation>

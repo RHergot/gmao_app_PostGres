@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="es_ES">
 <context>
@@ -64,8 +64,8 @@
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="164"/>
-        <source>Type '{tm_data.get('nom')}' créé.</source>
-        <translation>Tipo '{tm_data.get('nombre')}' creado.</translation>
+        <source>Type &apos;{tm_data.get(&apos;nom&apos;)}&apos; créé.</source>
+        <translation>Tipo &apos;{tm_data.get(&apos;nombre&apos;)}&apos; creado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="167"/>
@@ -87,13 +87,13 @@
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="180"/>
-        <source>Type n'existe plus.</source>
+        <source>Type n&apos;existe plus.</source>
         <translation>El tipo ya no existe.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="190"/>
-        <source>Type '{updated.nom}' mis à jour.</source>
-        <translation>Tipo '{updated.nom}' actualizado.</translation>
+        <source>Type &apos;{updated.nom}&apos; mis à jour.</source>
+        <translation>Tipo &apos;{updated.nom}&apos; actualizado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="193"/>
@@ -121,15 +121,15 @@
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="216"/>
-        <source>Supprimer le type '{nom}'?
+        <source>Supprimer le type &apos;{nom}&apos;?
 (Impossible si des machines/gammes y sont associées).</source>
-        <translation>Eliminar el tipo '{name}'?
+        <translation>Eliminar el tipo &apos;{name}&apos;?
 (Imposible si las máquinas/gams están asociadas con ellos).</translation>
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="225"/>
-        <source>Type '{nom}' supprimé.</source>
-        <translation>Tipo '{name}' borrado.</translation>
+        <source>Type &apos;{nom}&apos; supprimé.</source>
+        <translation>Tipo &apos;{name}&apos; borrado.</translation>
     </message>
     <message>
         <location filename="../app/ui/views/type_machine_view.py" line="228"/>
