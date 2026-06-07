@@ -60,3 +60,7 @@ python app/main.py
 ## Licence
 
 MIT — voir [LICENSE](LICENSE)
+
+## 🗄️ Schéma de base de données
+
+La base PostgreSQL est partagée par tous les modules. Voir **[docs/database-schema.md](docs/database-schema.md)** pour la liste complète des 50+ tables et 15 vues.
