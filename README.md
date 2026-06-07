@@ -21,6 +21,16 @@ Application de **Gestion de Maintenance Assistée par Ordinateur** (GMAO) dével
 | Traductions | Qt Linguist (.ts/.qm) |
 | PDF | Templates HTML + wkhtmltopdf |
 
+## Modules compagnons
+
+Cette application est le module principal de la suite. Les modules suivants partagent la même base de données :
+
+| Module | Description |
+|--------|-------------|
+| [gestion_stocks_app_PostGres](https://github.com/RHergot/gestion_stocks_app_PostGres) | Gestion des stocks et pièces détachées |
+| [Purchasing_Desk](https://github.com/RHergot/Purchasing_Desk) | Gestion des achats et appels d'offres |
+| [meta_portail](https://github.com/RHergot/meta_portail) | Lanceur/portail (optionnel) |
+
 ## Structure
 
 ```
