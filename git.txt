@@ -1,0 +1,18 @@
+# 1. Sauvegarder son travail
+git add -A
+git commit -m "description du changement"
+
+# 2. Récupérer les nouveautés du remote
+git pull --no-rebase
+
+# 3. Pousser son travail
+git push
+
+fichiers en conflits !
+
+# Voir les fichiers en conflit
+git status
+
+# Résoudre puis :
+git add <fichier_résolu>
+git commit -m "résolution conflit"
