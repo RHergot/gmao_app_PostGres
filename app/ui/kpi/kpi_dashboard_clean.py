@@ -7,6 +7,13 @@ Note sur la traduction :
 Ce module utilise un système de dictionnaire de traductions (TRANSLATIONS + get_text())
 pour des raisons de simplicité et d'isolement. Le reste de l'application utilise
 QTranslator + self.tr() qui est la méthode standard Qt.
+
+TODO(M9): Migrer ce module vers self.tr() au lieu du dictionnaire TRANSLATIONS + get_text().
+    - Remplacer TRANSLATIONS par des appels self.tr() dans toute la classe KPIDashboard
+    - Les modules base_kpi_dialog.py et machine_kpi_dialog.py ont aussi leurs propres
+      dictionnaires (SHARED_TRANSLATIONS, MACHINE_TRANSLATIONS) à migrer
+    - ATTENTION: Migration complète requise — ne pas faire de migration partielle
+    - Cette migration est repoussée car trop risquée pour un patch isolé
 """
 
 import sys
@@ -24,42 +31,20 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal, QDate, QTimer
 from PySide6.QtGui import QFont, QPalette, QIcon
 
-# Ajouter le chemin pour les imports de l'app
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from app.config import APP_NAME, APP_VERSION, LOG_LEVEL
-    from app.config import app_config, Language
-    from app.core.services.kpi_service import KPIService
-    from app.utils.logging_config import setup_logging
-    # Import des widgets spécialisés
-    from app.ui.kpi.widgets.machine_kpi_widget import MachineKPIWidget
-    from app.ui.kpi.widgets.site_kpi_widget import SiteKPIWidget
-    from app.ui.kpi.widgets.equipe_kpi_widget import EquipeKPIWidget
-    from app.ui.kpi.widgets.preventif_curatif_widget import PreventifCuratifWidget
-    from app.ui.kpi.widgets.global_summary_widget import GlobalSummaryWidget
-    from app.ui.kpi.widgets.advanced_kpi_widget import AdvancedKPIWidget
-except ImportError as e:
-    logger.debug("Erreur d'import KPIService: %s", e)
-    APP_NAME = "GMAO Industrielle"
-    APP_VERSION = "1.0"
-    LOG_LEVEL = "INFO"
-    KPIService = None
-    setup_logging = None
-    # Widgets par défaut
-    MachineKPIWidget = None
-    SiteKPIWidget = None
-    EquipeKPIWidget = None
-    PreventifCuratifWidget = None
-    GlobalSummaryWidget = None
-    AdvancedKPIWidget = None
-
-import logging
-logger = logging.getLogger(__name__)
+from app.config import APP_NAME, APP_VERSION, LOG_LEVEL
+from app.config import app_config, Language
+from app.core.services.kpi_service import KPIService
+from app.utils.logging_config import setup_logging
+# Import des widgets spécialisés
+from app.ui.kpi.widgets.machine_kpi_widget import MachineKPIWidget
+from app.ui.kpi.widgets.site_kpi_widget import SiteKPIWidget
+from app.ui.kpi.widgets.equipe_kpi_widget import EquipeKPIWidget
+from app.ui.kpi.widgets.preventif_curatif_widget import PreventifCuratifWidget
+from app.ui.kpi.widgets.global_summary_widget import GlobalSummaryWidget
+from app.ui.kpi.widgets.advanced_kpi_widget import AdvancedKPIWidget
 
 # === TRADUCTIONS ===
 TRANSLATIONS = {

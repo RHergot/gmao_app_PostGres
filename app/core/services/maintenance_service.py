@@ -1,6 +1,8 @@
 # gmao_app/app/core/services/maintenance_service.py
 """
 Service métier pour la gestion des Ordres de Travail (OT) and des Maintenances.
+Suite au refactoring H11 (God Object), les méthodes CRUD Technicien/Equipe
+délèguent vers TechnicienService et EquipeService (pattern FACADE).
 """
 import logging
 from typing import Optional, List, Dict, Any, TYPE_CHECKING # <-- Add TYPE_CHECKING
@@ -33,6 +35,10 @@ from app.data.repositories import (
 # Services (on importe StockService maintenant)
 from .stock_service import StockService # <-- AJOUTER CET IMPORT
 from app.data.database import db_cursor # <-- AJOUTER CET IMPORT
+
+# Services extraits (refactoring H11 - God Object Facade)
+from .technicien_service import TechnicienService
+from .equipe_service import EquipeService
 
 # Conditional import for type checking to avoid circular dependency
 if TYPE_CHECKING:
@@ -132,77 +138,38 @@ class MaintenanceService:
         # Services injectés par setter après instanciation
         self._finance_service = None
         self._preventive_service = None
-        
+
+        # Services extraits (refactoring H11 - God Object Facade)
+        self._technicien_service = TechnicienService(self._tech_repo, self._equipe_repo)
+        self._equipe_service = EquipeService(self._equipe_repo, self._tech_repo)
+
         logger.debug("MaintenanceService initialisé avec gestion des coûts.")
 
     # --- Gestion Techniciens / Equipes (placé ici pour cohésion module maintenance) ---
     # Ces méthodes pourraient aussi être dans un "ResourceService" séparé.
 
     def get_all_techniciens(self, include_inactive: bool = False) -> List[Technicien]:
-        logger.debug(f"Récupération techniciens (inactifs inclus: {include_inactive}).")
-        try:
-            return self._tech_repo.get_all(include_inactive=include_inactive)
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Erreur DB: {e}") from e
+        """Délègue au TechnicienService (refactoring H11 - Facade)."""
+        return self._technicien_service.get_all_techniciens(include_inactive=include_inactive)
 
     def get_technicien_by_id(self, tech_id: int) -> Optional[Technicien]:
-        logger.debug(f"Recherche technicien ID: {tech_id}")
-        try:
-            return self._tech_repo.get_by_id(tech_id)
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Erreur DB: {e}") from e
+        """Délègue au TechnicienService (refactoring H11 - Facade)."""
+        return self._technicien_service.get_technicien_by_id(tech_id)
 
     def create_technicien(self, data: Dict[str, Any]) -> Technicien:
-        logger.info(f"Tentative création technicien: {data.get('nom')}")
-        if not data.get('nom'): raise BusinessLogicError("Nom technicien obligatoire.")
-        if data.get('equipe_id') and not self._equipe_repo.get_by_id(data['equipe_id']):
-            raise NotFoundError(f"Equipe ID {data['equipe_id']} non trouvée.")
-
-        tech = Technicien(**data) # Crée l'objet depuis le dict
-        try:
-            new_id = self._tech_repo.add(tech)
-            if not new_id: raise BusinessLogicError("Echec création technicien.")
-            logger.info(f"Technicien '{tech.nom_complet}' créé ID: {new_id}.")
-            created = self.get_technicien_by_id(new_id)
-            if not created: raise BusinessLogicError("Créé mais non retrouvé.")
-            return created
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Impossible créer technicien: {e}") from e
+        """Délègue au TechnicienService (refactoring H11 - Facade)."""
+        return self._technicien_service.create_technicien(data)
 
     def update_technicien(self, tech_id: int, data: Dict[str, Any]) -> Technicien:
-        logger.info(f"Tentative màj technicien ID: {tech_id}")
-        tech = self.get_technicien_by_id(tech_id)
-        if not tech: raise NotFoundError(f"Technicien ID {tech_id} non trouvé.")
-        if 'nom' in data and not data.get('nom'): raise BusinessLogicError("Nom obligatoire.")
-        if data.get('equipe_id') and data['equipe_id'] != tech.equipe_id:
-             if data['equipe_id'] is not None and not self._equipe_repo.get_by_id(data['equipe_id']):
-                  raise NotFoundError(f"Nouvelle Equipe ID {data['equipe_id']} non trouvée.")
-
-        has_changed = False
-        for key, value in data.items():
-            if hasattr(tech, key) and getattr(tech, key) != value:
-                # Convertir cout_horaire en float si besoin
-                if key == 'cout_horaire': value = float(value or 0.0)
-                setattr(tech, key, value)
-                has_changed = True
-        if not has_changed: return tech
-
-        try:
-            if not self._tech_repo.update(tech): raise BusinessLogicError("Echec màj.")
-            logger.info(f"Technicien ID {tech_id} mis à jour.")
-            updated = self.get_technicien_by_id(tech_id)
-            if not updated: raise BusinessLogicError("Màj mais non retrouvé.")
-            return updated
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Impossible mettre à jour: {e}") from e
+        """Délègue au TechnicienService (refactoring H11 - Facade)."""
+        return self._technicien_service.update_technicien(tech_id, data)
 
     # delete_technicien: Attention, le repo peut lever une erreur si lié à MAINTENANCE
 
     # --- Similaire CRUD pour Equipe ---
     def get_all_equipes(self) -> List[Equipe]:
-         # Implémentation similaire à get_all_techniciens
-         try: return self._equipe_repo.get_all()
-         except DatabaseError as e: raise BusinessLogicError(f"Erreur DB: {e}") from e
+        """Délègue au EquipeService (refactoring H11 - Facade)."""
+        return self._equipe_service.get_all_equipes()
     # ... Ajouter create/update/delete Equipe si nécessaire ...
 
 
@@ -605,8 +572,10 @@ class MaintenanceService:
         logger.debug(f"Recalcul des coûts pour maintenance ID: {maintenance_id}")
         
         if not self._finance_service:
-            logger.warning("FinanceService non injecté, impossible de recalculer les coûts.")
-            return
+            raise RuntimeError(
+                "FinanceService non injecté dans MaintenanceService. "
+                "Appelez set_finance_service() avant d'utiliser recalculer_et_maj_couts()."
+            )
         
         try:
             # Déléguer au FinanceService pour recalculer les coûts
@@ -624,72 +593,25 @@ class MaintenanceService:
     # --- CRUD Equipe (à ajouter) ---
 
     def create_equipe(self, data: Dict[str, Any]) -> Equipe:
-        logger.info(f"Tentative création equipe: {data.get('nom')}")
-        if not data.get('nom'): raise BusinessLogicError("Nom équipe obligatoire.")
-        if data.get('responsable_id') and not self.get_technicien_by_id(data['responsable_id']):
-            raise NotFoundError(f"Technicien responsable ID {data['responsable_id']} non trouvé.")
-
-        equipe = Equipe(**data)
-        try:
-            new_id = self._equipe_repo.add(equipe)
-            if not new_id: raise BusinessLogicError("Echec création equipe.")
-            logger.info(f"Equipe '{equipe.nom}' créée ID: {new_id}.")
-            created = self.get_equipe_by_id(new_id) # Doit exister
-            if not created: raise BusinessLogicError("Créée mais non retrouvée.")
-            return created
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Impossible créer equipe: {e}") from e
+        """Délègue au EquipeService (refactoring H11 - Facade)."""
+        return self._equipe_service.create_equipe(data)
 
     def get_equipe_by_id(self, eq_id: int) -> Optional[Equipe]:
-        logger.debug(f"Recherche equipe ID: {eq_id}")
-        try: return self._equipe_repo.get_by_id(eq_id)
-        except DatabaseError as e: raise BusinessLogicError(f"Erreur DB: {e}") from e
+        """Délègue au EquipeService (refactoring H11 - Facade)."""
+        return self._equipe_service.get_equipe_by_id(eq_id)
 
     def update_equipe(self, eq_id: int, data: Dict[str, Any]) -> Equipe:
-        logger.info(f"Tentative màj equipe ID: {eq_id}")
-        eq = self.get_equipe_by_id(eq_id)
-        if not eq: raise NotFoundError(f"Equipe ID {eq_id} non trouvée.")
-        if 'nom' in data and not data.get('nom'): raise BusinessLogicError("Nom obligatoire.")
-        if data.get('responsable_id') and data['responsable_id'] != eq.responsable_id:
-            if data['responsable_id'] is not None and not self.get_technicien_by_id(data['responsable_id']):
-                raise NotFoundError(f"Nouveau responsable ID {data['responsable_id']} non trouvé.")
-
-        has_changed = False
-        for key, value in data.items():
-            if hasattr(eq, key) and getattr(eq, key) != value:
-                setattr(eq, key, value); has_changed = True
-        if not has_changed: return eq
-
-        try:
-            if not self._equipe_repo.update(eq): raise BusinessLogicError("Echec màj.")
-            logger.info(f"Equipe ID {eq_id} mise à jour.")
-            updated = self.get_equipe_by_id(eq_id)
-            if not updated: raise BusinessLogicError("Màj mais non retrouvée.")
-            return updated
-        except DatabaseError as e:
-            raise BusinessLogicError(f"Impossible mettre à jour equipe: {e}") from e
+        """Délègue au EquipeService (refactoring H11 - Facade)."""
+        return self._equipe_service.update_equipe(eq_id, data)
 
     def delete_equipe(self, eq_id: int) -> bool:
-         logger.warning(f"Tentative suppression equipe ID: {eq_id}")
-         if not self.get_equipe_by_id(eq_id): raise NotFoundError(f"Equipe ID {eq_id} non trouvée.")
-         # Les techniciens liés auront leur equipe_id mis à NULL (SET NULL)
-         try: return self._equipe_repo.delete(eq_id)
-         except DatabaseError as e: raise BusinessLogicError(f"Impossible supprimer equipe: {e}") from e
+        """Délègue au EquipeService (refactoring H11 - Facade)."""
+        return self._equipe_service.delete_equipe(eq_id)
 
     # --- Delete Technicien (à ajouter) ---
     def delete_technicien(self, tech_id: int) -> bool:
-        """ Supprime un technicien. """
-        logger.warning(f"Tentative suppression technicien ID: {tech_id}")
-        if self.get_technicien_by_id(tech_id) is None:
-            raise NotFoundError(f"Technicien ID {tech_id} non trouvé pour suppression.")
-        # Le repo gèrera l'erreur si lié à MAINTENANCE (RESTRICT)
-        try:
-            success = self._tech_repo.delete(tech_id)
-            if success: logger.info(f"Technicien ID {tech_id} supprimé.")
-            return success
-        except DatabaseError as e:
-            logger.error(f"Échec DB suppression technicien ID {tech_id}: {e}")
-            raise BusinessLogicError(f"Impossible de supprimer le technicien: {e}") from e
+        """Délègue au TechnicienService (refactoring H11 - Facade)."""
+        return self._technicien_service.delete_technicien(tech_id)
         
 
     # gmao_app/app/core/services/maintenance_service.py

@@ -11,6 +11,19 @@ logger = logging.getLogger(__name__)
 
 class MaintenanceRepository:
 
+    @staticmethod
+    def _generate_month_list(start_current_month, months: int) -> list:
+        """
+        Génère la liste triée des mois au format 'YYYY-MM' pour les N derniers mois
+        (hors mois courant), du plus récent au plus ancien.
+        """
+        from datetime import timedelta
+        months_list = []
+        for i in range(months):
+            m = (start_current_month - timedelta(days=1)).replace(day=1) - timedelta(days=30*i)
+            months_list.append(m.strftime('%Y-%m'))
+        return list(reversed(sorted(months_list)))
+
     def get_monthly_completed_costs_and_counts(self, months: int = 12) -> list:
         """
         Retourne une liste de dicts : [{"month": "YYYY-MM", "cost": float, "count": int}],
@@ -47,11 +60,7 @@ class MaintenanceRepository:
             
             # Compléter les mois manquants à 0
             results = []
-            months_list = []
-            for i in range(months):
-                m = (start_current_month - timedelta(days=1)).replace(day=1) - timedelta(days=30*i)
-                months_list.append(m.strftime('%Y-%m'))
-            months_list = list(reversed(sorted(months_list)))
+            months_list = MaintenanceRepository._generate_month_list(start_current_month, months)
             
             logger.debug(f"Liste des mois à inclure: {months_list}")
             rows_dict = {row['month']: row for row in rows if row.get('month')}
@@ -84,14 +93,14 @@ class MaintenanceRepository:
             # Retourner une liste vide mais avec les mois attendus pour éviter les erreurs d'affichage
             try:
                 empty_results = []
-                for i in range(months):
-                    m = (start_current_month - timedelta(days=1)).replace(day=1) - timedelta(days=30*i)
+                months_list = MaintenanceRepository._generate_month_list(start_current_month, months)
+                for m in months_list:
                     empty_results.append({
-                        'month': m.strftime('%Y-%m'),
+                        'month': m,
                         'cost': 0.0,
                         'count': 0
                     })
-                return list(reversed(sorted(empty_results, key=lambda x: x['month'])))
+                return empty_results
             except Exception:
                 logger.exception("Erreur lors de la création des résultats vides")
                 return []

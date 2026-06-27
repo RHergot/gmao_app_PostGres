@@ -37,11 +37,21 @@ class FinanceService:
                  intervention_piece_repo: Optional[InterventionPieceRepository] = None,
                  piece_repo: Optional[PieceRepository] = None):
         """Initialise le service avec les repositories nécessaires"""
-        self.maintenance_repo = maintenance_repo or MaintenanceRepository()
-        self.intervenant_repo = intervenant_repo or MaintenanceIntervenantRepository()
-        self.frais_repo = frais_repo or MaintenanceFraisExterneRepository()
-        self.intervention_piece_repo = intervention_piece_repo or InterventionPieceRepository()
-        self.piece_repo = piece_repo or PieceRepository()
+        self.maintenance_repo = maintenance_repo
+        if self.maintenance_repo is None:
+            raise ValueError("maintenance_repo est obligatoire pour FinanceService")
+        self.intervenant_repo = intervenant_repo
+        if self.intervenant_repo is None:
+            raise ValueError("intervenant_repo est obligatoire pour FinanceService")
+        self.frais_repo = frais_repo
+        if self.frais_repo is None:
+            raise ValueError("frais_repo est obligatoire pour FinanceService")
+        self.intervention_piece_repo = intervention_piece_repo
+        if self.intervention_piece_repo is None:
+            raise ValueError("intervention_piece_repo est obligatoire pour FinanceService")
+        self.piece_repo = piece_repo
+        if self.piece_repo is None:
+            raise ValueError("piece_repo est obligatoire pour FinanceService")
     
     def calculer_couts_maintenance(self, maintenance_id: int) -> Dict[str, float]:
         """

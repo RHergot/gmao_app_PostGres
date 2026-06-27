@@ -4,6 +4,7 @@ Widget pour afficher et gérer la liste des Ordres de Travail (OT).
 Avec bouton d'action dynamique pour le statut.
 """
 import os
+import time
 import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Any
@@ -44,6 +45,17 @@ from app.core.services.maintenance_service import (
     OT_STATUTS_FERME
 )
 
+# Constantes de statut OT (valeurs DB) — références aux constantes du service
+STATUT_CREE = OT_STATUTS_OUVERT[0]         # "Créé"
+STATUT_PLANIFIE = OT_STATUTS_OUVERT[1]     # "Planifié"
+STATUT_ATTENTE_PIECES = OT_STATUTS_OUVERT[2]  # "AttentePieces"
+STATUT_PRET = OT_STATUTS_OUVERT[3]         # "Pret"
+STATUT_ENCOURS = OT_STATUTS_OUVERT[4]      # "EnCours"
+STATUT_SUSPENDU = OT_STATUTS_OUVERT[5]     # "Suspendu"
+STATUT_TERMINE = OT_STATUTS_FERME[0]       # "Terminé"
+STATUT_ARCHIVE = OT_STATUTS_FERME[1]       # "Archivé"
+STATUT_ANNULE = "Annule"  # Non présent dans les listes standard, statut spécial
+
 logger = logging.getLogger(__name__)
 
 class OTView(QWidget):
@@ -71,6 +83,10 @@ class OTView(QWidget):
         self.current_ots: List[OrdreTravail] = []
         self.machines_map: Dict[int, str] = {}
         self.techniciens_map: Dict[int, str] = {}
+        # Cache TTL pour les maps machines/techniciens
+        self._machines_cache = None  # (timestamp, dict)
+        self._techniciens_cache = None  # (timestamp, dict)
+        self._cache_ttl = 300  # 5 minutes en secondes
         self.current_user_id = 1 # Placeholder!
 
         logger.debug("Initialisation de OTView...")
@@ -289,26 +305,41 @@ class OTView(QWidget):
 
 
     def _load_machines_map(self):
-        """ Charge map ID->Nom machines. """
-        # ... (Identique à la version précédente) ...
+        """ Charge map ID->Nom machines avec cache TTL. """
+        now = time.time()
+        if self._machines_cache is not None and (now - self._machines_cache[0]) < self._cache_ttl:
+            self.machines_map = self._machines_cache[1]
+            return
         try:
             machines = self.machine_service.get_all_machines(sort_by="nom")
             self.machines_map = {m.id_machine: m.nom + (f" (S/N:{m.serial})" if m.serial else "") for m in machines if m.id_machine is not None}
+            self._machines_cache = (now, self.machines_map)
         except Exception as e:
             logger.error(f"Erreur récupération machines map: {e}")
             self.machines_map = {}
             raise
 
     def _load_techniciens_map(self):
-        """ Charge map ID->Nom techniciens actifs. """
-        # ... (Identique à la version précédente) ...
+        """ Charge map ID->Nom techniciens actifs avec cache TTL. """
+        now = time.time()
+        if self._techniciens_cache is not None and (now - self._techniciens_cache[0]) < self._cache_ttl:
+            self.techniciens_map = self._techniciens_cache[1]
+            return
         try:
             techs = self.maintenance_service.get_all_techniciens(include_inactive=False)
             self.techniciens_map = {t.id_technicien: t.nom_complet for t in techs if t.id_technicien is not None}
+            self._techniciens_cache = (now, self.techniciens_map)
         except Exception as e:
             logger.error(f"Erreur récupération techniciens map: {e}")
             self.techniciens_map = {}
             raise
+
+    def invalidate_cache(self):
+        """ Force le rechargement des maps machines/techniciens au prochain appel. """
+        self._machines_cache = None
+        self._techniciens_cache = None
+        logger.debug("Cache maps machines/techniciens invalidé.")
+
 
     def connect_signals(self):
         """ Connecte signaux/slots. """
@@ -352,16 +383,16 @@ class OTView(QWidget):
                  current_status = ot.statut
                  # Règles d'activation
                  can_edit_details = current_status in OT_STATUTS_OUVERT
-                 can_delete = current_status in ["Créé", "Planifié", "Annule"]
-                 can_report = current_status in ["EnCours", "Suspendu", "Pret"]
+                 can_delete = current_status in [STATUT_CREE, STATUT_PLANIFIE, STATUT_ANNULE]
+                 can_report = current_status in [STATUT_ENCOURS, STATUT_SUSPENDU, STATUT_PRET]
                  can_cancel = current_status in OT_STATUTS_OUVERT
 
                  # Logique pour le bouton intelligent Start/Pause/Resume
-                 if current_status in ["Pret", "Planifié", "Créé"]:
+                 if current_status in [STATUT_PRET, STATUT_PLANIFIE, STATUT_CREE]:
                      can_srp_action = "start"
-                 elif current_status == "EnCours":
+                 elif current_status == STATUT_ENCOURS:
                      can_srp_action = "pause"
-                 elif current_status == "Suspendu":
+                 elif current_status == STATUT_SUSPENDU:
                      can_srp_action = "resume"
                  # else: None (bouton désactivé)
 
@@ -554,10 +585,10 @@ class OTView(QWidget):
                  if ot_data.get("utilisateur_createur_id") is None: # Double check
                       raise BusinessLogicError("ID créateur manquant.")
                  new_ot = self.maintenance_service.create_ot(ot_data)
-                 QMessageBox.information(self, "Succès", f"OT '{new_ot.numero_ot or new_ot.id_ot}' créé.")
+                 QMessageBox.information(self, self.tr("Succès"), self.tr("OT '%1' créé.").replace('%1', str(new_ot.numero_ot or new_ot.id_ot)))
                  self.refresh_ots()
-             except (BusinessLogicError, DatabaseError, NotFoundError) as e: QMessageBox.warning(self, "Erreur", f"{e}"); logger.error(f"{e}")
-             except Exception as e: QMessageBox.critical(self, "Erreur", f"{e}"); logger.exception("Err.")
+             except (BusinessLogicError, DatabaseError, NotFoundError) as e: QMessageBox.warning(self, self.tr("Erreur"), str(e)); logger.error(f"{e}")
+             except Exception as e: QMessageBox.critical(self, self.tr("Erreur"), str(e)); logger.exception("Err.")
 
     @Slot()
     def edit_ot(self):
@@ -583,10 +614,10 @@ class OTView(QWidget):
                  try:
                      logger.info(f"Tentative màj OT ID {ot_id}...")
                      updated = self.maintenance_service.update_ot(ot_id, update_data) # Appel service
-                     QMessageBox.information(self, "Succès", f"OT '{updated.numero_ot or ot_id}' mis à jour.")
+                     QMessageBox.information(self, self.tr("Succès"), self.tr("OT '%1' mis à jour.").replace('%1', str(updated.numero_ot or ot_id)))
                      self.refresh_ots()
-                 except (BusinessLogicError, DatabaseError, NotFoundError) as e: QMessageBox.warning(self, "Erreur", f"{e}"); logger.error(f"{e}"); self.refresh_ots()
-                 except Exception as e: QMessageBox.critical(self, "Erreur", f"{e}"); logger.exception(f"Err màj {ot_id}")
+                 except (BusinessLogicError, DatabaseError, NotFoundError) as e: QMessageBox.warning(self, self.tr("Erreur"), str(e)); logger.error(f"{e}"); self.refresh_ots()
+                 except Exception as e: QMessageBox.critical(self, self.tr("Erreur"), str(e)); logger.exception(f"Err màj {ot_id}")
         except (BusinessLogicError, NotFoundError) as e: QMessageBox.warning(self, self.tr("Erreur"), str(e)); self.refresh_ots()
         except Exception as e: QMessageBox.critical(self, self.tr("Erreur"), str(e)); logger.exception(f"Err avant édit {ot_id}")
 
@@ -597,7 +628,7 @@ class OTView(QWidget):
         ot_id = self._get_selected_ot_id();
         if ot_id is None: return
         ot = self.maintenance_service.get_ot_by_id(ot_id)
-        if ot and ot.statut not in ["Créé", "Planifié", "Annule"]: # Règle d'ici
+        if ot and ot.statut not in [STATUT_CREE, STATUT_PLANIFIE, STATUT_ANNULE]: # Règle d'ici
              QMessageBox.warning(self, self.tr("Impossible"), self.tr("Ne peut supprimer OT '%1'.").replace('%1', str(ot.statut)))
              return
         num = ot.numero_ot if ot else f"ID {ot_id}"
@@ -614,7 +645,7 @@ class OTView(QWidget):
         if ot_id is None:
             QMessageBox.warning(self, self.tr("Action"), self.tr("Sélectionnez un OT à annuler."))
             return
-        self.change_ot_status(ot_id, "Annule")
+        self.change_ot_status(ot_id, STATUT_ANNULE)
 
     @Slot()
     def handle_srp_button_click(self):
@@ -627,9 +658,9 @@ class OTView(QWidget):
 
         current_status = ot.statut
         new_status = None
-        if current_status in ["Pret", "Planifié", "Créé"]: new_status = "EnCours" # Action = Démarrer
-        elif current_status == "EnCours": new_status = "Suspendu" # Action = Suspendre
-        elif current_status == "Suspendu": new_status = "EnCours" # Action = Reprendre
+        if current_status in [STATUT_PRET, STATUT_PLANIFIE, STATUT_CREE]: new_status = STATUT_ENCOURS # Action = Démarrer
+        elif current_status == STATUT_ENCOURS: new_status = STATUT_SUSPENDU # Action = Suspendre
+        elif current_status == STATUT_SUSPENDU: new_status = STATUT_ENCOURS # Action = Reprendre
 
         if new_status:
             self.change_ot_status(ot_id, new_status)
@@ -647,7 +678,7 @@ class OTView(QWidget):
         """ Ouvre dialogue pour saisir le rapport de maintenance pour l'OT sélectionné. """
         ot_id = self._get_selected_ot_id()
         if ot_id is None:
-            QMessageBox.information(self, "Action Requise", "Sélectionnez un OT pour saisir le rapport.")
+            QMessageBox.information(self, self.tr("Action Requise"), self.tr("Sélectionnez un OT pour saisir le rapport."))
             return
 
         try:
@@ -738,12 +769,12 @@ class OTView(QWidget):
         # --- Connexion des Actions ---
         action_edit.triggered.connect(self.edit_ot)
         action_duplicate.triggered.connect(lambda checked=False, otid=ot_id: self.duplicate_ot(otid)) # <- Connexion
-        action_start.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, "EnCours"))
-        action_pause.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, "Suspendu"))
-        action_resume.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, "EnCours")) # Reprendre -> EnCours
+        action_start.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, STATUT_ENCOURS))
+        action_pause.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, STATUT_SUSPENDU))
+        action_resume.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, STATUT_ENCOURS)) # Reprendre -> EnCours
         action_report.triggered.connect(self.record_maintenance_report)
         action_view_report.triggered.connect(lambda checked=False, otid=ot_id: self.view_maintenance_report(otid))
-        action_cancel.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, "Annule"))
+        action_cancel.triggered.connect(lambda checked=False, otid=ot_id: self.change_ot_status(otid, STATUT_ANNULE))
         action_delete.triggered.connect(self.delete_ot)
         action_details.triggered.connect(lambda checked=False, otid=ot_id: self.open_maintenance_details_dialog(otid))
         
@@ -754,17 +785,17 @@ class OTView(QWidget):
         # --- Activation/Désactivation des Actions ---
         action_edit.setEnabled(current_status in OT_STATUTS_OUVERT)
         action_duplicate.setEnabled(True) # Toujours possible
-        action_start.setEnabled(current_status in ["Pret", "Planifié", "Créé"])
-        action_pause.setEnabled(current_status == "EnCours")
-        action_resume.setEnabled(current_status == "Suspendu")
-        action_report.setEnabled(current_status in ["EnCours", "Suspendu", "Pret"])
-        action_view_report.setEnabled(current_status in OT_STATUTS_FERME and current_status != "Annule")
+        action_start.setEnabled(current_status in [STATUT_PRET, STATUT_PLANIFIE, STATUT_CREE])
+        action_pause.setEnabled(current_status == STATUT_ENCOURS)
+        action_resume.setEnabled(current_status == STATUT_SUSPENDU)
+        action_report.setEnabled(current_status in [STATUT_ENCOURS, STATUT_SUSPENDU, STATUT_PRET])
+        action_view_report.setEnabled(current_status in OT_STATUTS_FERME and current_status != STATUT_ANNULE)
         action_cancel.setEnabled(current_status in OT_STATUTS_OUVERT)
-        action_delete.setEnabled(current_status in ["Créé", "Planifié", "Annule"])
+        action_delete.setEnabled(current_status in [STATUT_CREE, STATUT_PLANIFIE, STATUT_ANNULE])
         
         # Activation des actions d'archivage
-        action_archive.setEnabled(current_status == "Terminé")  # Seuls les OT terminés peuvent être archivés
-        action_unarchive.setEnabled(current_status == "Archivé")  # Seuls les OT archivés peuvent être désarchivés
+        action_archive.setEnabled(current_status == STATUT_TERMINE)  # Seuls les OT terminés peuvent être archivés
+        action_unarchive.setEnabled(current_status == STATUT_ARCHIVE)  # Seuls les OT archivés peuvent être désarchivés
 
         # --- Ajout des Actions au Menu ---
         menu.addAction(action_edit)
@@ -793,7 +824,7 @@ class OTView(QWidget):
         """ Appelle le service pour changer le statut de l'OT. """
         logger.info(f"Demande changement statut pour OT {ot_id} vers '{new_status}'")
         try:
-            if new_status == "Annule":
+            if new_status == STATUT_ANNULE:
                  reply = QMessageBox.question(self, self.tr("Confirmation"), self.tr("Confirmer l'annulation de l'OT %1?").replace('%1', str(ot_id)), QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel, QMessageBox.StandardButton.Cancel)
                  if reply != QMessageBox.StandardButton.Yes: logger.info("Annulation OT annulée."); return
 
@@ -1408,7 +1439,7 @@ class OTView(QWidget):
                 QMessageBox.warning(self, self.tr("Erreur"), self.tr("OT non trouvé."))
                 return
             
-            if ot.statut != "Terminé":
+            if ot.statut != STATUT_TERMINE:
                 QMessageBox.warning(self, self.tr("Action impossible"), 
                                   self.tr("Seuls les OT avec le statut 'Terminé' peuvent être archivés."))
                 return
@@ -1459,7 +1490,7 @@ class OTView(QWidget):
                 QMessageBox.warning(self, self.tr("Erreur"), self.tr("OT non trouvé."))
                 return
             
-            if ot.statut != "Archivé":
+            if ot.statut != STATUT_ARCHIVE:
                 QMessageBox.warning(self, self.tr("Action impossible"), 
                                   self.tr("Seuls les OT avec le statut 'Archivé' peuvent être désarchivés."))
                 return

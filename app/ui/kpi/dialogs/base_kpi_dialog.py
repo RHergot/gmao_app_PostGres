@@ -19,23 +19,13 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal, QDate, QTimer
 from PySide6.QtGui import QFont, QPalette, QIcon
 
-# Ajouter le chemin pour les imports de l'app
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from app.config import APP_NAME, APP_VERSION, LOG_LEVEL
-    from app.config import app_config, Language
-    from app.core.services.kpi_service import KPIService
-    from app.utils.logging_config import setup_logging
-except ImportError as e:
-    logger.debug("Erreur d'import dans BaseKPIDialog: %s", e)
-    APP_NAME = "GMAO Industrielle"
-    APP_VERSION = "1.0"
-    LOG_LEVEL = "INFO"
-    KPIService = None
+from app.config import APP_NAME, APP_VERSION, LOG_LEVEL
+from app.config import app_config, Language
+from app.core.services.kpi_service import KPIService
+from app.utils.logging_config import setup_logging
 
 # === TRADUCTIONS PARTAGÉES ===
 SHARED_TRANSLATIONS = {

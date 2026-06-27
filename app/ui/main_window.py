@@ -1,4 +1,9 @@
 # gmao_app/app/ui/main_window.py
+# TODO (H13 - God Object Refactoring): Cette classe gère trop de responsabilités
+# (création de menus, vues, préférences utilisateur, navigation).
+# Les classes suivantes ont été créées pour un futur refactoring:
+#   - app/ui/main_menu_manager.py (MainMenuManager): encapsulation de create_menu_bar()
+#   - À venir: UserPreferencesManager, ViewRouter
 """
 Fenêtre principale de l'application GMAO.
 Contient la structure de base (menu, barre d'état) et accueillera les vues des modules.

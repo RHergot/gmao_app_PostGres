@@ -1,4 +1,8 @@
 # gmao_app/app/core/services/machine_service.py
+# TODO (H12 - God Object Refactoring): Ce service devrait être refactoré pour utiliser
+# BaseCrudService (app/core/services/base_crud_service.py). Les patterns CRUD pour
+# Site, Fabricant et TypeMachine sont dupliqués et pourraient être factorisés via
+# l'héritage de BaseCrudService[T] et l'injection de repositories dédiés.
 """
 Service métier pour la gestion des équipements (Machines, Sites, Fabricants, Types).
 """

@@ -3,7 +3,7 @@
 Vue d'accueil avec KPIs et logo d'entreprise pour la GMAO.
 """
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QTableView, QHeaderView, QPushButton, QFrame
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 import os
 import logging
 from PySide6.QtGui import QPixmap, QFont, QStandardItemModel, QStandardItem
@@ -42,15 +42,8 @@ class WelcomeView(QWidget):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignTop)
-        # Récupérer le nombre d'OT ouverts via le service (si dispo)
-        ot_ouverts = None
-        if hasattr(self, 'maintenance_service') and self.maintenance_service:
-            try:
-                ot_ouverts = self.maintenance_service.get_open_ots_count()
-            except Exception as e:
-                ot_ouverts = '?'
-        else:
-            ot_ouverts = '?'
+        # Nombre d'OT ouverts — chargé de façon asynchrone via QTimer
+        ot_ouverts = '...'
 
         # Logo
         logo_path = os.path.join(os.path.dirname(__file__), '../../assets/company_logo.png')
@@ -162,15 +155,13 @@ class WelcomeView(QWidget):
         tables_box_layout.addWidget(access_widget, 1)
 
         # --- Coûts des Interventions ---
-        costs_title = QLabel(self.tr("Les Coûts de Interventions"))
+        costs_title = QLabel(self.tr("Coûts des Interventions"))
         costs_title.setAlignment(Qt.AlignCenter)
         costs_title.setFont(QFont("Arial", 12, QFont.Bold))
         costs_layout = QVBoxLayout()
         costs_layout.addWidget(costs_title)
-        try:
-            monthly_data = self.maintenance_service.get_monthly_completed_costs_and_counts()
-        except Exception:
-            monthly_data = []
+        # Données mensuelles — chargées de façon asynchrone via QTimer
+        monthly_data = []
         costs_table = QTableView()
         costs_table.setObjectName("costs_table")  # Donner un nom d'objet pour le retrouver facilement
         
@@ -212,14 +203,8 @@ class WelcomeView(QWidget):
         kpi_vlayout = QVBoxLayout(kpi_frame)
         kpi_vlayout.setSpacing(32)
         kpi_vlayout.setAlignment(Qt.AlignTop)
-        maintenances_en_cours = None
-        if hasattr(self, 'maintenance_service') and self.maintenance_service:
-            try:
-                maintenances_en_cours = self.maintenance_service.get_in_progress_ots_count()
-            except Exception:
-                maintenances_en_cours = '?'
-        else:
-            maintenances_en_cours = '?'
+        # OT en cours — chargé de façon asynchrone via QTimer
+        maintenances_en_cours = '...'
         kpis = [
             (self.tr("OT ouverts"), str(ot_ouverts)),
             (self.tr("OT en cours"), str(maintenances_en_cours)),
@@ -243,6 +228,9 @@ class WelcomeView(QWidget):
         footer.setAlignment(Qt.AlignCenter)
         footer.setStyleSheet("margin-top: 40px; color: #999;")
         layout.addWidget(footer)
+
+        # Différer le chargement des données DB pour ne pas bloquer l'UI
+        QTimer.singleShot(0, self.refresh_data)
 
     def refresh_data(self):
         """Rafraîchit les données de la vue d'accueil."""

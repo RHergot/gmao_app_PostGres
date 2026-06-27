@@ -8,6 +8,27 @@ from datetime import date
 
 
 class KPIQueryBuilder:
+    # Liste blanche des préfixes de colonnes autorisés dans les clauses WHERE.
+    # Empêche l'injection SQL via les noms de colonnes interpolés.
+    _ALLOWED_COLUMN_PREFIXES = frozenset({
+        'maint.', 'm.', 'e.', 't.', 'mach.', 'machine.', 'equipe.', 'technicien.',
+    })
+
+    @staticmethod
+    def _validate_where_clause(where_clause: str) -> None:
+        """
+        Valide que la clause WHERE ne contient que des préfixes de colonnes autorisés.
+        Lève ValueError si un préfixe non autorisé est détecté.
+        """
+        import re
+        # Extraire les identifiants de colonnes (mot.mot)
+        identifiers = re.findall(r'\b([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)', where_clause)
+        for identifier in identifiers:
+            # Vérifier le préfixe (partie avant le point)
+            prefix = identifier.split('.')[0] + '.'
+            if not any(prefix.startswith(allowed.rstrip('.')) for allowed in KPIQueryBuilder._ALLOWED_COLUMN_PREFIXES):
+                raise ValueError(f"Colonne non autorisée dans la clause WHERE: {identifier}")
+
     """
     Classe utilitaire pour construire les requêtes SQL des KPI.
     Évite la duplication de code et centralise la logique SQL.
@@ -219,6 +240,7 @@ class KPIQueryBuilder:
             params.append(equipe_id)
         
         where_clause = " AND ".join(where_conditions)
+        KPIQueryBuilder._validate_where_clause(where_clause)
         
         sql = f"""
             WITH EquipeKPI AS (
@@ -297,6 +319,7 @@ class KPIQueryBuilder:
             params.append(machine_id)
         
         where_clause = " AND ".join(where_conditions)
+        KPIQueryBuilder._validate_where_clause(where_clause)
         
         sql = f"""
             SELECT 

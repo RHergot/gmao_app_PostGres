@@ -49,7 +49,7 @@
         </table>
     </div>
     <div class="section">
-        {% set tva_rate = 0.21 %}
+        {% set tva_rate = tva_rate | default(0.21) %}
         <strong>Total HT :</strong> {{ '%.2f' % commande.total_ht if commande.total_ht is defined and commande.total_ht is not none else '' }}<br>
         <strong>Frais de port :</strong> {{ '%.2f' % commande.frais_port if commande.frais_port is defined and commande.frais_port is not none else '' }}<br>
         <strong>TVA ({{ (tva_rate * 100)|round(0)|int }}%) :</strong> 

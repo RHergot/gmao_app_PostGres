@@ -28,20 +28,13 @@ from PySide6.QtGui import QFont, QIcon, QPalette, QColor, QPixmap, QPainter
 from .base_kpi_dialog import BaseKPIDialog, get_shared_text
 from .machine_kpi_styles import MODERN_STYLE, CARD_COLORS, get_card_style, STATUS_STYLES
 
-# Ajouter le chemin pour les imports de l'app
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from app.config import app_config, Language
-    from app.core.services.kpi_service import KPIService
-    # Import du widget machine KPI existant
-    from app.ui.kpi.widgets.machine_kpi_widget import MachineKPIWidget
-except ImportError as e:
-    logger.debug("Erreur d'import dans MachineKPIDialog: %s", e)
-    MachineKPIWidget = None
+from app.config import app_config, Language
+from app.core.services.kpi_service import KPIService
+# Import du widget machine KPI existant
+from app.ui.kpi.widgets.machine_kpi_widget import MachineKPIWidget
 
 # === TRADUCTIONS SPÉCIFIQUES ===
 MACHINE_TRANSLATIONS = {

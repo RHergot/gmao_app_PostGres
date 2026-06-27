@@ -21,7 +21,7 @@ def get_db_connection():
     return psycopg2.connect(
         dbname=os.getenv('POSTGRES_DB', 'gmao_db'),
         user=os.getenv('POSTGRES_USER', 'postgres'),
-        password=os.getenv('POSTGRES_PASSWORD', 'postgres'),
+        password=os.getenv('POSTGRES_PASSWORD', ''),
         host=os.getenv('POSTGRES_HOST', 'localhost'),
         port=os.getenv('POSTGRES_PORT', '5432'),
         cursor_factory=psycopg2.extras.RealDictCursor

@@ -110,6 +110,3 @@ def format_iso_datetime(datetime_obj: Optional[datetime]) -> Optional[str]:
      except AttributeError:
           logger.warning(f"Tentative de formater un objet qui n'est pas un datetime: {datetime_obj}")
           return None
-
-    # --- AUTRES HELPERS ---
-    # ...

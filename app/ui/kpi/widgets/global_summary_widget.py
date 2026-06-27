@@ -24,28 +24,10 @@ from PySide6.QtCharts import (
     QPieSeries, QLineSeries, QDateTimeAxis, QAreaSeries
 )
 
-# Ajouter le chemin pour les imports de l'app
-current_dir = os.path.dirname(os.path.abspath(__file__))
-app_root = os.path.join(current_dir, '..', '..', '..')
-project_root = os.path.join(current_dir, '..', '..', '..', '..')
-sys.path.insert(0, app_root)
-sys.path.insert(0, project_root)
-
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from core.services.kpi_service import KPIService
-    setup_logging = None
-except ImportError as e:
-    logger.debug("Erreur d'import KPIService: %s", e)
-    try:
-        from app.core.services.kpi_service import KPIService
-        setup_logging = None
-    except ImportError as e2:
-        logger.debug("Erreur d'import KPIService (fallback): %s", e2)
-        KPIService = None
-        setup_logging = None
+from app.core.services.kpi_service import KPIService
 
 class GlobalSummaryWidget(QWidget):
     """

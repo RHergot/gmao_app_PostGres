@@ -186,7 +186,9 @@ class FinanceCoutsWidget(QWidget):
     
     couts_updated = Signal()  # Signal émis quand les coûts sont mis à jour
     
-    def __init__(self, maintenance_id: int, parent=None):
+    def __init__(self, maintenance_id: int, parent=None,
+                 technicien_repo=None, intervenant_repo=None, frais_repo=None,
+                 finance_service=None):
         super().__init__(parent)
         self.maintenance_id = maintenance_id
         # Initialisation explicite des labels à None pour éviter les erreurs d'attribut
@@ -196,12 +198,12 @@ class FinanceCoutsWidget(QWidget):
         self.cout_autres_frais_label = None
         self.cout_total_label = None
         self.cout_total_detail_label = None
-        # Repositories
-        self.technicien_repo = TechnicienRepository()
-        self.intervenant_repo = MaintenanceIntervenantRepository()
-        self.frais_repo = MaintenanceFraisExterneRepository()
-        # Service financier
-        self.finance_service = FinanceService()
+        # Repositories (injectables, avec valeurs par défaut)
+        self.technicien_repo = technicien_repo or TechnicienRepository()
+        self.intervenant_repo = intervenant_repo or MaintenanceIntervenantRepository()
+        self.frais_repo = frais_repo or MaintenanceFraisExterneRepository()
+        # Service financier (injectable, avec valeur par défaut)
+        self.finance_service = finance_service or FinanceService()
         # Liste des techniciens (pour les combos)
         self.techniciens = []
         self.init_ui()

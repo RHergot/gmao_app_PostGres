@@ -1,6 +1,6 @@
 import os
 
-LOG_FILE = os.path.join(os.path.dirname(__file__), '../../logs/app.log')
+LOG_FILE = os.getenv('GMAO_LOG_FILE', os.path.join(os.path.dirname(__file__), '../../logs/app.log'))
 
 def clean_log_file():
     try:

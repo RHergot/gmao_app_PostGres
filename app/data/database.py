@@ -39,7 +39,18 @@ def get_connection():  # type: ignore
     """
     Retourne l'instance de connexion globale à la base de données.
     Établit la connexion si elle n'existe pas.
+
+    .. deprecated::
+        Utilisez ConnectionPool de app.data.connection_pool à la place.
+        Cette connexion globale sera supprimée dans une version future.
     """
+    # TODO: Migrer tous les repositories vers le pool de connexions.
+    import warnings
+    warnings.warn(
+        "database.get_connection() est déprécié, utilisez connection_pool.ConnectionPool",
+        DeprecationWarning,
+        stacklevel=2
+    )
     global _connection
     if _connection is None:
         # La validation du DATABASE_TYPE est déjà faite dans config.py, on peut donc se connecter directement.

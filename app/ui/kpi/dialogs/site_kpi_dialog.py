@@ -23,9 +23,6 @@ from PySide6.QtGui import QFont, QIcon
 # Import de la classe de base
 from .base_kpi_dialog import BaseKPIDialog, get_shared_text
 
-# Ajouter le chemin pour les imports de l'app
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-
 import logging
 logger = logging.getLogger(__name__)
 

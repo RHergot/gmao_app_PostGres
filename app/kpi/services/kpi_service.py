@@ -1,14 +1,14 @@
 import os
 import pandas as pd
 import warnings
-from app.data.introspect_db_structure import get_db_connection, DB_CONFIG
+from app.data.connection_pool import get_connection
 
 class KPIService:
     def __init__(self):
         # Supprimer le warning pandas SQLAlchemy (on utilise psycopg2 comme le reste de l'app)
         warnings.filterwarnings('ignore', message='pandas only supports SQLAlchemy connectable')
         # Connexion psycopg2 standard (cohérent avec le reste de l'application)
-        self.conn = get_db_connection()
+        self.conn = get_connection()
 
     def get_kpi_all_machines_by_period(self, date_start, date_end):
         """
