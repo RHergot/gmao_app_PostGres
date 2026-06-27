@@ -14,7 +14,7 @@ from app.core.models.commande import Commande
 # Importer le dialogue (même s'il n'existe pas encore complètement)
 from app.ui.dialogs.commande_dialog import CommandeDialog # Décommenter quand le dialogue existe
 from app.ui.dialogs.reception_dialog import ReceptionDialog
-from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError # Ajouter imports exceptions
+from app.utils.exceptions import GmaoPermissionError, DatabaseError, BusinessLogicError # Ajouter imports exceptions
 
 if TYPE_CHECKING:
     from app.ui.main_window import MainWindow

@@ -14,7 +14,7 @@ from app.data.repositories.historique_compteur_repository import HistoriqueCompt
 from app.data.repositories.machine_repository import MachineRepository # Pour vérifier existence Machine
 from app.data.repositories.user_repository import UserRepository # Pour vérifier existence Utilisateur (si besoin)
 
-from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError # Imports exceptions
+from app.utils.exceptions import GmaoPermissionError, DatabaseError, BusinessLogicError # Imports exceptions
 
 from app.core.services.maintenance_service import MaintenanceService
 print('### DEBUG: Chargement module compteur_service.py')

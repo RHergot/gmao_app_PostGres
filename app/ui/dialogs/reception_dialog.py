@@ -13,7 +13,7 @@ from app.core.models.commande import Commande
 from app.core.models.ligne_commande import LigneCommande
 from app.core.models.utilisateur import Utilisateur
 from app.core.services.achat_service import AchatService
-from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError # Importer les exceptions
+from app.utils.exceptions import GmaoPermissionError, DatabaseError, BusinessLogicError # Importer les exceptions
 
 if TYPE_CHECKING:
      pass # Pas besoin de QWidget ici si déjà importé plus haut

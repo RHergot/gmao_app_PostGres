@@ -13,7 +13,7 @@ from app.data.repositories.commande_repository import CommandeRepository
 from app.data.repositories.ligne_commande_repository import LigneCommandeRepository
 from app.data.repositories.piece_repository import PieceRepository
 from app.data.repositories.mouvement_stock_repository import MouvementStockRepository
-from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError
+from app.utils.exceptions import GmaoPermissionError, DatabaseError, BusinessLogicError
 
 
 # Optionnel: Repos pour validation FK (si non géré uniquement par DB)

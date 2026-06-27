@@ -19,7 +19,7 @@ from app.core.models.fournisseur import Fournisseur # Pour ComboBox
 from app.core.models.piece import Piece # Pour lookup
 from app.core.models.utilisateur import Utilisateur
 from app.utils.helpers import parse_iso_date, format_iso_date # Nos helpers
-from app.utils.exceptions import GmaoGmaoPermissionError # Assurez-vous d'avoir cet import aussi
+from app.utils.exceptions import GmaoPermissionError # Assurez-vous d'avoir cet import aussi
 from app.utils.i18n import reverse_translate_purchase_order_status, translate_status # Pour mapper les statuts traduits vers français
 # --- Dialogue de sélection ---
 from app.ui.dialogs.piece_selection_dialog import PieceSelectionDialog
