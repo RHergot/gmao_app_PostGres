@@ -566,4 +566,28 @@ FOR EACH ROW EXECUTE FUNCTION piece_updated_at();
 
     # --- NOUVEAUX TRIGGERS (Phase 11) ---
     # Pas de triggers nécessaires pour les tables MAINTENANCE_INTERVENANT et MAINTENANCE_FRAIS_EXTERNE car elles ne sont modifiées que lors de leur création
+
+    # --- Table Audit Trail (B20) ---
+    "AUDIT_TRAIL": """
+        CREATE TABLE IF NOT EXISTS AUDIT_TRAIL (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id TEXT,
+            details TEXT,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES UTILISATEUR(id_utilisateur) ON DELETE RESTRICT
+        );
+    """,
+    "IDX_AUDIT_TRAIL_USER": """
+        CREATE INDEX IF NOT EXISTS idx_audit_trail_user ON AUDIT_TRAIL(user_id);
+    """,
+    "IDX_AUDIT_TRAIL_ENTITY": """
+        CREATE INDEX IF NOT EXISTS idx_audit_trail_entity ON AUDIT_TRAIL(entity_type, entity_id);
+    """,
+    "IDX_AUDIT_TRAIL_TIMESTAMP": """
+        CREATE INDEX IF NOT EXISTS idx_audit_trail_timestamp ON AUDIT_TRAIL(timestamp DESC);
+    """,
 }

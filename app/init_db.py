@@ -13,7 +13,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
 # Importer APRÈS avoir modifié le path
-from app.data.database import get_connection, close_connection, DatabaseError
+from app.data.database import get_connection, close_connection, DatabaseError, execute_query
 from app.data.schemas import TABLES, TRIGGERS
 from app.utils.logging_config import setup_logging
 
@@ -32,7 +32,7 @@ def create_schema():
         for table_name, create_sql in TABLES.items():
             logger.info(f"Création de la table {table_name}...")
             try:
-                cursor.execute(create_sql)
+                execute_query(create_sql)
                 logger.info(f"Table {table_name} créée avec succès (ou existait déjà).")
             except Exception as e:
                 logger.error(f"Erreur lors de la création de la table {table_name}: {e}")
@@ -42,7 +42,7 @@ def create_schema():
         for trigger_name, create_sql in TRIGGERS.items():
             logger.info(f"Création du trigger {trigger_name}...")
             try:
-                cursor.execute(create_sql)
+                execute_query(create_sql)
                 logger.info(f"Trigger {trigger_name} créé avec succès (ou existait déjà).")
             except Exception as e:
                 logger.error(f"Erreur lors de la création du trigger {trigger_name}: {e}")

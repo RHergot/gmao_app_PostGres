@@ -26,6 +26,17 @@ class MouvementStock:
     user_id: Optional[int] = None
     # commande_id: Optional[int] = None # Pour plus tard
 
+    # --- Champs alignés sur le schéma DB MOUVEMENT_STOCK ---
+    emplacement_source_id: Optional[int] = None
+    emplacement_destination_id: Optional[int] = None
+    utilisateur_id: Optional[int] = None
+    reference_document: Optional[str] = None
+    commentaire: Optional[str] = None
+    cout_unitaire: Optional[float] = None
+    cout_total: Optional[float] = None
+    valide: Optional[bool] = None
+    statut_mouvement: Optional[str] = None
+
     # --- Champs Optionnels / Auto-générés (avec valeur par défaut) ---
     date_mouvement: str = field(default_factory=lambda: datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     raison: Optional[str] = None

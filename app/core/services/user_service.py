@@ -9,7 +9,7 @@ from app.data.repositories.user_repository import UserRepository
 from app.core.models.utilisateur import Utilisateur
 from app.utils.exceptions import BusinessLogicError, DatabaseError, NotFoundError # Ajouter NotFoundError
 from app.utils.helpers import hash_password, check_password # Importer helpers
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +21,11 @@ class UserService:
 
     def __init__(self, user_repository: UserRepository):
         self._repository = user_repository
+        # Mécanisme anti brute-force: compteurs de tentatives échouées et verrouillages
+        self._failed_attempts: Dict[str, int] = {}
+        self._lockout_until: Dict[str, datetime] = {}
         logger.debug("UserService initialisé avec UserRepository.")
-        logger.info("UserService initialisé.")
+        logger.info("UserService initialisé avec protection anti brute-force.")
 
     def ensure_admin_exists(self, default_login=None, default_password=None):
         """ Vérifie si un admin existe, sinon crée le premier avec les identifiants fournis.
@@ -241,31 +244,78 @@ class UserService:
 
     # --- Authentification ---
     def authenticate_user(self, login: str, password: str) -> Optional[Utilisateur]:
-        """Vérifie les identifiants et retourne l'Utilisateur si succès, None sinon."""
+        """Vérifie les identifiants et retourne l'Utilisateur si succès, None sinon.
+
+        Inclut une protection anti brute-force:
+        - Après 5 tentatives échouées, le compte est verrouillé pendant 15 minutes.
+        - Une authentification réussie réinitialise le compteur.
+        """
         logger.info(f"Tentative d'authentification pour: {login}")
+
+        # Vérifier si le compte est verrouillé
+        lockout_until = self._lockout_until.get(login)
+        if lockout_until:
+            if datetime.now() < lockout_until:
+                remaining_seconds = int((lockout_until - datetime.now()).total_seconds())
+                logger.warning(
+                    f"Authentification bloquée: Compte '{login}' verrouillé "
+                    f"pour encore {remaining_seconds} secondes."
+                )
+                return None
+            else:
+                # Verrouillage expiré, on le nettoie
+                self._lockout_until.pop(login, None)
+                logger.info(f"Verrouillage expiré pour le compte '{login}', réinitialisation.")
+
         user = self.get_user_by_login(login)
 
         if user is None:
             logger.warning(f"Authentification échouée: Utilisateur '{login}' non trouvé.")
+            self._increment_failed_attempt(login)
             return None
 
         if not user.actif:
              logger.warning(f"Authentification échouée: Utilisateur '{login}' inactif.")
+             self._increment_failed_attempt(login)
              return None
 
         if user.mot_de_passe_hash is None:
              logger.error(f"Authentification échouée: Utilisateur '{login}' n'a pas de mot de passe défini.")
+             self._increment_failed_attempt(login)
              return None
 
         if check_password(password, user.mot_de_passe_hash):
              logger.info(f"Authentification réussie pour: {login}")
+             # Réinitialiser le compteur d'échecs après succès
+             self._failed_attempts.pop(login, None)
+             self._lockout_until.pop(login, None)
              # Mettre à jour derniere_connexion (optionnel ici, mieux dans un flow de login dédié)
              # user.derniere_connexion = datetime.now()
              # self._repository.update(user) # Attention, appelle update complet
              return user
         else:
              logger.warning(f"Authentification échouée: Mot de passe incorrect pour '{login}'.")
+             self._increment_failed_attempt(login)
              return None
+
+    def _increment_failed_attempt(self, login: str):
+        """Incrémente le compteur d'échecs et verrouille le compte si nécessaire.
+
+        Après 5 tentatives échouées, le compte est verrouillé pendant 15 minutes.
+        """
+        current = self._failed_attempts.get(login, 0) + 1
+        self._failed_attempts[login] = current
+        logger.warning(
+            f"Tentative échouée {current}/5 pour le login '{login}'."
+        )
+        if current >= 5:
+            lockout_time = datetime.now() + timedelta(minutes=15)
+            self._lockout_until[login] = lockout_time
+            logger.warning(
+                f"COMPTE VERROUILLÉ: Login '{login}' verrouillé jusqu'à "
+                f"{lockout_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"(15 minutes après {current} tentatives échouées)."
+            )
 
     def change_password(self, user_id: int, old_password: Optional[str], new_password: str) -> bool:
          """

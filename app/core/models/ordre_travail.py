@@ -13,7 +13,7 @@ class OrdreTravail:
     statut: str          # Enum: Créé, Planifié, AttentePieces...
     utilisateur_createur_id: int # FK vers Utilisateur
     numero_ot: Optional[str] = None # Optionnel, peut être généré
-    gamme_id: Optional[int] = None # FK vers GammeEntretien (Nullable, Union, Dict, Any)
+    gamme_id: Optional[int] = None # FK vers GammeEntretien (Nullable)
     date_creation: datetime = field(default_factory=datetime.now)
     date_prevue: Optional[datetime] = None # Timestamp prévu début
     duree_prevue_min: Optional[int] = None

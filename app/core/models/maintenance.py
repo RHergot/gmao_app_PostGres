@@ -6,7 +6,7 @@ from typing import Any,  Dict,  Union,  Optional
 
 @dataclass
 class Maintenance:
-    ot_id: int              # FK vers OrdreTravail (Obligatoire pour lier, Union, Dict, Any)
+    ot_id: int              # FK vers OrdreTravail (Obligatoire pour lier)
     technicien_id: int      # FK vers Technicien (Qui a fait)
     date_debut_reelle: datetime
     date_fin_reelle: datetime

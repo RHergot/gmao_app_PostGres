@@ -59,6 +59,7 @@ MAINTENANCE_RESULTATS = ["OK", "OK avec reserve", "NOK", "A suivre"]
 
 
 class MaintenanceService:
+    """Orchestre les opérations liées aux OT and Maintenances."""
     def get_monthly_completed_costs_and_counts(self, months: int = 12) -> list:
         """
         Retourne une liste de dicts : [{"month": "YYYY-MM", "cost": float, "count": int}],
@@ -84,8 +85,6 @@ class MaintenanceService:
         except Exception as e:
             logger.error(f"Erreur lors du comptage des OT en cours : {e}")
             return 0
-
-    """Orchestre les opérations liées aux OT and Maintenances."""
 
     def create_intervention_request_ot(self, machine_id: int, description: str, urgence: int, utilisateur_createur_id: int) -> OrdreTravail:
         """
@@ -587,9 +586,6 @@ class MaintenanceService:
     
     # Ajouter update/delete Maintenance si nécessaire (moins courant)
 
-    # gmao_app/app/core/services/maintenance_service.py
-    # (Dans la classe MaintenanceService)
-
     # --- CRUD Equipe (à ajouter) ---
 
     def create_equipe(self, data: Dict[str, Any]) -> Equipe:
@@ -613,9 +609,6 @@ class MaintenanceService:
         """Délègue au TechnicienService (refactoring H11 - Facade)."""
         return self._technicien_service.delete_technicien(tech_id)
         
-
-    # gmao_app/app/core/services/maintenance_service.py
-# (À l'intérieur de la classe MaintenanceService)
 
     # ... (après les autres méthodes comme delete_ot, or avant record_maintenance)
 

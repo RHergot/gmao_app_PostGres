@@ -36,6 +36,7 @@ class CommandeView(QWidget):
         logger.info("CommandeView initialisée.")
 
     def _setup_ui(self):
+        """ Configure l'interface utilisateur de la vue. """
         # --- Barre d'actions ---
         action_layout = QHBoxLayout()
         self.new_button = QPushButton("➕ " + self.tr("Nouvelle Commande"))
@@ -52,7 +53,6 @@ class CommandeView(QWidget):
         else:
             self.new_button.setEnabled(True)
 
-        """ Configure l'interface utilisateur de la vue. """
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(10, 10, 10, 10) # Ajouter des marges
         self.layout.setSpacing(10) # Espacement entre widgets

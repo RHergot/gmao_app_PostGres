@@ -71,9 +71,6 @@ class MachineService:
             logger.error(f"Erreur DB récupération tous types machine: {e}")
             raise BusinessLogicError(f"Erreur base de données: {e}") from e
         
-    
-# gmao_app/app/core/services/machine_service.py
-# (Dans la classe MachineService)
 
     # --- CRUD pour Site ---
 
@@ -166,8 +163,6 @@ class MachineService:
     # def create_site(self, nom: str, ...) -> Site: ...
     # def update_site(self, site_id: int, data: dict) -> Site: ...
     # def delete_site(self, site_id: int) -> bool: ...
-    # gmao_app/app/core/services/machine_service.py
-    # (Dans la classe MachineService)
 
     # --- CRUD pour Fabricant ---
 
@@ -249,9 +244,6 @@ class MachineService:
              raise BusinessLogicError(f"Impossible de supprimer le fabricant: {e}") from e
         
 
-
-     # gmao_app/app/core/services/machine_service.py
-# (Dans la classe MachineService)
 
     # --- CRUD pour TypeMachine ---
 

@@ -48,8 +48,8 @@ def cleanup_old_backups():
             parts = fname.split('_')
             if len(parts) < 2:
                 continue
-            date_str = parts[-1].split('.')[0]  # ex: 2024-04-24_162300
-            dt = datetime.datetime.strptime(date_str, '%Y-%m-%d_%H%M%S')
+            date_str = parts[-1].split('.')[0]  # ex: 2024-04-24
+            dt = datetime.datetime.strptime(date_str, '%Y-%m-%d')
             if (now - dt).days > BACKUP_RETENTION_DAYS:
                 os.remove(fpath)
         except Exception:

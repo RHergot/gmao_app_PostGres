@@ -429,7 +429,7 @@ class MainWindow(QMainWindow):
         
         # Ouverture de la boîte de dialogue de sélection de police
         # Cette boîte retourne un tuple (QFont, bool) indiquant la police sélectionnée et si l'utilisateur a validé
-        result = QFontDialog.getFont(self)
+        result = QFontDialog.getFont(self.current_font if self.current_font else QFont(), self)
         
         # Initialisation des variables
         font = None

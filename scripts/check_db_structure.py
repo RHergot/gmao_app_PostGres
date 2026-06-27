@@ -5,6 +5,7 @@ Script pour vérifier la structure de la base de données
 
 import psycopg2
 import psycopg2.extras
+import psycopg2.sql
 import os
 from dotenv import load_dotenv
 
@@ -49,7 +50,7 @@ def check_database_structure():
                 print(f"\n🔎 Vérification des tables importantes:")
                 for table_name in important_tables:
                     try:
-                        cur.execute(f"SELECT COUNT(*) as count FROM {table_name}")
+                        cur.execute(psycopg2.sql.SQL("SELECT COUNT(*) as count FROM {}").format(psycopg2.sql.Identifier(table_name)))
                         result = cur.fetchone()
                         print(f"  ✓ {table_name.upper()}: {result['count']} lignes")
                     except Exception as e:
@@ -66,7 +67,7 @@ def check_database_structure():
                 
                 for view_name in kpi_views:
                     try:
-                        cur.execute(f"SELECT COUNT(*) as count FROM {view_name}")
+                        cur.execute(psycopg2.sql.SQL("SELECT COUNT(*) as count FROM {}").format(psycopg2.sql.Identifier(view_name)))
                         result = cur.fetchone()
                         print(f"  ✓ {view_name}: {result['count']} lignes")
                     except Exception as e:
