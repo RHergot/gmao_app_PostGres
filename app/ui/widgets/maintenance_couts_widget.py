@@ -232,7 +232,6 @@ class MaintenanceCoutsWidget(QWidget):
             self.cout_data = self.maintenance_service.calculate_maintenance_cost(self.maintenance_id)
             import pprint
             logger.debug("DUMP cout_data: %s", pprint.pformat(self.cout_data))
-            print("DUMP cout_data:", pprint.pformat(self.cout_data))
             
             # Mettre à jour les montants du résumé
             self._update_summary()
@@ -315,7 +314,7 @@ class MaintenanceCoutsWidget(QWidget):
             return
         
         intervenants = self.cout_data.get('detail', {}).get('main_oeuvre', {}).get('items', [])
-        print('DEBUG intervenants:', intervenants)  # DEBUG temporaire
+        logger.debug('Intervenants: %s', intervenants)
 
         
         self.tbl_intervenants.setRowCount(len(intervenants))
@@ -447,7 +446,7 @@ class MaintenanceCoutsWidget(QWidget):
                 maintenance_id=self.maintenance_id
             )
             
-            if dialog.exec_() == IntervenantDialog.Accepted:
+            if dialog.exec() == IntervenantDialog.Accepted:
                 # Récupérer les données du formulaire
                 data = dialog.get_form_data()
                 
@@ -500,7 +499,7 @@ class MaintenanceCoutsWidget(QWidget):
                 intervenant=intervenant
             )
             
-            if dialog.exec_() == IntervenantDialog.Accepted:
+            if dialog.exec() == IntervenantDialog.Accepted:
                 # Récupérer les données du formulaire
                 data = dialog.get_form_data()
                 
@@ -592,7 +591,7 @@ class MaintenanceCoutsWidget(QWidget):
                 maintenance_id=self.maintenance_id
             )
             
-            if dialog.exec_() == FraisExterneDialog.Accepted:
+            if dialog.exec() == FraisExterneDialog.Accepted:
                 # Récupérer les données du formulaire
                 data = dialog.get_form_data()
                 
@@ -641,7 +640,7 @@ class MaintenanceCoutsWidget(QWidget):
                 frais=frais
             )
             
-            if dialog.exec_() == FraisExterneDialog.Accepted:
+            if dialog.exec() == FraisExterneDialog.Accepted:
                 # Récupérer les données du formulaire
                 data = dialog.get_form_data()
                 

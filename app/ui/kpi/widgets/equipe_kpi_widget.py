@@ -31,21 +31,21 @@ project_root = os.path.join(current_dir, '..', '..', '..', '..')
 sys.path.insert(0, app_root)
 sys.path.insert(0, project_root)
 
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     from core.services.kpi_service import KPIService
     setup_logging = None
 except ImportError as e:
-    print(f"Erreur d'import KPIService: {e}")
+    logger.debug("Erreur d'import KPIService: %s", e)
     try:
         from app.core.services.kpi_service import KPIService
         setup_logging = None
     except ImportError as e2:
-        print(f"Erreur d'import KPIService (fallback): {e2}")
+        logger.debug("Erreur d'import KPIService (fallback): %s", e2)
         KPIService = None
         setup_logging = None
-
-import logging
-logger = logging.getLogger(__name__)
 
 class EquipeKPIWidget(QWidget):
     """

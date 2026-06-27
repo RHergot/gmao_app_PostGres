@@ -123,11 +123,11 @@ class MaintenanceRepository:
             logger.info(f"Maintenance pour OT ID {maint.ot_id} ajoutée avec ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-             logger.error(f"Échec ajout Maintenance OT ID {maint.ot_id}. FK (OT/Machine/Tech)%s OT unique%s {e}")
+             logger.error(f"Échec ajout Maintenance OT ID {maint.ot_id}. FK (OT/Machine/Tech), OT unique: {e}")
              if 'MAINTENANCE.ot_id' in str(e) and 'UNIQUE' in str(e):
                  raise DatabaseError(f"Une maintenance existe déjà pour l'OT ID {maint.ot_id}.") from e
              else:
-                 raise DatabaseError("Contrainte d'intégrité violée (Référence OT/Machine/Technicien invalide%s).") from e
+                 raise DatabaseError("Contrainte d'intégrité violée (Référence OT/Machine/Technicien invalide).") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB ajout Maintenance OT ID {maint.ot_id}: {e}")
             raise
@@ -186,11 +186,11 @@ class MaintenanceRepository:
             if success: logger.info(f"Maintenance ID {maint.id_maintenance} mise à jour.")
             return success
         except psycopg2.IntegrityError as e:
-             logger.error(f"Échec màj Maintenance ID {maint.id_maintenance}. FK%s OT unique%s {e}")
+             logger.error(f"Échec màj Maintenance ID {maint.id_maintenance}. FK, OT unique: {e}")
              if 'MAINTENANCE.ot_id' in str(e) and 'UNIQUE' in str(e):
                   raise DatabaseError(f"L'OT ID {maint.ot_id} est déjà lié à une autre maintenance.") from e
              else:
-                 raise DatabaseError("Contrainte d'intégrité violée (Référence OT/Machine/Technicien invalide%s).") from e
+                 raise DatabaseError("Contrainte d'intégrité violée (Référence OT/Machine/Technicien invalide).") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB update Maintenance ID {maint.id_maintenance}: {e}")
             raise
@@ -230,7 +230,7 @@ class MaintenanceRepository:
             raise
 
     def delete(self, maint_id: int) -> bool:
-        """ Supprime un enregistrement de maintenance (peu courant, admin%s). """
+        """ Supprime un enregistrement de maintenance (peu courant, admin). """
         # La suppression n'est pas bloquée par d'autres FK par défaut
         sql = "DELETE FROM MAINTENANCE WHERE id_maintenance = %s"
         try:

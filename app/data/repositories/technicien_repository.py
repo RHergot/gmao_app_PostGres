@@ -20,7 +20,7 @@ class TechnicienRepository:
             logger.info(f"Technicien '{tech.nom_complet}' ajouté ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec ajout technicien '{tech.nom_complet}'. FK equipe%s {e}")
+            logger.warning(f"Échec ajout technicien '{tech.nom_complet}'. FK equipe: {e}")
             if 'FOREIGN KEY constraint failed' in str(e):
                  raise DatabaseError(f"ID Equipe {tech.equipe_id} invalide.") from e
             else:
@@ -67,7 +67,7 @@ class TechnicienRepository:
             if success: logger.info(f"Technicien ID {tech.id_technicien} mis à jour.")
             return success
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec màj tech ID {tech.id_technicien}. FK equipe%s {e}")
+            logger.warning(f"Échec màj tech ID {tech.id_technicien}. FK equipe: {e}")
             if 'FOREIGN KEY constraint failed' in str(e):
                  raise DatabaseError(f"ID Equipe {tech.equipe_id} invalide.") from e
             else:
@@ -89,7 +89,7 @@ class TechnicienRepository:
             if success: logger.info(f"Technicien ID {tech_id} supprimé.")
             return success
         except psycopg2.IntegrityError as e:
-             logger.error(f"Impossible de supprimer Technicien ID {tech_id}. Référencé dans MAINTENANCE%s {e}")
+             logger.error(f"Impossible de supprimer Technicien ID {tech_id}. Référencé dans MAINTENANCE: {e}")
              raise DatabaseError("Impossible de supprimer ce technicien car il est référencé dans l'historique des maintenances.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB delete technicien ID {tech_id}: {e}")

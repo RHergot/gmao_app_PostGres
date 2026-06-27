@@ -377,9 +377,6 @@ monitoring/
 metrics/
 
 # Dossiers de projet exclus
-scripts/
-tools/
-tests/
 
 # === Fichiers de projet spécifiques ===
 # Fichiers de travail temporaires

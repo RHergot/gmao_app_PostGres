@@ -44,16 +44,12 @@ def get_connection():  # type: ignore
     if _connection is None:
         # La validation du DATABASE_TYPE est déjà faite dans config.py, on peut donc se connecter directement.
         try:
-            # --- DEBUG: Affichage des paramètres de connexion ---
-            print("\n" + "="*50)
-            print("DEBUG: Paramètres de connexion passés à psycopg2.connect:")
-            print(f"  - dbname: {POSTGRES_DB}")
-            print(f"  - user: {POSTGRES_USER}")
-            print(f"  - password: {'*'*len(POSTGRES_PASSWORD) if POSTGRES_PASSWORD else 'None'}")
-            print(f"  - host: {POSTGRES_HOST}")
-            print(f"  - port: {POSTGRES_PORT}")
-            print("="*50 + "\n")
-            # --- Fin DEBUG ---
+            logger.debug("Paramètres de connexion à PostgreSQL:")
+            logger.debug("  - dbname: %s", POSTGRES_DB)
+            logger.debug("  - user: %s", POSTGRES_USER)
+            logger.debug("  - password: %s", '*'*len(POSTGRES_PASSWORD) if POSTGRES_PASSWORD else 'None')
+            logger.debug("  - host: %s", POSTGRES_HOST)
+            logger.debug("  - port: %s", POSTGRES_PORT)
 
             # Validation proactive du nom d'hôte (message d'erreur plus clair que psycopg2)
             try:

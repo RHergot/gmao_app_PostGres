@@ -25,16 +25,16 @@ from PySide6.QtGui import QFont, QPalette, QIcon
 # Ajouter le chemin pour les imports de l'app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     from app.core.services.kpi_service import KPIService
     from app.utils.logging_config import setup_logging
 except ImportError as e:
-    print(f"Erreur d'import KPIService: {e}")
+    logger.debug("Erreur d'import KPIService: %s", e)
     KPIService = None
     setup_logging = None
-
-import logging
-logger = logging.getLogger(__name__)
 
 
 class AdvancedKPIWidget(QWidget):

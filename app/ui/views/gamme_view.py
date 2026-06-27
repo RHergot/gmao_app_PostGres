@@ -33,12 +33,8 @@ class GammeView(QWidget):
                  current_user_id: int,
                  parent=None,
                  app_language=None):
-        try:
-            from main import APP_LANGUAGE
-        except ImportError:
-            APP_LANGUAGE = None
         from app.config import app_config, Language
-        self.app_language = app_language if app_language is not None else (APP_LANGUAGE if APP_LANGUAGE is not None else getattr(app_config, 'language', Language.FRENCH))
+        self.app_language = app_language if app_language is not None else getattr(app_config, 'language', Language.FRENCH)
         super().__init__(parent)
         self.preventive_service = preventive_service
         self.machine_service = machine_service # Nécessaire pour GammeDialog et map types

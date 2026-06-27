@@ -85,18 +85,15 @@ class InterventionRequestView(QDialog):
                 urgence=urgence,
                 utilisateur_createur_id=utilisateur_createur_id
             )
+            # Émettre le signal avant de fermer le dialogue
+            urgency = self.urgency_group.checkedButton().text()
+            data = {
+                "description": description,
+                "machine": machine,
+                "urgency": urgency
+            }
+            self.request_submitted.emit(data)
             QMessageBox.information(self, self.tr("Succès"), self.tr("Demande enregistrée sous OT numéro : ") + getattr(ot, 'numero_ot', '?'))
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, self.tr("Erreur"), self.tr("Erreur lors de la création de la demande : ") + str(e))
-            return
-        urgency = self.urgency_group.checkedButton().text()
-        data = {
-            "description": description,
-            "machine": machine,
-            "urgency": urgency
-        }
-        self.request_submitted.emit(data)
-        self.description_edit.clear()
-        self.machine_combo.setCurrentIndex(0)
-        self.urgency_normal.setChecked(True)

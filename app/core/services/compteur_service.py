@@ -17,7 +17,6 @@ from app.data.repositories.user_repository import UserRepository # Pour vérifie
 from app.utils.exceptions import GmaoPermissionError, DatabaseError, BusinessLogicError # Imports exceptions
 
 from app.core.services.maintenance_service import MaintenanceService
-print('### DEBUG: Chargement module compteur_service.py')
 logger = logging.getLogger(__name__)
 
 class CompteurService:

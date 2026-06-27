@@ -26,15 +26,15 @@ from .base_kpi_dialog import BaseKPIDialog, get_shared_text
 # Ajouter le chemin pour les imports de l'app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     from app.config import app_config, Language
     from app.ui.kpi.widgets.site_kpi_widget import SiteKPIWidget
 except ImportError as e:
-    print(f"Erreur d'import dans SiteKPIDialog: {e}")
+    logger.debug("Erreur d'import dans SiteKPIDialog: %s", e)
     SiteKPIWidget = None
-
-import logging
-logger = logging.getLogger(__name__)
 
 # === TRADUCTIONS SPÉCIFIQUES ===
 SITE_TRANSLATIONS = {

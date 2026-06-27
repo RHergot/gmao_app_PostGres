@@ -20,7 +20,7 @@ class SiteRepository:
             logger.info(f"Site '{site.nom}' ajouté avec ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Impossible d'ajouter le site '{site.nom}'. Contrainte unique 'nom' violée%s {e}")
+            logger.warning(f"Impossible d'ajouter le site '{site.nom}'. Contrainte unique 'nom' violée: {e}")
             raise DatabaseError(f"Le nom de site '{site.nom}' existe déjà.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB ajout site '{site.nom}': {e}")
@@ -68,7 +68,7 @@ class SiteRepository:
             if success: logger.info(f"Site ID {site.id_site} mis à jour.")
             return success
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec màj site ID {site.id_site}. Contrainte unique 'nom' violée%s {e}")
+            logger.warning(f"Échec màj site ID {site.id_site}. Contrainte unique 'nom' violée: {e}")
             raise DatabaseError(f"Le nom de site '{site.nom}' est déjà utilisé par un autre site.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB update site ID {site.id_site}: {e}")

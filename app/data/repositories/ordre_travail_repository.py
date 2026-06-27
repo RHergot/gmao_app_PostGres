@@ -34,9 +34,9 @@ class OrdreTravailRepository:
             logger.info(f"Ordre Travail (Type '{ot.type}') ajouté ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-             logger.error(f"Échec ajout OT. FK invalide (Machine/Gamme/Tech/User)%s {e}")
+             logger.error(f"Échec ajout OT. FK invalide (Machine/Gamme/Tech/User): {e}")
              # Donner un message plus précis serait bien mais complexe sans analyser str(e)
-             raise DatabaseError("Contrainte d'intégrité violée (Référence Machine/Utilisateur invalide%s).") from e
+             raise DatabaseError("Contrainte d'intégrité violée (Référence Machine/Utilisateur invalide).") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB ajout OT type '{ot.type}': {e}")
             raise
@@ -140,8 +140,8 @@ class OrdreTravailRepository:
             if success: logger.info(f"OT ID {ot.id_ot} mis à jour.")
             return success
         except psycopg2.IntegrityError as e:
-             logger.error(f"Échec màj OT ID {ot.id_ot}. FK invalide%s {e}")
-             raise DatabaseError("Contrainte d'intégrité violée (Référence invalide%s).") from e
+             logger.error(f"Échec màj OT ID {ot.id_ot}. FK invalide: {e}")
+             raise DatabaseError("Contrainte d'intégrité violée (Référence invalide).") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB update OT ID {ot.id_ot}: {e}")
             raise

@@ -5,7 +5,10 @@ Vue d'accueil avec KPIs et logo d'entreprise pour la GMAO.
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QTableView, QHeaderView, QPushButton, QFrame
 from PySide6.QtCore import Qt
 import os
+import logging
 from PySide6.QtGui import QPixmap, QFont, QStandardItemModel, QStandardItem
+
+logger = logging.getLogger(__name__)
 
 from app.access_control import MENU_RIGHTS, normalize_role, can_access
 from app.ui.views.intervention_request_view import InterventionRequestView
@@ -248,19 +251,19 @@ class WelcomeView(QWidget):
             try:
                 ot_ouverts = self.maintenance_service.get_open_ots_count()
             except Exception as e:
-                print(f"Erreur lors de la récupération des OT ouverts: {e}")
+                logger.debug("Erreur lors de la récupération des OT ouverts: %s", e)
                 ot_ouverts = '?'
             try:
                 maintenances_en_cours = self.maintenance_service.get_in_progress_ots_count()
             except Exception as e:
-                print(f"Erreur lors de la récupération des OT en cours: {e}")
+                logger.debug("Erreur lors de la récupération des OT en cours: %s", e)
                 maintenances_en_cours = '?'
                 
             # Mise à jour du tableau des coûts
             try:
                 # Récupérer les données de coûts mensuels
                 monthly_data = self.maintenance_service.get_monthly_completed_costs_and_counts()
-                print(f"Données mensuelles récupérées: {len(monthly_data)} mois")
+                logger.debug("Données mensuelles récupérées: %d mois", len(monthly_data))
                 
                 # Trouver le tableau des coûts
                 costs_table = None
@@ -291,9 +294,9 @@ class WelcomeView(QWidget):
                     else:
                         model.setHorizontalHeaderLabels([self.tr("Mois"), self.tr("Coût"), self.tr("Interventions")])
                     
-                    print(f"Tableau des coûts mis à jour avec {len(monthly_data)} lignes")
+                    logger.debug("Tableau des coûts mis à jour avec %d lignes", len(monthly_data))
             except Exception as e:
-                print(f"Erreur lors de la mise à jour du tableau des coûts: {e}")
+                logger.debug("Erreur lors de la mise à jour du tableau des coûts: %s", e)
         else:
             ot_ouverts = '?'
             maintenances_en_cours = '?'
@@ -309,35 +312,35 @@ class WelcomeView(QWidget):
         # --- Bouton de demande d'intervention ---
     def open_intervention_request(self):
         # Récupérer la vraie liste des machines depuis le service
-        print("[DEBUG] open_intervention_request called. self:", self)
+        logger.debug("[DEBUG] open_intervention_request called. self: %s", self)
         machine_list = []
         machine_id_map = {}
         mainwin = self.parent()
         # Remonter la hiérarchie si besoin
         if not hasattr(mainwin, 'machine_service') and hasattr(mainwin, 'parent'):
             mainwin = mainwin.parent()
-        print("[DEBUG] mainwin:", mainwin)
+        logger.debug("[DEBUG] mainwin: %s", mainwin)
         if hasattr(mainwin, 'machine_service'):
             try:
                 machines = mainwin.machine_service.get_all_machines()
-                print(f"[DEBUG] Machines récupérées: {machines}")
+                logger.debug("[DEBUG] Machines récupérées: %s", machines)
                 for m in machines:
                     machine_list.append(m.nom)
                     machine_id_map[m.nom] = m.id_machine
             except Exception as e:
-                print(f"Erreur lors de la récupération des machines: {e}")
+                logger.debug("Erreur lors de la récupération des machines: %s", e)
         else:
-            print("[DEBUG] machine_service non trouvé dans la hiérarchie des parents.")
+            logger.debug("[DEBUG] machine_service non trouvé dans la hiérarchie des parents.")
             machine_list = ["Aucune machine disponible"]
             machine_id_map = {}
 
         # Passer aussi l'utilisateur courant
         current_user = getattr(mainwin, 'current_user', None)
-        print("[DEBUG] current_user:", current_user)
+        logger.debug("[DEBUG] current_user: %s", current_user)
         # --- DEBUG: Test direct traduction Qt pour "Demande d’intervention" ---
         from PySide6.QtCore import QCoreApplication
-        print("[DEBUG][i18n] QCoreApplication.translate(InterventionRequestView, 'Demande d’intervention'):", QCoreApplication.translate("InterventionRequestView", "Demande d’intervention"))
-        print("[DEBUG][i18n] self.tr('Demande d’intervention'):", self.tr("Demande d’intervention"))
+        logger.debug("[DEBUG][i18n] QCoreApplication.translate(InterventionRequestView, 'Demande d'intervention'): %s", QCoreApplication.translate("InterventionRequestView", "Demande d'intervention"))
+        logger.debug("[DEBUG][i18n] self.tr('Demande d'intervention'): %s", self.tr("Demande d'intervention"))
 
         dialog = InterventionRequestView(machine_list=machine_list, machine_id_map=machine_id_map, current_user=current_user, parent=self)
         dialog.exec()

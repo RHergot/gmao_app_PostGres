@@ -361,99 +361,6 @@ class AchatService:
               raise
 
 
-    # --- Gestion de la Réception ---
-
-    def receive_ligne_commande(self, ligne_id: int, quantite_recue_ajout: int, date_reception: date, utilisateur_id: Optional[int] = None) -> bool:
-        """
-        Enregistre la réception d'une quantité pour une ligne de commande.
-        Met à jour le stock de la pièce et les statuts.
-        Args:
-            ligne_id: ID de la ligne de commande concernée.
-            quantite_recue_ajout: Quantité *nouvellement* reçue (doit être > 0).
-            date_reception: Date de cette réception.
-            utilisateur_id: ID de l'utilisateur effectuant l'action (pour MouvementStock).
-        Returns:
-            True si la réception et les mises à jour ont réussi, False sinon.
-        Raises:
-             ValueError: Si données invalides ou ligne non trouvée/non recevable.
-             DatabaseError: Si erreur DB.
-        """
-        if quantite_recue_ajout <= 0:
-            raise ValueError("La quantité reçue ajoutée doit être positive.")
-
-        # 1. Récupérer la ligne
-        ligne = self.ligne_commande_repo.get_by_id(ligne_id)
-        if not ligne:
-            raise ValueError(f"Ligne de commande ID {ligne_id} non trouvée.")
-
-        # 2. Vérifier si la réception est possible (statut commande, etc.)
-        commande = self.commande_repo.get_by_id(ligne.commande_id)
-        if not commande:
-             # Ne devrait pas arriver si la ligne existe
-             raise DatabaseError(f"Commande ID {ligne.commande_id} associée à ligne ID {ligne_id} non trouvée.")
-        if commande.statut not in ['Envoyee', 'Partielle']:
-             raise ValueError(f"Impossible de réceptionner la ligne ID {ligne_id} (commande statut: {commande.statut}).")
-
-        # 3. Vérifier si on ne dépasse pas la quantité commandée
-        new_total_recu = ligne.quantite_recue + quantite_recue_ajout
-        if new_total_recu > ligne.quantite_commandee:
-             raise ValueError(f"Réception impossible pour ligne ID {ligne_id}: quantité totale reçue ({new_total_recu}) dépasserait quantité commandée ({ligne.quantite_commandee}).")
-
-        try:
-            # --- Transaction implicite via les helpers DB si bien faits, sinon gérer explicitement ---
-            # NOTE: Pour une robustesse maximale, toutes ces opérations devraient être dans une transaction DB
-
-            # 4. Mettre à jour la quantité reçue et date sur la ligne
-            success_ligne = self.ligne_commande_repo.update_reception(ligne_id, quantite_recue_ajout, date_reception)
-            if not success_ligne:
-                 # Ne devrait pas arriver si l'ID est bon
-                 raise DatabaseError(f"Échec de la mise à jour de la réception pour ligne ID {ligne_id}.")
-
-            # 5. Mettre à jour le stock de la pièce
-            success_stock = self.piece_repo.update_stock(ligne.piece_id, quantite_recue_ajout)
-            if not success_stock:
-                # Ceci est plus probable (ex: pièce supprimée entre-temps?)
-                # TODO: Que faire? Annuler la réception sur la ligne (rollback)? Logguer erreur grave?
-                logger.error(f"Échec mise à jour stock pour pièce ID {ligne.piece_id} après réception ligne {ligne_id}. Transaction incomplète!")
-                raise DatabaseError(f"Échec mise à jour stock pour pièce ID {ligne.piece_id}.")
-
-
-            # 6. Enregistrer le mouvement de stock
-            mvt = MouvementStock(
-                 piece_id=ligne.piece_id,
-                 type_mouvement='ENTREE',
-                 quantite=quantite_recue_ajout,
-                 date_mouvement=datetime.now().strftime('%Y-%m-%d %H:%M:%S'), # Ou utiliser la date de réception? Préférable datetime.now() pour audit
-                 raison=f"Réception Commande ID {ligne.commande_id}, Ligne ID {ligne_id}",
-                 user_id=utilisateur_id
-                 # stock_avant/apres pourraient être récupérés/calculés si nécessaire
-            )
-            mvt_id = self.mouvement_stock_repo.add(mvt)
-            if not mvt_id:
-                 logger.warning(f"Échec enregistrement mouvement stock pour réception ligne ID {ligne_id}. Continuer quand même...")
-                 # Décision: Est-ce bloquant? Probablement pas, mais à surveiller.
-
-            # 7. Mettre à jour le statut de la ligne
-            new_statut_ligne = 'Recue' if new_total_recu == ligne.quantite_commandee else 'Partielle'
-            if new_statut_ligne != ligne.statut_ligne:
-                 self.ligne_commande_repo.update_ligne_statut(ligne_id, new_statut_ligne)
-
-            # 8. Vérifier et mettre à jour le statut de la commande globale
-            self._check_and_update_commande_statut(ligne.commande_id)
-
-            # --- Fin de la "transaction" implicite ---
-            logger.info(f"Réception de {quantite_recue_ajout} unités pour Ligne ID {ligne_id} terminée avec succès.")
-            return True
-
-        except (DatabaseError, ValueError) as e:
-             logger.error(f"Erreur lors de la réception pour ligne ID {ligne_id}: {e}")
-             # TODO: Implémenter un rollback si transaction explicite
-             raise # Remonter l'erreur
-
-        except (GmaoPermissionError, ValueError, DatabaseError, BusinessLogicError) as e: # ValueError est utilisé directement
-             logger.error(f"Échec réception ligne ID {ligne_id}: {e}")
-             raise # Remonter l'erreur gérée
-
     # --- Méthodes privées d'aide ---
 
     def _update_commande_total_ht(self, commande_id: int):
@@ -496,28 +403,6 @@ class AchatService:
          except DatabaseError as e:
               logger.error(f"Erreur lors vérification/màj statut commande ID {commande_id} après réception ligne: {e}")
               # Ne pas bloquer
-
-    def update_commande(self, commande: Commande, current_user: Utilisateur) -> bool:
-            """ Met à jour l'en-tête d'une commande existante. """
-            if not commande.id_commande:
-                logger.error("Tentative de màj commande sans ID.")
-                return False
-            try:
-                # TODO: Ajouter validation métier si nécessaire avant update DB
-                # (ex: vérifier si le statut peut être changé, etc.)
-                logger.debug(f"Mise à jour commande ID {commande.id_commande}...")
-                success = self.commande_repo.update(commande)
-                if success:
-                    # Recalculer total après màj (au cas où frais port changent?)
-                    self._update_commande_total_ht(commande.id_commande)
-                return success
-            except DatabaseError as e:
-                logger.error(f"Erreur DB màj commande ID {commande.id_commande}: {e}")
-                raise # Remonter pour l'UI
-            except Exception as e:
-                logger.exception(f"Erreur inattendue màj commande ID {commande.id_commande}: {e}")
-                raise DatabaseError(f"Erreur serveur màj commande {commande.id_commande}") from e
-
 
     # --- Méthode pour infos pièce (utilisée par ReceptionDialog si Option C n'est PAS totalement implémentée) ---
     # Si Option C est bien implémentée (LigneCommande contient déjà réf/nom), cette méthode n'est plus strictement nécessaire
@@ -693,6 +578,3 @@ class AchatService:
             except Exception as e:
                 logger.exception(f"Erreur inattendue envoi commande ID {commande_id}: {e}")
                 raise DatabaseError(f"Erreur serveur lors envoi commande {commande_id}.") from e
-        # -----------------------------
-
-        # ... (autres méthodes : receive_ligne_commande, etc.) ...

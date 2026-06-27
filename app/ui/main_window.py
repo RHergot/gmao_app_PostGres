@@ -286,7 +286,7 @@ class MainWindow(QMainWindow):
             # Construction de la chaîne de connexion à partir des paramètres de configuration
             # Cela permet une flexibilité dans la définition des paramètres PostgreSQL
             from app.config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB
-            welcome_db_str = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+            welcome_db_str = f"postgresql://{POSTGRES_USER}:***@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
             self.db_connection_str = welcome_db_str
         
         # Stockage de la langue de l'application pour la transmettre aux vues
@@ -564,11 +564,14 @@ class MainWindow(QMainWindow):
             # Vérification et application de la nouvelle chaîne
             if new_conn_str:
                 self.db_connection_str = new_conn_str
+                # Masquer le mot de passe pour l'affichage
+                import re
+                masked_conn_str = re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', new_conn_str)
                 # Information à l'utilisateur (changement effectif au redémarrage)
                 QMessageBox.information(
                     self, 
                     "Connexion modifiée", 
-                    f"Nouvelle connexion :\n{new_conn_str}\n\n(Reconnexion effective au prochain redémarrage de l'application)"
+                    f"Nouvelle connexion :\n{masked_conn_str}\n\n(Reconnexion effective au prochain redémarrage de l'application)"
                 )
             else:
                 # Avertissement si la chaîne est vide
@@ -1167,26 +1170,7 @@ class MainWindow(QMainWindow):
             import traceback
             traceback.print_exc()
             self.show_popup("Erreur", f"Erreur lors de l'ouverture du dialogue des compteurs: {str(e)}", QMessageBox.Critical)
-        QApplication.processEvents()  # Permet d'afficher le dialog avant le backup
-        dialog.show()
-        QApplication.processEvents()
-        try:
-            # 2. Effectuer le backup
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            db_path = os.path.join(project_root, 'gmao_data.db')
-            if os.path.exists(db_path):
-                backup_database(db_path)
-                logger.info(f"Sauvegarde automatique terminée ({db_path})")
-            else:
-                logger.info("Utilisation de PostgreSQL : pas de fichier local à sauvegarder.")
-        except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde automatique: {e}\n{traceback.format_exc()}")
-            QMessageBox.critical(self, "Erreur Backup", f"Erreur lors de la sauvegarde automatique de la base de données :\n{e}")
-        finally:
-            dialog.close()
-        # 3. Fermer proprement la DB
-        close_connection()
-        logger.info("Application fermée.")
+
 
     def show_maintenance_detail_dialog(self):
         """
@@ -1203,8 +1187,11 @@ class MainWindow(QMainWindow):
         import os
         from PySide6.QtWidgets import QMessageBox
 
-        # Définir le chemin vers le script principal du BI Reporting
-        bi_reporting_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../Projets/Graph/main.py"))
+        # Chemin configurable via variable d'environnement
+        bi_reporting_path = os.getenv('GMAO_BI_REPORTING_PATH', '')
+        if not bi_reporting_path:
+            self.show_popup("Erreur", "Le chemin du BI Reporting n'est pas configuré. Définissez la variable d'environnement GMAO_BI_REPORTING_PATH.", QMessageBox.Critical)
+            return
         try:
             subprocess.Popen(["python", bi_reporting_path])
             self.show_popup("BI Reporting", "L'application de reporting BI a été lancée.", QMessageBox.Information)

@@ -46,7 +46,7 @@ class CommandeView(QWidget):
         self.refresh_button = QPushButton("🔄 " + self.tr("Rafraîchir"))
 
         # Contrôle des droits d'accès sur le bouton Nouvelle Commande
-        if self.main_window.current_user.role not in ['Admin', 'GestionStock']:
+        if not self.main_window.current_user or self.main_window.current_user.role not in ['Admin', 'GestionStock']:
             self.new_button.setEnabled(False)
             self.new_button.setToolTip(self.tr("Droits insuffisants"))
         else:

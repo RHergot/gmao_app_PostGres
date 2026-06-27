@@ -7,7 +7,7 @@ Fournit une structure commune et des fonctionnalités partagées.
 import sys
 import os
 from datetime import datetime, date, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 
 # Imports PySide6
 from PySide6.QtWidgets import (
@@ -22,20 +22,20 @@ from PySide6.QtGui import QFont, QPalette, QIcon
 # Ajouter le chemin pour les imports de l'app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     from app.config import APP_NAME, APP_VERSION, LOG_LEVEL
     from app.config import app_config, Language
     from app.core.services.kpi_service import KPIService
     from app.utils.logging_config import setup_logging
 except ImportError as e:
-    print(f"Erreur d'import dans BaseKPIDialog: {e}")
+    logger.debug("Erreur d'import dans BaseKPIDialog: %s", e)
     APP_NAME = "GMAO Industrielle"
     APP_VERSION = "1.0"
     LOG_LEVEL = "INFO"
     KPIService = None
-
-import logging
-logger = logging.getLogger(__name__)
 
 # === TRADUCTIONS PARTAGÉES ===
 SHARED_TRANSLATIONS = {
@@ -116,10 +116,6 @@ class BaseKPIDialog(QDialog):
         self.setWindowTitle(f"{title} - {APP_NAME}")
         self.setMinimumSize(1000, 700)
         self.setModal(True)
-        
-        # Configuration du logging
-        if setup_logging:
-            setup_logging()
         
         # Initialisation
         self.setup_ui()
@@ -303,7 +299,7 @@ class BaseKPIDialog(QDialog):
         self.date_debut.setDate(QDate.fromString(start_date.isoformat(), "yyyy-MM-dd"))
         self.date_fin.setDate(QDate.fromString(end_date.isoformat(), "yyyy-MM-dd"))
     
-    def get_date_range(self) -> tuple[date, date]:
+    def get_date_range(self) -> Tuple[date, date]:
         """Récupère la plage de dates actuelle."""
         start = self.date_debut.date().toPython()
         end = self.date_fin.date().toPython()

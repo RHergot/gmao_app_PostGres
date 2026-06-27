@@ -100,7 +100,7 @@ class CompteurRepository:
 
 
     def update(self, compteur: Compteur) -> bool:
-        """ Met à jour un compteur existant (sauf la valeur actuelle et date, gérées séparément%s). """
+        """ Met à jour un compteur existant (sauf la valeur actuelle et date, gérées séparément). """
         if compteur.id_compteur is None:
              logger.warning("Tentative de màj compteur sans ID.")
              return False

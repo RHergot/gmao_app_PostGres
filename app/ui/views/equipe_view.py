@@ -59,7 +59,7 @@ class EquipeView(QWidget):
         self._update_button_states()
         self.refresh_equipes()
         logger.debug("EquipeView initialisée.")
-        print(self.tr("Ajouter Équipe"))
+        logger.debug("self.tr('Ajouter Équipe'): %s", self.tr("Ajouter Équipe"))
 
     def setup_table(self):
         """Configure la table des equipes."""

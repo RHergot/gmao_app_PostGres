@@ -22,6 +22,9 @@ from PySide6.QtCore import Qt, QDate, QTimer, Signal
 from PySide6.QtGui import QFont
 
 # Imports pour graphiques
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     # Configuration matplotlib pour PySide6
     import matplotlib
@@ -33,7 +36,7 @@ try:
     MATPLOTLIB_AVAILABLE = True
 except ImportError as e:
     MATPLOTLIB_AVAILABLE = False
-    print(f"Matplotlib non disponible - graphiques désactivés: {e}")
+    logger.debug("Matplotlib non disponible - graphiques désactivés: %s", e)
 
 # Import des traductions
 from .machine_kpi_chart_translations import get_chart_text

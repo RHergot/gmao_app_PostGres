@@ -34,7 +34,7 @@ from clean_project import clean_project  # Module pour nettoyer les fichiers .py
 # Configuration unique du système de logging
 # Cette configuration s'applique à tous les loggers de l'application
 logging.basicConfig(
-    level=logging.DEBUG,  # Niveau DEBUG (10) capture tous les niveaux de messages (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    level=logging.INFO,  # Niveau INFO (20) capture INFO, WARNING, ERROR, CRITICAL
     format='%(asctime)s - %(name)s:%(lineno)d - %(levelname)s - %(message)s'  # Format détaillé avec horodatage, module, ligne et niveau
 )
 # Affiche le niveau effectif du logger racine (10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL)

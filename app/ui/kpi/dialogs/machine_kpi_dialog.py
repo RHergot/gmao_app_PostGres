@@ -31,17 +31,17 @@ from .machine_kpi_styles import MODERN_STYLE, CARD_COLORS, get_card_style, STATU
 # Ajouter le chemin pour les imports de l'app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     from app.config import app_config, Language
     from app.core.services.kpi_service import KPIService
     # Import du widget machine KPI existant
     from app.ui.kpi.widgets.machine_kpi_widget import MachineKPIWidget
 except ImportError as e:
-    print(f"Erreur d'import dans MachineKPIDialog: {e}")
+    logger.debug("Erreur d'import dans MachineKPIDialog: %s", e)
     MachineKPIWidget = None
-
-import logging
-logger = logging.getLogger(__name__)
 
 # === TRADUCTIONS SPÉCIFIQUES ===
 MACHINE_TRANSLATIONS = {
@@ -282,6 +282,18 @@ def get_machine_text(key: str) -> str:
 
 
 class MachineKPIDialog(BaseKPIDialog):
+    """
+    Dialog d'analyse KPI par machine - Version améliorée.
+    
+    Nouvelles fonctionnalités:
+    - Interface moderne avec cartes visuelles
+    - Graphiques intégrés directement dans l'interface  
+    - Filtres avancés avec recherche textuelle
+    - Indicateurs visuels de performance
+    - Tri et export multiples
+    - Animations et transitions fluides
+    """
+    
     def refresh_data(self):
         """Actualise la vue Overview : reset complet avant rechargement."""
         try:
@@ -296,18 +308,6 @@ class MachineKPIDialog(BaseKPIDialog):
         except Exception as e:
             logger.error(f"Erreur lors du reset de la vue Overview : {e}")
         super().refresh_data()
-
-    """
-    Dialog d'analyse KPI par machine - Version améliorée.
-    
-    Nouvelles fonctionnalités:
-    - Interface moderne avec cartes visuelles
-    - Graphiques intégrés directement dans l'interface  
-    - Filtres avancés avec recherche textuelle
-    - Indicateurs visuels de performance
-    - Tri et export multiples
-    - Animations et transitions fluides
-    """
     
     def __init__(self, parent=None):
         # Initialisation avec le titre spécifique et désactivation de la barre d'outils commune
@@ -980,10 +980,9 @@ class MachineKPIDialog(BaseKPIDialog):
             
             # Convertir au format UI
             self.machines_data = self._convert_kpi_to_ui_format(raw_kpi_data)
-            print("\n====== DEBUG: machines_data après conversion ======")
+            logger.debug("machines_data après conversion: %d machines", len(self.machines_data))
             for m in self.machines_data:
-                print(m)
-            print(f"Total machines: {len(self.machines_data)}\n===============================\n")
+                logger.debug("  %s", m)
             self.filtered_data = self.machines_data.copy()
 
             # RÉINITIALISER TOUS LES FILTRES AVANT DE METTRE À JOUR
@@ -1186,34 +1185,34 @@ class MachineKPIDialog(BaseKPIDialog):
         # === FILTRE 1: Type de machine ===
         selected_type = self.type_combo.currentText()
         all_types = get_machine_text("all_types")
-        print(f"[DEBUG] FILTRE TYPE: selected_type={selected_type!r}, all_types={all_types!r}, taille_avant={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE TYPE: selected_type=%r, all_types=%r, taille_avant=%d", selected_type, all_types, len(filtered_data))
         if selected_type != all_types:
             filtered_data = [m for m in filtered_data if m["type"] == selected_type]
-        print(f"[DEBUG] FILTRE TYPE: taille_après={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE TYPE: taille_après=%d", len(filtered_data))
 
         # === FILTRE 2: Machine ===
         selected_machine = self.machine_combo.currentText()
         all_machines = get_machine_text("all_machines")
-        print(f"[DEBUG] FILTRE MACHINE: selected_machine={selected_machine!r}, all_machines={all_machines!r}, taille_avant={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE MACHINE: selected_machine=%r, all_machines=%r, taille_avant=%d", selected_machine, all_machines, len(filtered_data))
         if selected_machine != all_machines:
             filtered_data = [m for m in filtered_data if m["machine_name"] == selected_machine]
-        print(f"[DEBUG] FILTRE MACHINE: taille_après={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE MACHINE: taille_après=%d", len(filtered_data))
         
         # === FILTRE 3: Site ===
         selected_site = self.site_combo.currentText()
         all_sites = get_machine_text("all_sites")
-        print(f"[DEBUG] FILTRE SITE: selected_site={selected_site!r}, all_sites={all_sites!r}, taille_avant={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE SITE: selected_site=%r, all_sites=%r, taille_avant=%d", selected_site, all_sites, len(filtered_data))
         if selected_site != all_sites:
             filtered_data = [m for m in filtered_data if m.get("site", "") == selected_site]
-        print(f"[DEBUG] FILTRE SITE: taille_après={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE SITE: taille_après=%d", len(filtered_data))
         
         # === FILTRE 4: Équipe ===
         selected_team = self.team_combo.currentText()
         all_teams = get_machine_text("all_teams")
-        print(f"[DEBUG] FILTRE TEAM: selected_team={selected_team!r}, all_teams={all_teams!r}, taille_avant={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE TEAM: selected_team=%r, all_teams=%r, taille_avant=%d", selected_team, all_teams, len(filtered_data))
         if selected_team != all_teams:
             filtered_data = [m for m in filtered_data if m.get("equipe_nom", "") == selected_team]
-        print(f"[DEBUG] FILTRE TEAM: taille_après={len(filtered_data)}")
+        logger.debug("[DEBUG] FILTRE TEAM: taille_après=%d", len(filtered_data))
         
         # === FILTRE 5: Statut ===
         selected_status = getattr(self, 'status_combo', None)
@@ -1288,7 +1287,7 @@ class MachineKPIDialog(BaseKPIDialog):
             self.machine_combo.setCurrentText(current_machine)
         else:
             self.machine_combo.setCurrentText(get_machine_text("all_machines"))
-        print(f"[DEBUG] machine_combo sélectionné: {self.machine_combo.currentText()!r}")
+        logger.debug("[DEBUG] machine_combo sélectionné: %r", self.machine_combo.currentText())
         self.machine_combo.blockSignals(False)
         
         # Mise à jour du filtre site
@@ -1304,7 +1303,7 @@ class MachineKPIDialog(BaseKPIDialog):
             self.site_combo.setCurrentText(current_site)
         else:
             self.site_combo.setCurrentText(get_machine_text("all_sites"))
-        print(f"[DEBUG] site_combo sélectionné: {self.site_combo.currentText()!r}")
+        logger.debug("[DEBUG] site_combo sélectionné: %r", self.site_combo.currentText())
         self.site_combo.blockSignals(False)
         
         # Mise à jour du filtre équipe
@@ -1320,12 +1319,12 @@ class MachineKPIDialog(BaseKPIDialog):
             self.team_combo.setCurrentText(current_team)
         else:
             self.team_combo.setCurrentText(get_machine_text("all_teams"))
-        print(f"[DEBUG] team_combo sélectionné: {self.team_combo.currentText()!r}")
+        logger.debug("[DEBUG] team_combo sélectionné: %r", self.team_combo.currentText())
         self.team_combo.blockSignals(False)
 
     def update_data_view(self):
         """Met à jour la vue de données avec le nouveau tableau amélioré."""
-        print(f"\n====== DEBUG: update_data_view - nb lignes à afficher: {len(self.filtered_data)} ======")
+        logger.debug("update_data_view - nb lignes à afficher: %d", len(self.filtered_data))
         filtered_data = self.filtered_data
 
         # === MISE À JOUR DU TABLEAU PRINCIPAL ===
@@ -1335,7 +1334,7 @@ class MachineKPIDialog(BaseKPIDialog):
         self.repaint()
         
         for row, machine in enumerate(filtered_data):
-            print(f"DEBUG: Remplissage ligne {row} - {machine}")
+            logger.debug("Remplissage ligne %d - %s", row, machine)
             # Colonnes de base
             self.data_table.setItem(row, 0, QTableWidgetItem(machine["machine_name"]))
             self.data_table.setItem(row, 1, QTableWidgetItem(machine["type"]))

@@ -37,7 +37,7 @@ class MaintenanceFraisExterneRepository:
             logger.info(f"Frais externe ajouté pour maintenance ID {frais.maintenance_id}. ID frais: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.error(f"Échec ajout frais pour maintenance {frais.maintenance_id}. FK invalide%s {e}")
+            logger.error(f"Échec ajout frais pour maintenance {frais.maintenance_id}. FK invalide: {e}")
             raise DatabaseError("Référence maintenance invalide ou contrainte violée.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB ajout frais externe: {e}")
@@ -124,7 +124,7 @@ class MaintenanceFraisExterneRepository:
                 logger.warning(f"Aucun frais trouvé avec l'ID {frais.id_frais} pour mise à jour")
             return success
         except psycopg2.IntegrityError as e:
-            logger.error(f"Échec mise à jour frais ID {frais.id_frais}. Contrainte violée%s {e}")
+            logger.error(f"Échec mise à jour frais ID {frais.id_frais}. Contrainte violée: {e}")
             raise DatabaseError("Contrainte d'intégrité violée.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB mise à jour frais: {e}")

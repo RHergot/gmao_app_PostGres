@@ -39,7 +39,7 @@ class GammeEntretienRepository:
             logger.info(f"GammeEntretien '{gamme.description}' ajoutée ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec ajout Gamme '{gamme.description}'. Desc unique%s FK%s {e}")
+            logger.warning(f"Échec ajout Gamme '{gamme.description}'. Desc unique, FK: {e}")
             if 'GAMME_ENTRETIEN.description' in str(e):
                 raise DatabaseError(f"Description gamme '{gamme.description}' existe déjà.") from e
             elif 'FOREIGN KEY constraint failed' in str(e):
@@ -93,7 +93,7 @@ class GammeEntretienRepository:
             if success: logger.info(f"Gamme ID {gamme.id_gamme} mise à jour.")
             return success
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec màj Gamme ID {gamme.id_gamme}. Desc unique%s FK%s {e}")
+            logger.warning(f"Échec màj Gamme ID {gamme.id_gamme}. Desc unique, FK: {e}")
             # ... (gestion erreurs intégrité comme dans add) ...
             raise DatabaseError("Contrainte d'intégrité violée.") from e
         except DatabaseError as e:

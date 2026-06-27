@@ -57,11 +57,7 @@ class StockAdjustmentDialog(QDialog):
         layout.addWidget(self.button_box)
 
         # --- Connections ---        
-        # TEST: Connecter une lambda simple pour voir si le signal est reçu
-        self.button_box.accepted.connect(lambda: logger.debug("--- SIGNAL ACCEPTED REÇU (via lambda) ---"))
-        
-        self.button_box.accepted.connect(self.accept)        
-        logger.debug("--- __init__: Connexion button_box.accepted -> self.accept TENTÉE ---") # <-- AJOUT LOG VERIF
+        self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
     def get_adjustment_details(self) -> Optional[Tuple[str, int, str]]:

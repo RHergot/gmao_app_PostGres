@@ -19,7 +19,7 @@ class EquipeRepository:
             logger.info(f"Equipe '{equipe.nom}' ajoutée ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec ajout equipe '{equipe.nom}'. Nom unique%s FK resp.%s {e}")
+            logger.warning(f"Échec ajout equipe '{equipe.nom}'. Nom unique, FK resp.: {e}")
             if 'EQUIPE.nom' in str(e):
                  raise DatabaseError(f"Nom équipe '{equipe.nom}' existe déjà.") from e
             elif 'FOREIGN KEY constraint failed' in str(e):
@@ -58,7 +58,7 @@ class EquipeRepository:
             if success: logger.info(f"Equipe ID {equipe.id_equipe} mise à jour.")
             return success
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec màj equipe ID {equipe.id_equipe}. Nom unique%s FK resp.%s {e}")
+            logger.warning(f"Échec màj equipe ID {equipe.id_equipe}. Nom unique, FK resp.: {e}")
             if 'EQUIPE.nom' in str(e):
                  raise DatabaseError(f"Nom équipe '{equipe.nom}' déjà utilisé.") from e
             elif 'FOREIGN KEY constraint failed' in str(e):

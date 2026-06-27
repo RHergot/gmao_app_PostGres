@@ -20,7 +20,7 @@ class FabricantRepository:
             logger.info(f"Fabricant '{fabricant.nom}' ajouté avec ID: {new_id}")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Impossible d'ajouter fabricant '{fabricant.nom}'. Contrainte unique 'nom'%s {e}")
+            logger.warning(f"Impossible d'ajouter fabricant '{fabricant.nom}'. Contrainte unique 'nom': {e}")
             raise DatabaseError(f"Le nom de fabricant '{fabricant.nom}' existe déjà.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB ajout fabricant '{fabricant.nom}': {e}")
@@ -68,7 +68,7 @@ class FabricantRepository:
             if success: logger.info(f"Fabricant ID {fabricant.id_fabricant} mis à jour.")
             return success
         except psycopg2.IntegrityError as e:
-            logger.warning(f"Échec màj fabricant ID {fabricant.id_fabricant}. Contrainte unique 'nom'%s {e}")
+            logger.warning(f"Échec màj fabricant ID {fabricant.id_fabricant}. Contrainte unique 'nom': {e}")
             raise DatabaseError(f"Le nom de fabricant '{fabricant.nom}' est déjà utilisé.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB update fabricant ID {fabricant.id_fabricant}: {e}")

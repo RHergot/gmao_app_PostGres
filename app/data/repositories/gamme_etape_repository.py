@@ -22,7 +22,7 @@ class GammeEtapeRepository:
             logger.info(f"Étape {etape.ordre} ajoutée à Gamme ID {etape.gamme_id} (ID Etape: {new_id}).")
             return new_id
         except psycopg2.IntegrityError as e:
-            logger.error(f"Échec ajout étape gamme {etape.gamme_id}. FK Gamme%s Ordre unique%s {e}")
+            logger.error(f"Échec ajout étape gamme {etape.gamme_id}. FK Gamme, Ordre unique: {e}")
             raise DatabaseError("Référence Gamme invalide ou Ordre déjà utilisé.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB ajout étape gamme {etape.gamme_id}: {e}")
@@ -60,7 +60,7 @@ class GammeEtapeRepository:
             if success: logger.info(f"Étape ID {etape.id_etape} mise à jour.")
             return success
         except psycopg2.IntegrityError as e:
-            logger.error(f"Échec màj étape ID {etape.id_etape}. FK Gamme%s Ordre unique%s {e}")
+            logger.error(f"Échec màj étape ID {etape.id_etape}. FK Gamme, Ordre unique: {e}")
             raise DatabaseError("Contrainte intégrité violée.") from e
         except DatabaseError as e:
             logger.error(f"Erreur DB update étape ID {etape.id_etape}: {e}")

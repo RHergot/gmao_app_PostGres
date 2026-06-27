@@ -71,21 +71,7 @@ class StockService:
     def get_all_fournisseurs(self) -> List[Fournisseur]:
         """ Récupère la liste de tous les fournisseurs. """
         logger.debug("Récupération tous fournisseurs...")
-        try:
-            # Vérifiez que self._fours_repo est le bon nom d'attribut
-            if not hasattr(self, '_fours_repo'):
-                 logger.error("Attribut 'fours_repo' non trouvé dans StockService.")
-                 return []
-            return self._fours_repo.get_all()
-        except DatabaseError as e:
-            logger.error(f"Erreur DB lors de la récupération des fournisseurs: {e}")
-            return [] # Retourner liste vide en cas d'erreur DB
-        except AttributeError: # Sécurité supplémentaire si l'attribut existe mais est None
-             logger.error("Attribut 'fours_repo' est None dans StockService.")
-             return []
-        except Exception as e: # Attraper toute autre erreur inattendue
-            logger.exception(f"Erreur inattendue récupération fournisseurs: {e}")
-            return []
+        return self._fours_repo.get_all()
 
     def update_fournisseur(self, f_id: int, data: Dict[str, Any]) -> Fournisseur:
         logger.info(f"Tentative màj fournisseur ID: {f_id}")
@@ -165,22 +151,7 @@ class StockService:
                        sort_by: str = "nom", sort_desc: bool = False) -> List[Piece]:
         """ Récupère toutes les pièces avec filtres et tri optionnels. """
         logger.debug(f"Récupération pièces (filters={filters}, sort={sort_by}, desc={sort_desc}).")
-        try:
-            # Vérifiez que self._piece_repo est le bon nom d'attribut
-            if not hasattr(self, '_piece_repo'):
-                 logger.error("Attribut 'piece_repo' non trouvé dans StockService.")
-                 return []
-            # Passer les arguments au repository
-            return self._piece_repo.get_all(filters=filters, sort_by=sort_by, sort_desc=sort_desc)
-        except DatabaseError as e:
-            logger.error(f"Erreur DB lors de la récupération des pièces: {e}")
-            return [] # Retourner liste vide en cas d'erreur DB
-        except AttributeError:
-             logger.error("Attribut 'piece_repo' est None dans StockService.")
-             return []
-        except Exception as e:
-            logger.exception(f"Erreur inattendue récupération pièces: {e}")
-            return []
+        return self._piece_repo.get_all(filters=filters, sort_by=sort_by, sort_desc=sort_desc)
 
     def update_piece(self, p_id: int, data: Dict[str, Any]) -> Piece:
         logger.info(f"Tentative màj pièce ID: {p_id}")
@@ -380,32 +351,22 @@ class StockService:
 
         # Utilisation explicite du contexte de transaction db_cursor
         try:
-            with db_cursor() as cursor: # Le curseur n'est pas forcément utilisé, mais le contexte gère commit/rollback
-                # 4. Ajouter le mouvement à la base de données (partie de la transaction)
-                # Note: Les méthodes add/update_stock_level ne doivent PAS gérer leur propre transaction ici !
-                # Il faut s'assurer qu'elles utilisent juste cursor.execute() sans leur propre db_cursor/commit.
-                # Vérification rapide: add utilise execute_query qui utilise db_cursor. C'est un problème.
-                # Il faut modifier add et update_stock_level pour accepter un curseur optionnel.
-
-                # ===== Solution Temporaire (moins propre) : On laisse les transactions imbriquées =====
-                # Si une étape échoue, l'exception remontera et le db_cursor externe fera le rollback.
-                # C'est moins efficace mais compatible avec la gestion des transactions PostgreSQL.
-
-                mvt_id = self._mouvement_stock_repo.add(mvt)
+            with db_cursor() as cursor:
+                # 4. Ajouter le mouvement à la base de données (dans la transaction)
+                mvt_id = self._mouvement_stock_repo.add(mvt, cursor=cursor)
                 if not mvt_id:
-                    logger.error(f"Échec ajout enregistrement mouvement pour pièce ID {piece_id}. Rollback externe attendu.")
-                    # Lever une exception pour être sûr que le db_cursor externe rollback
+                    logger.error(f"Échec ajout enregistrement mouvement pour pièce ID {piece_id}. Rollback attendu.")
                     raise DatabaseError(f"Échec ajout mouvement stock pour pièce {piece_id}")
 
                 mvt.id_mouvement = mvt_id
 
-                # 5. Mettre à jour le niveau de stock de la pièce (partie de la transaction)
-                success_update = self._piece_repo.update_stock_level(piece_id, stock_apres)
+                # 5. Mettre à jour le niveau de stock de la pièce (dans la même transaction)
+                success_update = self._piece_repo.update_stock_level(piece_id, stock_apres, cursor=cursor)
                 if not success_update:
-                    logger.error(f"Échec mise à jour stock pièce ID {piece_id} après ajout mouvement {mvt_id}. Rollback externe attendu.")
+                    logger.error(f"Échec mise à jour stock pièce ID {piece_id} après ajout mouvement {mvt_id}. Rollback attendu.")
                     raise DatabaseError(f"Échec mise à jour stock pièce ID {piece_id} après mouvement.")
 
-                # Si on arrive ici, les deux opérations ont réussi dans leurs transactions internes.
+                # Si on arrive ici, les deux opérations ont réussi dans la même transaction.
                 # Le db_cursor externe va commit la transaction globale.
 
             logger.info(f"Mouvement ID {mvt_id} enregistré avec succès. Stock pièce {piece_id} mis à jour à {stock_apres}.")
@@ -432,7 +393,7 @@ class StockService:
 
     def get_pieces_by_ids(self, piece_ids):
         """
-        Récupère plusieurs pièces par leurs IDs.
+        Récupère plusieurs pièces par leurs IDs en une seule requête.
         
         Args:
             piece_ids (list): Liste des IDs de pièces à récupérer
@@ -443,13 +404,8 @@ class StockService:
         if not piece_ids:
             return {}
             
-        result = {}
-        for piece_id in piece_ids:
-            piece = self.get_piece_by_id(piece_id)
-            if piece:
-                result[piece_id] = piece
-                
-        return result
+        pieces = self._piece_repo.get_by_ids(list(piece_ids))
+        return {p.id_piece: p for p in pieces}
 
     def get_quantite_disponible(self, piece_id: int) -> int:
         """Retourne la quantité disponible (stock actuel) pour une pièce donnée."""

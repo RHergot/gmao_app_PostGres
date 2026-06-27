@@ -19,8 +19,12 @@ class MouvementStockRepository:
         'INVENTAIRE': 4
     }
 
-    def add(self, mvt: MouvementStock) -> Optional[int]:
-        """ Ajoute un nouveau mouvement de stock à la base de données. """
+    def add(self, mvt: MouvementStock, cursor=None) -> Optional[int]:
+        """ Ajoute un nouveau mouvement de stock à la base de données.
+        Args:
+            mvt: L'objet MouvementStock à ajouter.
+            cursor: Curseur de transaction optionnel. Si fourni, utilisé sans commit/rollback.
+        """
         
         # Convertir le type de mouvement textuel en ID numérique
         type_mouvement_id = self.TYPE_MOUVEMENT_MAPPING.get(mvt.type_mouvement)
@@ -44,10 +48,15 @@ class MouvementStockRepository:
             'CONFIRME'  # statut_mouvement par défaut
         )
         try:
-            from app.data.database import db_cursor
-            with db_cursor() as cursor:
+            if cursor is not None:
+                # Réutiliser le curseur de la transaction externe
                 cursor.execute(sql + " RETURNING id", params)
                 row = cursor.fetchone()
+            else:
+                from app.data.database import db_cursor
+                with db_cursor() as cur:
+                    cur.execute(sql + " RETURNING id", params)
+                    row = cur.fetchone()
             new_id = row['id'] if row else None
             logger.info(f"Mouvement de stock ID {new_id} ajouté pour pièce ID {mvt.piece_id} (Type: {mvt.type_mouvement}, Qte: {mvt.quantite}).")
             return new_id
