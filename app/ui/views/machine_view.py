@@ -20,57 +20,6 @@ from app.ui.dialogs.machine_counters_dialog import MachineCountersDialog
 from app.utils.exceptions import BusinessLogicError, NotFoundError, DatabaseError
 from app.core.services.compteur_service import CompteurService
 
-logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-     from app.ui.main_window import MainWindow # Importer pour le type hinting
-
-class MachineView(QWidget):
-    """Vue pour la gestion des Machines."""
-
-    def __init__(self, machine_service: MachineService, main_window: "MainWindow"):
-        """Initialise la vue."""
-        super().__init__(main_window)
-        self.machine_service = machine_service
-        self.main_window = main_window # Stocker la référence à MainWindow
-
-        # --- Maintenant, accéder au compteur_service via self.main_window ---
-        if hasattr(self.main_window, 'compteur_service'):
-            self.compteur_service = self.main_window.compteur_service
-        else:
-            self.compteur_service = None
-            logger.warning("CompteurService non disponible dans MachineView: le bouton 'Gérer Compteurs' sera désactivé mais la vue reste accessible.")
-        # -------------------------------------------------------------------
-        self.current_machines: list[Machine] = [] 
-
-        logger.debug("Initialisation de MachineView...")
-
-        # --- Widgets de Filtre (optionnel mais utile) ---
-        self.filter_nom_input = QLineEdit(placeholderText=self.tr("Filtrer par nom/serial..."))
-        self.filter_site_combo = QComboBox()
-
-"""
-Widget pour afficher et gérer la liste des Machines.
-"""
-import logging
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
-    QAbstractItemView, QHeaderView, QMessageBox, QLabel, QLineEdit, QComboBox, # Ajouts pour filtres
-    QSpacerItem, QSizePolicy, QDialog, QDateEdit, QDateTimeEdit
-)
-from PySide6.QtCore import Qt, Slot, QDate, QDateTime
-from typing import TYPE_CHECKING,Optional, List, Dict, Any
-from datetime import date
-
-# Importer modèles, services et dialogue
-from app.core.models.machine import Machine
-from app.core.services.machine_service import MachineService # Service principal
-from app.ui.dialogs.machine_dialog import MachineDialog
-# Import du futur dialogue (même s'il n'existe pas encore)
-from app.ui.dialogs.machine_counters_dialog import MachineCountersDialog
-from app.utils.exceptions import BusinessLogicError, NotFoundError, DatabaseError
-from app.core.services.compteur_service import CompteurService
-
 
 logger = logging.getLogger(__name__)
 

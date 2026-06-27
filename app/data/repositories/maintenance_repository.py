@@ -199,7 +199,19 @@ class MaintenanceRepository:
         """ Met à jour uniquement les données financières d'une maintenance. """
         if not maint_id: return False
         
-        # Construit dynamiquement la requête SQL à partir des clés du dictionnaire
+        # Liste blanche des colonnes financières autorisées (protection contre injection SQL)
+        ALLOWED_FINANCIAL_FIELDS = {
+            'cout_main_oeuvre', 'cout_pieces_internes', 'cout_pieces_externes',
+            'cout_autres_frais', 'cout_total'
+        }
+        
+        # Valider toutes les clés contre la liste blanche
+        invalid_keys = set(financial_data.keys()) - ALLOWED_FINANCIAL_FIELDS
+        if invalid_keys:
+            logger.error(f"Tentative de mise à jour avec des champs non autorisés: {invalid_keys}")
+            raise ValueError(f"Champs financiers non autorisés: {invalid_keys}")
+        
+        # Construit dynamiquement la requête SQL à partir des clés validées
         fields = ", ".join([f"{key}=%s" for key in financial_data.keys()])
         sql = f"UPDATE MAINTENANCE SET {fields} WHERE id_maintenance = %s"
         

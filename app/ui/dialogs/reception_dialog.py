@@ -13,7 +13,7 @@ from app.core.models.commande import Commande
 from app.core.models.ligne_commande import LigneCommande
 from app.core.models.utilisateur import Utilisateur
 from app.core.services.achat_service import AchatService
-from app.utils.exceptions import PermissionError, DatabaseError, BusinessLogicError # Importer les exceptions
+from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError # Importer les exceptions
 
 if TYPE_CHECKING:
      pass # Pas besoin de QWidget ici si déjà importé plus haut
@@ -272,7 +272,7 @@ class ReceptionDialog(QDialog):
                  else:
                      errors_service.append(self.tr(f"Pièce '{ligne_info['nom_piece']}': Échec enregistrement (voir logs)."))
 
-             except (PermissionError, ValueError, DatabaseError, BusinessLogicError) as e:
+             except (GmaoPermissionError, ValueError, DatabaseError, BusinessLogicError) as e:
                  logger.error(f"Erreur service réception ligne ID {ligne_info['ligne_id']}: {e}")
                  errors_service.append(self.tr(f"Pièce '{ligne_info['nom_piece']}': {e}"))
              except Exception as e:

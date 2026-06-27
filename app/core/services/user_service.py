@@ -3,6 +3,7 @@
 Service métier pour la gestion des utilisateurs.
 """
 import logging
+import os
 from typing import Optional, List, Dict, Any
 from app.data.repositories.user_repository import UserRepository
 from app.core.models.utilisateur import Utilisateur
@@ -23,11 +24,28 @@ class UserService:
         logger.debug("UserService initialisé avec UserRepository.")
         logger.info("UserService initialisé.")
 
-    def ensure_admin_exists(self, default_login="admin", default_password="admin123"):
-        """ Vérifie si un admin existe, sinon crée le premier avec les identifiants fournis. """
+    def ensure_admin_exists(self, default_login=None, default_password=None):
+        """ Vérifie si un admin existe, sinon crée le premier avec les identifiants fournis.
+        
+        Les identifiants par défaut sont lus depuis les variables d'environnement:
+        - INITIAL_ADMIN_LOGIN (défaut: "admin")
+        - INITIAL_ADMIN_PASSWORD (obligatoire si aucun utilisateur n'existe)
+        """
+        if default_login is None:
+            default_login = os.getenv('INITIAL_ADMIN_LOGIN', 'admin')
+        if default_password is None:
+            default_password = os.getenv('INITIAL_ADMIN_PASSWORD', '')
+        
         try:
             # Vérifie s'il y a DÉJÀ des utilisateurs
             if not self._repository.has_users():
+                 if not default_password:
+                     logger.error(
+                         "Aucun utilisateur trouvé et INITIAL_ADMIN_PASSWORD non défini. "
+                         "Impossible de créer l'administrateur initial. "
+                         "Définissez INITIAL_ADMIN_PASSWORD dans le fichier .env."
+                     )
+                     return
                  logger.warning("Aucun utilisateur trouvé. Création de l'administrateur initial...")
                  try:
                      # Appel à create_user qui gère le hashage etc.

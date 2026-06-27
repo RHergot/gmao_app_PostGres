@@ -19,28 +19,18 @@ class BusinessLogicError(GmaoBaseError):
     """Exception liée à une violation des règles métier."""
     pass
 
-# Ajouter d'autres exceptions spécifiques au besoin...
 class ValidationError(BusinessLogicError):
-     """Exception levée lorsqu'une ressource attendue n'est pas trouvée."""
-     pass
+    """Exception levée lorsqu'une validation métier échoue."""
+    pass
 
 class NotFoundError(DatabaseError):
-     pass
+    """Exception levée lorsqu'une ressource attendue n'est pas trouvée."""
+    pass
 
 class MaintenanceNotFoundError(NotFoundError):
     """Exception levée lorsqu'une maintenance attendue n'est pas trouvée."""
     pass
 
-""" Exceptions personnalisées pour l'application. """
-
-class DatabaseError(Exception):
-    """ Erreur spécifique à la base de données. """
+class GmaoPermissionError(GmaoBaseError):
+    """Exception levée lorsqu'un utilisateur n'a pas les droits nécessaires."""
     pass
-
-class PermissionError(Exception):
-    """ Erreur spécifique aux droits d'accès. """
-    pass
-
-class BusinessLogicError(Exception):
-     """ Erreur liée aux règles métier. """
-     pass

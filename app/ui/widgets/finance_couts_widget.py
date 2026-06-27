@@ -26,211 +26,9 @@ from app.data.repositories.maintenance_intervenant_repository import Maintenance
 from app.data.repositories.maintenance_frais_externe_repository import MaintenanceFraisExterneRepository
 
 from app.core.services.finance_service import FinanceService
+from app.ui.dialogs.intervenant_dialog import IntervenantDialog
 
 logger = logging.getLogger(__name__)
-
-class IntervenantDialog(QDialog):
-    """Dialogue pour ajouter ou modifier un intervenant"""
-    
-    def __init__(self, maintenance_id: int, techniciens: List[Technicien], 
-                 intervenant: Optional[MaintenanceIntervenant] = None, parent=None):
-        super().__init__(parent)
-        self.maintenance_id = maintenance_id
-        self.techniciens = techniciens
-        self.intervenant = intervenant
-        self.init_ui()
-        
-    def init_ui(self):
-        layout = QVBoxLayout()
-        self.setWindowTitle(self.tr("Intervenant") if not self.intervenant else self.tr("Modifier Intervenant"))
-        self.setMinimumWidth(450)
-        
-        # Type d'intervenant (interne ou externe)
-        type_group = QGroupBox(self.tr("Type d'intervenant"))
-        type_layout = QVBoxLayout()
-        
-        self.type_combo = QComboBox()
-        self.type_combo.addItem(self.tr("Technicien interne"), "interne")
-        self.type_combo.addItem(self.tr("Intervenant externe"), "externe")
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        type_layout.addWidget(self.type_combo)
-        type_group.setLayout(type_layout)
-        layout.addWidget(type_group)
-        
-        # Bloc technicien interne
-        self.technicien_group = QGroupBox(self.tr("Technicien"))
-        technicien_layout = QFormLayout()
-        
-        self.technicien_combo = QComboBox()
-        for tech in self.techniciens:
-            nom_tech = self.tr("%1 %2").replace("%1", tech.nom).replace("%2", tech.prenom or "")
-            self.technicien_combo.addItem(nom_tech, tech.id_technicien)
-        self.technicien_combo.currentIndexChanged.connect(self.on_technicien_changed)
-        technicien_layout.addRow(self.tr("Sélectionner :"), self.technicien_combo)
-        
-        self.cout_horaire_interne = QDoubleSpinBox()
-        self.cout_horaire_interne.setRange(0, 1000)
-        self.cout_horaire_interne.setDecimals(2)
-        self.cout_horaire_interne.setSuffix(self.tr(" €/h"))
-        self.cout_horaire_interne.setReadOnly(True)  # Fixé selon le technicien
-        technicien_layout.addRow(self.tr("Coût horaire :"), self.cout_horaire_interne)
-        
-        self.technicien_group.setLayout(technicien_layout)
-        layout.addWidget(self.technicien_group)
-        
-        # Bloc intervenant externe
-        self.externe_group = QGroupBox(self.tr("Intervenant externe"))
-        externe_layout = QFormLayout()
-        
-        self.nom_externe = QLineEdit()
-        externe_layout.addRow(self.tr("Nom :"), self.nom_externe)
-        
-        self.cout_horaire_externe = QDoubleSpinBox()
-        self.cout_horaire_externe.setRange(0, 1000)
-        self.cout_horaire_externe.setDecimals(2)
-        self.cout_horaire_externe.setSuffix(self.tr(" €/h"))
-        externe_layout.addRow(self.tr("Coût horaire :"), self.cout_horaire_externe)
-        
-        self.externe_group.setLayout(externe_layout)
-        layout.addWidget(self.externe_group)
-        
-        # Données communes
-        commun_group = QGroupBox(self.tr("Temps passé"))
-        commun_layout = QFormLayout()
-        
-        self.heures_travaillees = QDoubleSpinBox()
-        self.heures_travaillees.setRange(0.1, 1000)
-        self.heures_travaillees.setDecimals(1)
-        self.heures_travaillees.setSingleStep(0.5)
-        self.heures_travaillees.setSuffix(self.tr(" h"))
-        self.heures_travaillees.setValue(1.0)
-        commun_layout.addRow(self.tr("Heures travaillées :"), self.heures_travaillees)
-        
-        self.notes = QLineEdit()
-        commun_layout.addRow(self.tr("Notes :"), self.notes)
-        
-        commun_group.setLayout(commun_layout)
-        layout.addWidget(commun_group)
-        
-        # Résumé du coût
-        resume_layout = QHBoxLayout()
-        self.cout_total_label = QLabel(self.tr("Coût total : 0.00 €"))
-        font = QFont()
-        font.setBold(True)
-        self.cout_total_label.setFont(font)
-        resume_layout.addWidget(self.cout_total_label)
-        layout.addLayout(resume_layout)
-        
-        # Boutons
-        buttons_layout = QHBoxLayout()
-        self.cancel_button = QPushButton(self.tr("Annuler"))
-        self.cancel_button.clicked.connect(self.reject)
-        self.save_button = QPushButton(self.tr("Enregistrer"))
-        self.save_button.clicked.connect(self.accept)
-        
-        buttons_layout.addWidget(self.cancel_button)
-        buttons_layout.addWidget(self.save_button)
-        layout.addLayout(buttons_layout)
-        
-        self.setLayout(layout)
-        
-        # Connecter les signaux pour le calcul du coût total
-        self.heures_travaillees.valueChanged.connect(self.update_cout_total)
-        self.cout_horaire_externe.valueChanged.connect(self.update_cout_total)
-        self.technicien_combo.currentIndexChanged.connect(self.update_cout_total)
-        
-        # Mode modification
-        if self.intervenant:
-            self.set_data_from_intervenant(self.intervenant)
-        else:
-            # Par défaut, afficher le bloc technicien et masquer le bloc externe
-            self.on_type_changed(0)
-            
-        # Forcer une mise à jour initiale du coût horaire et total
-        if self.technicien_combo.count() > 0:
-            self.on_technicien_changed(0)
-        self.update_cout_total()
-    
-    def on_type_changed(self, index):
-        """Gère l'affichage selon le type d'intervenant sélectionné"""
-        is_interne = self.type_combo.currentData() == "interne"
-        self.technicien_group.setVisible(is_interne)
-        self.externe_group.setVisible(not is_interne)
-        
-        # Réinitialiser les valeurs non pertinentes
-        if is_interne:
-            self.nom_externe.clear()
-        else:
-            # Ne pas réinitialiser le technicien sélectionné, juste au cas où l'utilisateur revient en arrière
-            pass
-        
-        self.update_cout_total()
-    
-    def on_technicien_changed(self, index):
-        """Met à jour le coût horaire en fonction du technicien sélectionné"""
-        if index < 0 or index >= len(self.techniciens):
-            return
-            
-        technicien_id = self.technicien_combo.currentData()
-        technicien = next((t for t in self.techniciens if t.id_technicien == technicien_id), None)
-        
-        if technicien:
-            self.cout_horaire_interne.setValue(technicien.cout_horaire or 0.0)
-    
-    def update_cout_total(self):
-        """Calcule et affiche le coût total estimé"""
-        is_interne = self.type_combo.currentData() == "interne"
-        
-        heures = self.heures_travaillees.value()
-        taux = self.cout_horaire_interne.value() if is_interne else self.cout_horaire_externe.value()
-        
-        cout_total = heures * taux
-        self.cout_total_label.setText(self.tr("Coût total : %1 €").replace("%1", f"{cout_total:.2f}"))
-    
-    def set_data_from_intervenant(self, intervenant: MaintenanceIntervenant):
-        """Préremplir les champs avec les données d'un intervenant existant"""
-        # Déterminer le type d'intervenant
-        if intervenant.technicien_id:
-            self.type_combo.setCurrentIndex(0)  # Interne
-            index = self.technicien_combo.findData(intervenant.technicien_id)
-            if index >= 0:
-                self.technicien_combo.setCurrentIndex(index)
-        else:
-            self.type_combo.setCurrentIndex(1)  # Externe
-            self.nom_externe.setText(intervenant.nom_intervenant_externe or "")
-            self.cout_horaire_externe.setValue(intervenant.cout_horaire or 0.0)
-        
-        # Données communes
-        self.heures_travaillees.setValue(intervenant.heures_travaillees or 1.0)
-        self.notes.setText(intervenant.notes or "")
-        
-        # Forcer la mise à jour de l'interface
-        self.on_type_changed(self.type_combo.currentIndex())
-    
-    def get_intervenant_data(self) -> dict:
-        """Récupère les données saisies sous forme de dictionnaire"""
-        is_interne = self.type_combo.currentData() == "interne"
-        
-        data = {
-            'maintenance_id': self.maintenance_id,
-            'heures_travaillees': self.heures_travaillees.value(),
-            'notes': self.notes.text() or None
-        }
-        
-        if is_interne:
-            data['technicien_id'] = self.technicien_combo.currentData()
-            data['cout_horaire'] = self.cout_horaire_interne.value()
-            data['nom_intervenant_externe'] = None
-        else:
-            data['technicien_id'] = None
-            data['nom_intervenant_externe'] = self.nom_externe.text()
-            data['cout_horaire'] = self.cout_horaire_externe.value()
-        
-        # Ajouter l'ID si c'est une modification
-        if self.intervenant and self.intervenant.id_intervenant:
-            data['id_intervenant'] = self.intervenant.id_intervenant
-            
-        return data
 
 class FraisExterneDialog(QDialog):
     """Dialogue pour ajouter ou modifier un frais externe"""
@@ -692,11 +490,11 @@ class FinanceCoutsWidget(QWidget):
     
     def add_intervenant(self):
         """Ajoute un nouvel intervenant"""
-        dialog = IntervenantDialog(self.maintenance_id, self.techniciens, parent=self)
+        dialog = IntervenantDialog(parent=self, techniciens=self.techniciens, maintenance_id=self.maintenance_id)
         if dialog.exec():
             try:
                 # Créer un nouvel objet intervenant
-                data = dialog.get_intervenant_data()
+                data = dialog.get_form_data()
                 intervenant = MaintenanceIntervenant(**data)
                 
                 # Ajouter à la base de données
@@ -717,11 +515,11 @@ class FinanceCoutsWidget(QWidget):
     
     def edit_intervenant(self, intervenant: MaintenanceIntervenant):
         """Modifie un intervenant existant"""
-        dialog = IntervenantDialog(self.maintenance_id, self.techniciens, intervenant, parent=self)
+        dialog = IntervenantDialog(parent=self, techniciens=self.techniciens, intervenant=intervenant, maintenance_id=self.maintenance_id)
         if dialog.exec():
             try:
                 # Mettre à jour l'intervenant
-                data = dialog.get_intervenant_data()
+                data = dialog.get_form_data()
                 updated_intervenant = MaintenanceIntervenant(**data)
                 # Enregistrer dans la base de données
                 self.intervenant_repo.update(updated_intervenant)
@@ -732,36 +530,6 @@ class FinanceCoutsWidget(QWidget):
         self.refresh_intervenants()
         self.recalculer_couts()
     
-    def add_intervenant(self):
-        """Ajoute un nouvel intervenant"""
-        dialog = IntervenantDialog(self.maintenance_id, self.techniciens, parent=self)
-        if dialog.exec():
-            try:
-                data = dialog.get_intervenant_data()
-                intervenant = MaintenanceIntervenant(**data)
-                self.intervenant_repo.add(intervenant)
-                self.refresh_intervenants()
-                self.recalculer_couts()
-                QMessageBox.information(self, self.tr("Intervenant ajouté"), 
-                                       self.tr("L'intervenant a été ajouté avec succès."))
-            except Exception as e:
-                logger.error(f"Erreur lors de l'ajout d'un intervenant: {e}")
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible d'ajouter l'intervenant : %1").replace("%1", str(e)))
-
-    def edit_intervenant(self, intervenant: MaintenanceIntervenant):
-        """Modifie un intervenant existant"""
-        dialog = IntervenantDialog(self.maintenance_id, self.techniciens, intervenant, parent=self)
-        if dialog.exec():
-            try:
-                data = dialog.get_intervenant_data()
-                updated_intervenant = MaintenanceIntervenant(**data)
-                self.intervenant_repo.update(updated_intervenant)
-                self.refresh_intervenants()
-                self.recalculer_couts()
-            except Exception as e:
-                logger.error(f"Erreur lors de la modification d'un intervenant: {e}")
-                QMessageBox.warning(self, self.tr("Erreur"), self.tr("Impossible de modifier l'intervenant : %1").replace("%1", str(e)))
-
     def recalculer_couts(self):
         try:
             self.refresh_resume()

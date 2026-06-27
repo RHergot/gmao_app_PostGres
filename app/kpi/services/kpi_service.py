@@ -16,11 +16,11 @@ class KPIService:
         La vue v_kpi_machine_jour contient déjà les données agrégées par jour et par machine.
         On agrège simplement par machine sur la période demandée.
         """
-        query = f"""
+        query = """
             SELECT * FROM v_kpi_machine_jour
-            WHERE jour >= '{date_start}' AND jour <= '{date_end}'
+            WHERE jour >= %s AND jour <= %s
         """
-        df = pd.read_sql(query, self.conn)
+        df = pd.read_sql_query(query, self.conn, params=(date_start, date_end))
         if df.empty:
             return df
         
@@ -66,11 +66,11 @@ class KPIService:
         La vue v_kpi_machine_jour contient déjà les données agrégées par jour et par machine.
         On agrège simplement les jours de la période pour cette machine.
         """
-        query = f"""
+        query = """
             SELECT * FROM v_kpi_machine_jour
-            WHERE id_machine = '{id_machine}' AND jour >= '{date_start}' AND jour <= '{date_end}'
+            WHERE id_machine = %s AND jour >= %s AND jour <= %s
         """
-        df = pd.read_sql(query, self.conn)
+        df = pd.read_sql_query(query, self.conn, params=(id_machine, date_start, date_end))
         if df.empty:
             return df
         
@@ -143,7 +143,7 @@ class KPIService:
         Retourne les données KPI temporelles (par jour) depuis v_kpi_machine_jour
         pour les courbes temporelles (trends)
         """
-        query = f"""
+        query = """
             SELECT 
                 jour,
                 machine_nom,
@@ -154,10 +154,10 @@ class KPIService:
                 nb_interventions,
                 duree_totale
             FROM v_kpi_machine_jour
-            WHERE jour >= '{date_start}' AND jour <= '{date_end}'
+            WHERE jour >= %s AND jour <= %s
             ORDER BY jour ASC
         """
-        return pd.read_sql(query, self.conn)
+        return pd.read_sql_query(query, self.conn, params=(date_start, date_end))
 
     def close(self):
         if hasattr(self, 'conn'):

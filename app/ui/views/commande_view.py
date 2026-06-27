@@ -14,7 +14,7 @@ from app.core.models.commande import Commande
 # Importer le dialogue (même s'il n'existe pas encore complètement)
 from app.ui.dialogs.commande_dialog import CommandeDialog # Décommenter quand le dialogue existe
 from app.ui.dialogs.reception_dialog import ReceptionDialog
-from app.utils.exceptions import PermissionError, DatabaseError, BusinessLogicError # Ajouter imports exceptions
+from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError # Ajouter imports exceptions
 
 if TYPE_CHECKING:
     from app.ui.main_window import MainWindow
@@ -450,7 +450,7 @@ class CommandeView(QWidget):
                  else:
                       # Le service devrait lever une exception normalement en cas d'échec
                       QMessageBox.warning(self, "Échec", f"L'envoi de la commande '{cmd_num}' a échoué (voir logs).")
-            except PermissionError as pe:
+            except GmaoPermissionError as pe:
                  logger.warning(f"Permission refusée envoi commande {selected_commande.id_commande}: {pe}")
                  QMessageBox.warning(self, "Accès Refusé", str(pe))
             except (DatabaseError, BusinessLogicError, ValueError) as e:

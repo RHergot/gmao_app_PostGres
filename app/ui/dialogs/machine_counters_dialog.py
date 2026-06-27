@@ -374,7 +374,7 @@ class MachineCountersDialog(QDialog):
                        # Le service lève une exception si échec, mais si rowCount=0
                        QMessageBox.warning(self, self.tr("Échec Suppression"), self.tr(f"Impossible de supprimer le compteur '{selected_compteur.nom}'."))
 
-              except PermissionError as pe:
+              except GmaoPermissionError as pe:
                    logger.warning(f"Perm. refusée suppression compteur {selected_compteur.id_compteur}: {pe}")
                    QMessageBox.warning(self, self.tr("Accès Refusé"), str(pe))
               except (DatabaseError, BusinessLogicError) as e:

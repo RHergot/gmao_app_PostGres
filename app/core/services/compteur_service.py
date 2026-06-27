@@ -14,7 +14,7 @@ from app.data.repositories.historique_compteur_repository import HistoriqueCompt
 from app.data.repositories.machine_repository import MachineRepository # Pour vérifier existence Machine
 from app.data.repositories.user_repository import UserRepository # Pour vérifier existence Utilisateur (si besoin)
 
-from app.utils.exceptions import PermissionError, DatabaseError, BusinessLogicError # Imports exceptions
+from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError # Imports exceptions
 
 from app.core.services.maintenance_service import MaintenanceService
 print('### DEBUG: Chargement module compteur_service.py')
@@ -51,7 +51,7 @@ class CompteurService:
         if current_user.role not in allowed_roles:
             msg = "Droits insuffisants pour créer un compteur."
             logger.warning(f"Tentative non autorisée création compteur par {current_user.login} (rôle {current_user.role}). {msg}")
-            raise PermissionError(msg)
+            raise GmaoPermissionError(msg)
 
         # --- 2. Validation et Préparation des Données ---
         try:
@@ -143,7 +143,7 @@ class CompteurService:
         if current_user.role not in allowed_roles:
             msg = "Droits insuffisants pour modifier un compteur."
             logger.warning(f"Tentative non autorisée màj compteur ID {compteur.id_compteur} par {current_user.login} (rôle {current_user.role}). {msg}")
-            raise PermissionError(msg)
+            raise GmaoPermissionError(msg)
 
         # --- 2. Validation Données (si applicable, si update_compteur prend un dict plutot que l'objet) ---
         # Si on passe l'objet complet, la validation doit se faire avant l'appel au service
@@ -178,7 +178,7 @@ class CompteurService:
         if current_user.role not in allowed_roles:
             msg = "Droits insuffisants pour supprimer un compteur."
             logger.warning(f"Tentative non autorisée suppression compteur ID {compteur_id} par {current_user.login} (rôle {current_user.role}). {msg}")
-            raise PermissionError(msg)
+            raise GmaoPermissionError(msg)
 
         # --- 2. Appel au Repository ---
         try:
@@ -208,7 +208,7 @@ class CompteurService:
         if current_user.role not in allowed_roles:
             msg = "Droits insuffisants pour enregistrer un relevé."
             logger.warning(f"Tentative non autorisée ajout relevé par {current_user.login} (rôle {current_user.role}). {msg}")
-            raise PermissionError(msg)
+            raise GmaoPermissionError(msg)
 
         # --- 2. Validation et Préparation des Données ---
         try:

@@ -59,6 +59,17 @@ class OrdreTravailRepository:
         logger.debug(f"OrdreTravailRepository.get_all appelé avec filters={filters}, sort_by={sort_by}, sort_desc={sort_desc}")
         
         if filters:
+             # Liste blanche stricte de toutes les clés de filtre autorisées
+             ALLOWED_FILTER_KEYS = {
+                 'statut__in', 'statut__ne', 'technicien_assigne_id',
+                 'machine_id', 'gamme_id', 'type', 'priorite', 'statut',
+                 'utilisateur_createur_id', 'urgence'
+             }
+             invalid_keys = set(filters.keys()) - ALLOWED_FILTER_KEYS
+             if invalid_keys:
+                 logger.error(f"Clés de filtre non autorisées: {invalid_keys}")
+                 raise ValueError(f"Clés de filtre non autorisées: {invalid_keys}")
+             
              # Ajouter la logique de filtrage similaire à MachineRepository
              for key, value in filters.items():
                   # Support du filtre 'statut__in' pour les statuts multiples

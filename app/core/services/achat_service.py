@@ -13,7 +13,7 @@ from app.data.repositories.commande_repository import CommandeRepository
 from app.data.repositories.ligne_commande_repository import LigneCommandeRepository
 from app.data.repositories.piece_repository import PieceRepository
 from app.data.repositories.mouvement_stock_repository import MouvementStockRepository
-from app.utils.exceptions import PermissionError, DatabaseError, BusinessLogicError
+from app.utils.exceptions import GmaoGmaoPermissionError, DatabaseError, BusinessLogicError
 
 
 # Optionnel: Repos pour validation FK (si non géré uniquement par DB)
@@ -63,7 +63,7 @@ class AchatService:
         allowed_roles = ['Admin', 'GestionStock'] # Rôles autorisés à créer
         if createur_role not in allowed_roles:
             logger.warning(f"Tentative non autorisée de création commande par utilisateur ID {createur_id} (rôle {createur_role})")
-            raise PermissionError("Vous n'avez pas les droits suffisants pour créer une commande.")
+            raise GmaoPermissionError("Vous n'avez pas les droits suffisants pour créer une commande.")
         # ----------------------------------
 
         logger.info(f"Création commande demandée par utilisateur ID {createur_id} (rôle {createur_role})")
@@ -175,7 +175,7 @@ class AchatService:
 
         if not can_edit:
             logger.warning(f"Tentative non autorisée de modification commande ID {commande.id_commande} (statut: {commande.statut}) par {current_user.login} (rôle: {current_user.role}).")
-            raise PermissionError(f"Vous ne pouvez pas modifier cette commande (statut: {commande.statut}).")
+            raise GmaoPermissionError(f"Vous ne pouvez pas modifier cette commande (statut: {commande.statut}).")
         # ----------------------------------
 
         logger.info(f"Mise à jour commande ID {commande.id_commande} demandée par {current_user.login}...")
@@ -450,7 +450,7 @@ class AchatService:
              # TODO: Implémenter un rollback si transaction explicite
              raise # Remonter l'erreur
 
-        except (PermissionError, ValueError, DatabaseError, BusinessLogicError) as e: # ValueError est utilisé directement
+        except (GmaoPermissionError, ValueError, DatabaseError, BusinessLogicError) as e: # ValueError est utilisé directement
              logger.error(f"Échec réception ligne ID {ligne_id}: {e}")
              raise # Remonter l'erreur gérée
 
@@ -555,7 +555,7 @@ class AchatService:
         allowed_roles = ['Admin', 'GestionStock', 'Magasinier'] # Exemple
         if current_user.role not in allowed_roles:
             logger.warning(f"Tentative non autorisée de réception ligne {ligne_id} par {current_user.login} (rôle {current_user.role})")
-            raise PermissionError("Droits insuffisants pour enregistrer une réception.")
+            raise GmaoPermissionError("Droits insuffisants pour enregistrer une réception.")
 
         # --- 2. Validation Entrées ---
         if quantite_recue_ajout <= 0:
@@ -638,7 +638,7 @@ class AchatService:
             logger.info(f"Réception ligne ID {ligne_id} enregistrée avec succès.")
             return True
 
-        except (PermissionError, ValueError, DatabaseError, BusinessLogicError) as e:
+        except (GmaoPermissionError, ValueError, DatabaseError, BusinessLogicError) as e:
                 logger.error(f"Échec réception ligne ID {ligne_id}: {e}")
                 raise # Remonter l'erreur gérée
         except Exception as e:
@@ -657,7 +657,7 @@ class AchatService:
             allowed_roles = ['Admin', 'GestionStock'] # Rôles autorisés à envoyer
             if current_user.role not in allowed_roles:
                 logger.warning(f"Tentative non autorisée d'envoi commande {commande_id} par {current_user.login} (rôle {current_user.role})")
-                raise PermissionError("Droits insuffisants pour envoyer cette commande.")
+                raise GmaoPermissionError("Droits insuffisants pour envoyer cette commande.")
 
             # --- 2. Vérification Statut Actuel ---
             try:
@@ -687,7 +687,7 @@ class AchatService:
 
                 return success
 
-            except (PermissionError, ValueError, DatabaseError, BusinessLogicError) as e:
+            except (GmaoPermissionError, ValueError, DatabaseError, BusinessLogicError) as e:
                 logger.error(f"Échec envoi commande ID {commande_id}: {e}")
                 raise # Remonter l'erreur gérée
             except Exception as e:
