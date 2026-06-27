@@ -1192,10 +1192,14 @@ class MainWindow(QMainWindow):
         import os
         from PySide6.QtWidgets import QMessageBox
 
-        # Chemin configurable via variable d'environnement
+        # Chemin configurable via variable d'environnement, avec fallback sur l'ancien chemin relatif
         bi_reporting_path = os.getenv('GMAO_BI_REPORTING_PATH', '')
         if not bi_reporting_path:
-            self.show_popup("Erreur", "Le chemin du BI Reporting n'est pas configuré. Définissez la variable d'environnement GMAO_BI_REPORTING_PATH.", QMessageBox.Critical)
+            # Fallback: ancien chemin relatif (fonctionne sur le poste de développement)
+            bi_reporting_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../Projets/Graph/main.py"))
+        
+        if not os.path.exists(bi_reporting_path):
+            logger.warning(f"BI Reporting: chemin non trouvé: {bi_reporting_path}")
             return
         try:
             subprocess.Popen(["python", bi_reporting_path])
